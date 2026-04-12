@@ -1,0 +1,32 @@
+{
+  "name": "squadpicks-bot",
+  "version": "1.0.0",
+  "description": "Your squad. Any plan. One bot.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.103.0",
+    "dotenv": "^17.4.1",
+    "googleapis": "^171.4.0",
+    "node-cron": "^4.2.1",
+    "node-telegram-bot-api": "^0.66.0",
+    "open-graph-scraper": "^6.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "squadpicks",
+    "filmicraft"
+  ],
+  "author": "",
+  "license": "ISC"
+}
