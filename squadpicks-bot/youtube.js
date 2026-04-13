@@ -154,11 +154,14 @@ async function formatLatestFCPicks() {
 // ─── START CRON JOB ────────────────────────────────────────
 
 function startYouTubeMonitor(bot) {
-  // Check every hour
-  cron.schedule('0 9 * * 5', () => checkForNewVideos(bot));
-  console.log('[YouTube] Filmi Craft monitor started — checks every hour');
+  // Check every Friday at 9:00 AM IST
+  // Cron format: minute hour day-of-month month day-of-week (5 = Friday)
+  cron.schedule('0 9 * * 5', () => checkForNewVideos(bot), {
+    timezone: 'Asia/Kolkata'
+  });
+  console.log('[YouTube] Filmi Craft monitor started — checks every Friday at 9am IST');
 
-  // Also check immediately on startup
+  // Also check immediately on startup (so first run doesn't wait till Friday)
   setTimeout(() => checkForNewVideos(bot), 5000);
 }
 
