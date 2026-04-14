@@ -41,19 +41,53 @@ function detectType(url, meta = {}) {
   return 'link'; // fallback
 }
 
+// ─── SMART TITLE FALLBACK FROM URL ────────────────────────
+
+function titleFromUrl(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '');
+    const path = u.pathname;
+    if (/imdb\.com/.test(host))        return 'Movie on IMDB';
+    if (/letterboxd\.com/.test(host))  return 'Movie on Letterboxd';
+    if (/maps\.google|maps\.app\.goo\.gl/.test(url)) return 'Google Maps location';
+    if (/zomato\.com/.test(host))      return 'Restaurant on Zomato';
+    if (/yelp\.com/.test(host))        return 'Restaurant on Yelp';
+    if (/swiggy\.com/.test(host))      return 'Restaurant on Swiggy';
+    if (/eventbrite\.com/.test(host))  return 'Event on Eventbrite';
+    if (/bookmyshow\.com/.test(host))  return 'Event on BookMyShow';
+    if (/tripadvisor\.com/.test(host)) return 'Place on TripAdvisor';
+    if (/youtube\.com|youtu\.be/.test(host)) return 'YouTube video';
+    if (/netflix\.com/.test(host))     return 'Netflix title';
+    if (/hotstar\.com/.test(host))     return 'Hotstar title';
+    if (/primevideo\.com/.test(host))  return 'Prime Video title';
+    const segments = path.split('/').filter(Boolean);
+    if (segments.length) {
+      const last = segments[segments.length - 1];
+      const cleaned = last.replace(/[-_]/g, ' ').replace(/\.\w+$/, '').replace(/\b\w/g, c => c.toUpperCase()).trim();
+      if (cleaned.length > 2 && cleaned.length < 80) return cleaned;
+    }
+    return host;
+  } catch (e) { return url; }
+}
+
 // ─── FETCH METADATA FROM ANY URL ───────────────────────────
 
 async function fetchMeta(url) {
   try {
-    const { result } = await ogs({ url, timeout: 8000 });
-    return {
-      title: result.ogTitle || result.twitterTitle || result.dcTitle || url,
-      description: result.ogDescription || result.twitterDescription || '',
-      imageUrl: result.ogImage?.[0]?.url || '',
-    };
+    const { result } = await ogs({ url, timeout: 10000 });
+    const title = result.ogTitle || result.twitterTitle || result.dcTitle || '';
+    if (title) {
+      return {
+        title,
+        description: result.ogDescription || result.twitterDescription || '',
+        imageUrl: result.ogImage?.[0]?.url || '',
+      };
+    }
+    throw new Error('no title in result');
   } catch (err) {
-    console.error('fetchMeta error:', err.message);
-    return { title: url, description: '', imageUrl: '' };
+    console.error('fetchMeta fallback for:', url, '-', err.message || err);
+    return { title: titleFromUrl(url), description: '', imageUrl: '' };
   }
 }
 

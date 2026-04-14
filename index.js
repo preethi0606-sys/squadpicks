@@ -11,6 +11,7 @@ const {
 } = require('./links');
 const { startYouTubeMonitor, formatLatestFCPicks } = require('./youtube');
 const { startDigestCron, sendWeeklyDigest } = require('./digest');
+const { startServer } = require('./server');
 
 // ─── INIT BOT ──────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ if (!process.env.TELEGRAM_TOKEN || process.env.TELEGRAM_TOKEN === 'your_telegram
 }
 
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
+global.squadPicksBot = bot; // expose to server.js for card updates
 console.log('SquadPicks bot started!');
 
 // ─── WELCOME MESSAGE (when bot is added to a group) ────────
@@ -59,9 +61,9 @@ bot.on('message', async (msg) => {
   const text = msg.text.trim();
   const from = msg.from;
 
-  if (msg.chat.type !== 'private') {
-    await db.ensureGroup(chatId, msg.chat.title || 'SquadPicks Group');
-  }
+  // Register group for ALL chat types (including private/DM for testing)
+  const groupTitle = msg.chat.title || msg.chat.first_name || 'SquadPicks Group';
+  await db.ensureGroup(chatId, groupTitle);
 
   if (text.startsWith('/')) {
     return handleCommand(bot, msg, text, from);
@@ -75,17 +77,35 @@ bot.on('message', async (msg) => {
   }
 });
 
+// ─── MINI APP URL ──────────────────────────────────────────
+
+function getMiniAppUrl(chatId) {
+  const base = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : process.env.MINI_APP_URL || '';
+  if (!base) return null;
+  return `${base}?groupId=${chatId}`;
+}
+
 // ─── LINK HANDLER ──────────────────────────────────────────
 
 async function handleLink(bot, chatId, url, from) {
+  console.log('[Link] Received:', url, 'from:', from.first_name || from.username);
+
+  // Send "reading link" indicator
   let processingMsg;
   try {
     processingMsg = await bot.sendMessage(chatId, '<i>Reading link...</i>', { parse_mode: 'HTML' });
-  } catch (e) {}
+  } catch (e) {
+    console.error('[Link] Could not send processing message:', e.message);
+  }
 
+  // Fetch metadata and detect type
   const meta = await fetchMeta(url);
   const type = detectType(url, meta);
+  console.log('[Link] Type:', type, '| Title:', meta.title);
 
+  // Save to database
   const pick = await db.savePick({
     groupId: chatId, type,
     title: meta.title, description: meta.description,
@@ -96,24 +116,54 @@ async function handleLink(bot, chatId, url, from) {
     reviewerQuote: null, reviewerVideoId: null
   });
 
+  // Delete "reading link..." message
   if (processingMsg) {
     try { await bot.deleteMessage(chatId, processingMsg.message_id); } catch (e) {}
   }
 
   if (!pick) {
+    console.error('[Link] Failed to save pick to database');
     return bot.sendMessage(chatId,
-      `<i>Couldn't read that link. Try /add Title to add it manually.</i>`,
+      `<i>Couldn't save that pick. Please try again.</i>`,
       { parse_mode: 'HTML' });
   }
 
-  const cardText = formatCard(pick, []);
-  const sent = await bot.sendMessage(chatId, cardText, {
-    parse_mode: 'HTML',
-    reply_markup: buildVoteKeyboard(pick.id),
-    disable_web_page_preview: false
-  });
+  console.log('[Link] Pick saved, ID:', pick.id, '| Sending card...');
 
-  await db.updatePickMessageId(pick.id, sent.message_id);
+  // Build and send the pick card
+  const cardText = formatCard(pick, []);
+  const miniUrl = getMiniAppUrl(chatId);
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '✅ Seen/Been', callback_data: `vote_${pick.id}_seen` },
+        { text: '⭐ Want to',   callback_data: `vote_${pick.id}_want` },
+        { text: '❌ Not for me',callback_data: `vote_${pick.id}_skip` },
+      ],
+      ...(miniUrl ? [[{ text: '🚀 Open SquadPicks App', web_app: { url: miniUrl } }]] : [])
+    ]
+  };
+  try {
+    const sent = await bot.sendMessage(chatId, cardText, {
+      parse_mode: 'HTML',
+      reply_markup: keyboard,
+      disable_web_page_preview: true
+    });
+    await db.updatePickMessageId(pick.id, sent.message_id);
+    console.log('[Link] Card sent successfully, message ID:', sent.message_id);
+  } catch (sendErr) {
+    console.error('[Link] Failed to send card:', sendErr.message);
+    // Try sending without HTML formatting as fallback
+    try {
+      const sent = await bot.sendMessage(chatId,
+        `New pick: ${meta.title}\nAdded by ${from.first_name || 'someone'}`,
+        { reply_markup: buildVoteKeyboard(pick.id) }
+      );
+      await db.updatePickMessageId(pick.id, sent.message_id);
+    } catch (fallbackErr) {
+      console.error('[Link] Fallback send also failed:', fallbackErr.message);
+    }
+  }
 }
 
 // ─── COMMAND HANDLER ───────────────────────────────────────
@@ -376,4 +426,5 @@ process.on('unhandledRejection', (reason) => {
 startYouTubeMonitor(bot);
 startDigestCron(bot);
 
+startServer();
 console.log('SquadPicks is running! Add your bot to a Telegram group to get started.');
