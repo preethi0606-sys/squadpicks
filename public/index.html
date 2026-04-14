@@ -264,8 +264,12 @@ const TYPE_CFG = {
     tg.expand();
     tg.setHeaderColor('#17212b');
     tgUser  = tg.initDataUnsafe?.user;
-    groupId = tg.initDataUnsafe?.start_param
-           || new URLSearchParams(window.location.search).get('groupId');
+    // startapp param is how the group passes its chatId to the Mini App
+    // It arrives as start_param in initDataUnsafe when opened via t.me/bot/app?startapp=CHATID
+    const startapp = tg.initDataUnsafe?.start_param
+                  || new URLSearchParams(window.location.search).get('startapp')
+                  || new URLSearchParams(window.location.search).get('groupId');
+    groupId = startapp;
   }
 
   // Fallback for testing outside Telegram

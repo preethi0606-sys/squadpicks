@@ -73,23 +73,41 @@ bot.on('message', async (msg) => {
   if (urls.length === 0) return;
 
   for (const url of urls) {
-    await handleLink(bot, chatId, url, from);
+    await handleLink(bot, msg, url, from);
   }
 });
 
 // ─── MINI APP URL ──────────────────────────────────────────
 
+// getMiniAppUrl — returns the t.me deep link for groups
+// web_app buttons only work in private chats.
+// In groups we use a regular url button with the t.me/botname/appname link.
+// Telegram automatically opens it as a Mini App inside the app.
 function getMiniAppUrl(chatId) {
-  const base = process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : process.env.MINI_APP_URL || '';
-  if (!base) return null;
-  return `${base}?groupId=${chatId}`;
+  const botUsername = process.env.BOT_USERNAME || 'squadpicks_bot';
+  const appName     = process.env.MINI_APP_SHORT_NAME || 'Squadpicks';
+  return `https://t.me/${botUsername}/${appName}?startapp=${chatId}`;
+}
+
+function buildPickKeyboard(pickId, chatId, isGroup) {
+  const miniUrl = getMiniAppUrl(chatId);
+  const voteRow = [
+    { text: '✅ Seen/Been',    callback_data: `vote_${pickId}_seen` },
+    { text: '⭐ Want to',      callback_data: `vote_${pickId}_want` },
+    { text: '❌ Not for me',   callback_data: `vote_${pickId}_skip` },
+  ];
+  // In groups: use url button (works everywhere)
+  // In private: use web_app button (opens inline without leaving chat)
+  const appButton = isGroup
+    ? { text: '🚀 Open SquadPicks', url: miniUrl }
+    : { text: '🚀 Open SquadPicks', web_app: { url: process.env.MINI_APP_URL || miniUrl } };
+  return { inline_keyboard: [ voteRow, [ appButton ] ] };
 }
 
 // ─── LINK HANDLER ──────────────────────────────────────────
 
-async function handleLink(bot, chatId, url, from) {
+async function handleLink(bot, msg, url, from) {
+  const chatId = msg.chat.id;
   console.log('[Link] Received:', url, 'from:', from.first_name || from.username);
 
   // Send "reading link" indicator
@@ -132,17 +150,8 @@ async function handleLink(bot, chatId, url, from) {
 
   // Build and send the pick card
   const cardText = formatCard(pick, []);
-  const miniUrl = getMiniAppUrl(chatId);
-  const keyboard = {
-    inline_keyboard: [
-      [
-        { text: '✅ Seen/Been', callback_data: `vote_${pick.id}_seen` },
-        { text: '⭐ Want to',   callback_data: `vote_${pick.id}_want` },
-        { text: '❌ Not for me',callback_data: `vote_${pick.id}_skip` },
-      ],
-      ...(miniUrl ? [[{ text: '🚀 Open SquadPicks App', web_app: { url: miniUrl } }]] : [])
-    ]
-  };
+  const isGroup  = msg.chat.type !== 'private';
+  const keyboard = buildPickKeyboard(pick.id, chatId, isGroup);
   try {
     const sent = await bot.sendMessage(chatId, cardText, {
       parse_mode: 'HTML',
@@ -157,7 +166,7 @@ async function handleLink(bot, chatId, url, from) {
     try {
       const sent = await bot.sendMessage(chatId,
         `New pick: ${meta.title}\nAdded by ${from.first_name || 'someone'}`,
-        { reply_markup: buildVoteKeyboard(pick.id) }
+        { reply_markup: buildPickKeyboard(pick.id, chatId, true) }
       );
       await db.updatePickMessageId(pick.id, sent.message_id);
     } catch (fallbackErr) {
