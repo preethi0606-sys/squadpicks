@@ -337,7 +337,7 @@ async function handleCommand(bot, msg, text, from) {
       if (pick) {
         const sent = await bot.sendMessage(chatId, formatCard(pick, []), {
           parse_mode: 'HTML',
-          reply_markup: buildVoteKeyboard(pick.id)
+          reply_markup: buildVoteKeyboard(pick.id, msg.chat.id)
         });
         await db.updatePickMessageId(pick.id, sent.message_id);
       }
@@ -409,7 +409,7 @@ bot.on('callback_query', async (query) => {
       chat_id: chatId,
       message_id: msgId,
       parse_mode: 'HTML',
-      reply_markup: buildVoteKeyboard(pickId)
+      reply_markup: buildVoteKeyboard(pickId, pick?.group_id)
     });
   } catch (err) {
     if (!err.message.includes('not modified')) {

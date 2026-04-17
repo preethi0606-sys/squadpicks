@@ -257,13 +257,22 @@ function formatFilmiCraftCard(pick, votes) {
 
 // ─── KEYBOARD BUILDERS ─────────────────────────────────────
 
-function buildVoteKeyboard(pickId) {
+function buildVoteKeyboard(pickId, groupId) {
+  const botUsername = process.env.BOT_USERNAME       || 'squadpicks_bot';
+  const shortName   = process.env.MINI_APP_SHORT_NAME || 'Squadpicks';
+  const startParam  = groupId ? `?startapp=${groupId}` : '';
+  const miniAppUrl  = `https://t.me/${botUsername}/${shortName}${startParam}`;
   return {
-    inline_keyboard: [[
-      { text: '✅ Seen/Been',   callback_data: `vote_${pickId}_seen` },
-      { text: '⭐ Want to',     callback_data: `vote_${pickId}_want` },
-      { text: '❌ Not for me',  callback_data: `vote_${pickId}_skip` },
-    ]]
+    inline_keyboard: [
+      [
+        { text: '✅ Seen/Been',  callback_data: `vote_${pickId}_seen` },
+        { text: '⭐ Want to',    callback_data: `vote_${pickId}_want` },
+        { text: '❌ Not for me', callback_data: `vote_${pickId}_skip` },
+      ],
+      [
+        { text: '🚀 Open in SquadPicks', url: miniAppUrl }
+      ]
+    ]
   };
 }
 

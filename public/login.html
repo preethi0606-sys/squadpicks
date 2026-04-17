@@ -10,51 +10,39 @@
   min-height: 100vh;
   display: flex; align-items: center; justify-content: center;
   padding: 6rem 1.5rem 3rem;
-  position: relative;
-}
-.login-page::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,168,132,0.07) 0%, transparent 70%);
-  pointer-events: none;
+  background: linear-gradient(135deg, var(--beige) 0%, var(--beige2) 100%);
 }
 .login-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--white);
+  border: 1px solid var(--beige3);
   border-radius: 20px;
   padding: 2.5rem;
-  width: 100%; max-width: 400px;
+  width: 100%; max-width: 420px;
   text-align: center;
-  position: relative;
+  box-shadow: 0 8px 40px rgba(124,58,237,0.12);
 }
 .login-logo {
   font-family: var(--font-display);
   font-size: 28px; font-weight: 700;
-  color: var(--text); margin-bottom: .5rem;
+  color: var(--text); margin-bottom: .4rem;
 }
-.login-logo span { color: var(--green); }
+.login-logo span { color: var(--blue2); }
 .login-tagline { font-size: 14px; color: var(--muted); margin-bottom: 2rem; }
-.divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+.divider { border: none; border-top: 1px solid var(--beige3); margin: 1.5rem 0; }
 .login-note { font-size: 12px; color: var(--hint); margin-top: 1.5rem; line-height: 1.6; }
-.tg-widget-wrap { display: flex; justify-content: center; margin: 1rem 0; }
+.tg-widget-wrap { display: flex; justify-content: center; margin: 1rem 0; min-height: 40px; }
 .why-list { text-align: left; margin-bottom: 1.5rem; }
 .why-item { display: flex; gap: 10px; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
-.why-icon { color: var(--green); flex-shrink: 0; font-weight: 700; }
+.why-icon { color: var(--blue2); flex-shrink: 0; font-weight: 700; }
 .back-link { display: inline-block; font-size: 13px; color: var(--hint); text-decoration: none; margin-top: 1.5rem; }
-.back-link:hover { color: var(--green); }
-/* Mock login button for demo */
-.mock-tg-btn {
-  display: inline-flex; align-items: center; gap: 10px;
-  background: #229ED9; color: white;
-  border: none; border-radius: 8px;
-  padding: 12px 24px; font-size: 15px; font-weight: 600;
-  cursor: pointer; font-family: var(--font-body);
-  transition: background .15s; width: 100%;
-  justify-content: center;
-}
-.mock-tg-btn:hover { background: #1a8bbf; }
-.or-divider { font-size: 12px; color: var(--hint); margin: 1rem 0; display: flex; align-items: center; gap: .75rem; }
-.or-divider::before, .or-divider::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
+.back-link:hover { color: var(--blue2); }
+.error-msg { font-size: 13px; color: #DC2626; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 10px 14px; margin-top: 1rem; display: none; }
+.success-msg { font-size: 13px; color: #166534; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 10px 14px; margin-top: 1rem; display: none; }
+.loading-spinner { display: none; width: 20px; height: 20px; border: 2px solid var(--beige3); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; margin: .5rem auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.squad-info { background: var(--sky-bg); border: 1px solid var(--beige3); border-radius: 12px; padding: 1rem; margin-top: 1rem; text-align: left; display: none; }
+.squad-info h4 { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: .25rem; }
+.squad-info p { font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -62,67 +50,115 @@
 <nav class="nav">
   <a href="/" class="nav-logo">Squad<span>Picks</span></a>
   <div class="nav-links">
-    <a href="/#features">Features</a>
-    <a href="/#pricing">Pricing</a>
+    <a href="/">Home</a>
     <a href="/blog">Blog</a>
+    <a href="/login" class="active nav-cta">Login</a>
   </div>
 </nav>
 
 <div class="login-page">
   <div class="login-card">
     <div class="login-logo">Squad<span>Picks</span></div>
-    <div class="login-tagline">Sign in to see your squad's picks</div>
+    <div class="login-tagline">Sign in to manage your squad</div>
 
     <div class="why-list">
-      <div class="why-item"><span class="why-icon">✓</span> No password needed — just your Telegram account</div>
-      <div class="why-item"><span class="why-icon">✓</span> Instantly see all picks your squad has added</div>
-      <div class="why-item"><span class="why-icon">✓</span> Vote on picks from the web, not just Telegram</div>
+      <div class="why-item"><span class="why-icon">✓</span> See all your squad's picks</div>
+      <div class="why-item"><span class="why-icon">✓</span> Manage YouTube channels</div>
+      <div class="why-item"><span class="why-icon">✓</span> View voting history</div>
     </div>
 
-    <!-- Telegram Login Widget -->
-    <!-- In production replace data-telegram-login with your actual bot username -->
-    <div id="tg-login-container">
-      <button class="mock-tg-btn" onclick="handleTelegramLogin()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.026 9.547c-.148.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.31l-2.95-.924c-.642-.2-.655-.642.136-.95l11.532-4.448c.537-.194 1.006.131.834.943h.53v.317z"/></svg>
-        Sign in with Telegram
-      </button>
+    <!-- Telegram Login Widget (real) -->
+    <!-- Replace YOUR_BOT_USERNAME with your actual bot username (without @) -->
+    <div class="tg-widget-wrap" id="tg-widget">
+      <script
+        async
+        src="https://telegram.org/js/telegram-widget.js?22"
+        data-telegram-login="squadpicks_bot"
+        data-size="large"
+        data-onauth="onTelegramAuth(user)"
+        data-request-access="write"
+        data-userpic="false">
+      </script>
     </div>
+    <div class="loading-spinner" id="spinner"></div>
+    <div class="error-msg" id="error-msg"></div>
+    <div class="success-msg" id="success-msg"></div>
+    <div class="squad-info" id="squad-info"></div>
 
-    <div class="or-divider">or</div>
-
-    <div style="background:var(--card);border-radius:var(--rsm);padding:1rem;font-size:13px;color:var(--muted);text-align:left;line-height:1.7">
-      <strong style="color:var(--text);display:block;margin-bottom:.5rem">Already have the bot?</strong>
-      Open Telegram → find your SquadPicks group → tap the <strong style="color:var(--green)">🚀 Open SquadPicks</strong> button on any pick card to access the full app directly.
-    </div>
-
+    <hr class="divider"/>
     <div class="login-note">
-      By signing in you agree to our terms of service. We only read your Telegram ID and name — we never access your messages or contacts.
+      SquadPicks uses Telegram's official OAuth.<br/>
+      We only access your name and Telegram ID — never your messages.
     </div>
-
     <a href="/" class="back-link">← Back to home</a>
   </div>
 </div>
 
 <script>
-function handleTelegramLogin() {
-  // Production: replace with Telegram Login Widget script
-  // <script async src="https://telegram.org/js/telegram-widget.js?22"
-  //   data-telegram-login="squadpicks_bot"
-  //   data-size="large"
-  //   data-auth-url="https://squadpicks-production.up.railway.app/auth/telegram"
-  //   data-request-access="write">
-  // For now redirect to the Mini App
-  const groupId = new URLSearchParams(window.location.search).get('groupId') || '';
-  window.location.href = '/app.html' + (groupId ? '?groupId=' + groupId : '');
+function onTelegramAuth(user) {
+  // Called by Telegram widget after user authorises
+  var spinner = document.getElementById('spinner');
+  var errorEl = document.getElementById('error-msg');
+  var successEl = document.getElementById('success-msg');
+  var squadEl = document.getElementById('squad-info');
+  var widgetEl = document.getElementById('tg-widget');
+
+  widgetEl.style.display = 'none';
+  spinner.style.display = 'block';
+  errorEl.style.display = 'none';
+  successEl.style.display = 'none';
+
+  // Send auth data to server for verification
+  fetch('/api/auth/telegram', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(user)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    spinner.style.display = 'none';
+    if (data.ok) {
+      successEl.textContent = 'Welcome, ' + (user.first_name || 'Squad member') + '! Redirecting...';
+      successEl.style.display = 'block';
+      if (data.groups && data.groups.length) {
+        squadEl.innerHTML = '<h4>Your squads</h4>' +
+          data.groups.map(function(g) { return '<p>&#x2022; ' + escHtml(g.title) + '</p>'; }).join('');
+        squadEl.style.display = 'block';
+      }
+      setTimeout(function() {
+        window.location.href = data.redirectUrl || '/dashboard';
+      }, 1500);
+    } else {
+      errorEl.textContent = data.error || 'Login failed. Please try again.';
+      errorEl.style.display = 'block';
+      widgetEl.style.display = 'flex';
+    }
+  })
+  .catch(function(err) {
+    spinner.style.display = 'none';
+    errorEl.textContent = 'Connection error. Please try again.';
+    errorEl.style.display = 'block';
+    widgetEl.style.display = 'flex';
+  });
 }
 
-// If user already logged in via Telegram widget, redirect to dashboard
-function onTelegramAuth(user) {
-  // Save user to localStorage and redirect
-  localStorage.setItem('tg_user', JSON.stringify(user));
-  const groupId = new URLSearchParams(window.location.search).get('groupId') || '';
-  window.location.href = '/dashboard' + (groupId ? '?groupId=' + groupId : '');
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+// If user came via Telegram redirect with hash params (OAuth redirect flow)
+(function checkRedirectAuth() {
+  var hash = window.location.hash.slice(1);
+  if (!hash) return;
+  var params = {};
+  hash.split('&').forEach(function(part) {
+    var eq = part.indexOf('=');
+    if (eq > 0) params[decodeURIComponent(part.slice(0,eq))] = decodeURIComponent(part.slice(eq+1));
+  });
+  if (params.id && params.hash) {
+    onTelegramAuth(params);
+  }
+})();
 </script>
 </body>
 </html>

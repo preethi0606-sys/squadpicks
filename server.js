@@ -87,7 +87,7 @@ app.post('/api/picks', telegramAuth, async (req, res) => {
     if (!pick) return res.status(500).json({ error: 'Failed to save' });
     if (global.squadPicksBot) {
       try {
-        const sent = await global.squadPicksBot.sendMessage(chatId, links.formatCard(pick,[]), { parse_mode:'HTML', reply_markup: links.buildVoteKeyboard(pick.id) });
+        const sent = await global.squadPicksBot.sendMessage(chatId, links.formatCard(pick,[]), { parse_mode:'HTML', reply_markup: links.buildVoteKeyboard(pick.id, pick.group_id || chatId) });
         await db.updatePickMessageId(pick.id, sent.message_id);
       } catch(e) { console.error('[Bot notify]',e.message); }
     }
@@ -109,7 +109,7 @@ app.post('/api/vote', telegramAuth, async (req, res) => {
     const pick    = await db.getPick(pickId);
     const groupOk = votes.length>0 && votes.every(v=>v.status!=='skip');
     if (global.squadPicksBot && pick?.message_id && pick?.group_id) {
-      try { await global.squadPicksBot.editMessageText(links.formatCard(pick,votes),{ chat_id:pick.group_id, message_id:pick.message_id, parse_mode:'HTML', reply_markup:links.buildVoteKeyboard(pickId) }); }
+      try { await global.squadPicksBot.editMessageText(links.formatCard(pick,votes),{ chat_id:pick.group_id, message_id:pick.message_id, parse_mode:'HTML', reply_markup:links.buildVoteKeyboard(pickId, pick?.group_id) }); }
       catch(e) { if (!e.message?.includes('not modified')) console.error('[Card update]',e.message); }
     }
     res.json({ votes, my_vote: votes.find(v=>v.user_id===req.tgUser.id)?.status||null, group_ok: groupOk });
@@ -220,6 +220,46 @@ app.post('/api/admin/scrape', async (req, res) => {
     runAllScrapers().catch(e => console.error('[Admin scrape]', e.message));
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+
+// ─── API: TELEGRAM LOGIN (for website) ─────────────────────
+app.post('/api/auth/telegram', async (req, res) => {
+  try {
+    const user = req.body;
+    if (!user || !user.id || !user.hash) {
+      return res.status(400).json({ ok: false, error: 'Missing auth data' });
+    }
+    // Verify Telegram hash
+    const { id, hash, ...data } = user;
+    const dataCheckStr = Object.keys(data).sort()
+      .map(k => `${k}=${data[k]}`).join('\n');
+    const secret = crypto.createHash('sha256')
+      .update(process.env.TELEGRAM_TOKEN || '').digest();
+    const expected = crypto.createHmac('sha256', secret)
+      .update(dataCheckStr).digest('hex');
+
+    if (expected !== hash) {
+      return res.status(401).json({ ok: false, error: 'Invalid Telegram auth' });
+    }
+    // Auth passed — look up their groups
+    const db = getDb();
+    const groups = await db.getAllGroups();
+    // Store session cookie (simple approach)
+    res.cookie('tg_user_id', String(user.id), {
+      httpOnly: true, secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+    res.json({
+      ok: true,
+      user: { id: user.id, name: user.first_name, username: user.username },
+      groups,
+      redirectUrl: '/dashboard'
+    });
+  } catch(e) {
+    console.error('[Auth/Telegram]', e.message);
+    res.status(500).json({ ok: false, error: 'Server error' });
   }
 });
 

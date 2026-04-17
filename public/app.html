@@ -550,14 +550,21 @@ function esc(s) {
               new URLSearchParams(location.search).get('groupId');
   }
   if (!tgUser) { tgUser = {id: 123456789, first_name: 'Priya', username: 'priya_test'}; }
-  if (!groupId) groupId = new URLSearchParams(location.search).get('groupId') || 'test_group';
+  if (!groupId) groupId = new URLSearchParams(location.search).get('groupId') || null;
 
   document.getElementById('user-av').textContent = sn(tgUser.first_name).charAt(0).toUpperCase();
   document.getElementById('drawer-user-name').textContent = tgUser.first_name || 'Member';
 
   loadActiveChannels();
-  renderPlan();
-  renderPicks();
+
+  if (groupId) {
+    // Real group — load from API
+    loadGroupPicks();
+  } else {
+    // No groupId — show demo data
+    renderPlan();
+    renderPicks();
+  }
   renderTrending();
   loadLiveStreamingData();
   loadImdbData();
@@ -715,9 +722,10 @@ function vote(btn) {
   var s  = btn.dataset.s;
   var p  = PICKS.filter(function(x) { return x.id === id; })[0];
   if (!p) return;
+  var prevMy = p.my;
   p.my = (p.my === s) ? '' : s;
-  p.votes = p.votes.filter(function(v) { return v.n !== 'Priy'; });
-  if (p.my) p.votes.push({n: 'Priy', s: p.my});
+  p.votes = p.votes.filter(function(v) { return v.n !== sn(tgUser.first_name); });
+  if (p.my) p.votes.push({n: sn(tgUser.first_name || 'You'), s: p.my});
   p.ok = p.votes.length >= 4 && p.votes.every(function(v) { return v.s !== 'skip'; });
   renderPicks();
   renderPlan();
@@ -725,6 +733,10 @@ function vote(btn) {
   var lmap = {seen: labels[0], want: labels[1], skip: labels[2]};
   showToast(p.my ? (lmap[p.my] + ' \u2713') : 'Vote removed');
   if (p.ok) setTimeout(function() { showToast('\u2705 Group ok!'); }, 600);
+  // Sync to server if we have a real group
+  if (groupId && groupId !== 'test_group') {
+    voteApi(id, p.my || prevMy);
+  }
 }
 
 function setFilter(f, el) {
@@ -732,6 +744,78 @@ function setFilter(f, el) {
   document.querySelectorAll('.fchip').forEach(function(c) { c.classList.remove('on'); });
   el.classList.add('on');
   renderPicks();
+}
+
+/* ─── LIVE API LOADING ─────────────────────────────────────── */
+function loadGroupPicks() {
+  var nameEl = document.getElementById('group-name');
+  if (nameEl) nameEl.textContent = 'Loading...';
+
+  fetch(BASE + '/api/picks?groupId=' + encodeURIComponent(groupId), {
+    headers: {
+      'x-telegram-init-data': (tg && tg.initData) || 'test',
+      'x-chat-id': groupId || ''
+    }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.picks && data.picks.length) {
+      // Map server format -> local PICKS format
+      PICKS = data.picks.map(function(p) {
+        var vs = p.votes || [];
+        return {
+          id:       p.id,
+          type:     p.type || 'link',
+          title:    p.title || 'Untitled',
+          desc:     p.description || '',
+          by:       p.added_by_name || 'Someone',
+          reviewer: p.reviewer_name || null,
+          score:    p.reviewer_score || null,
+          thumb:    p.image_url || null,
+          votes:    vs.map(function(v) { return {n: sn(v.first_name || v.username || 'User'), s: v.status}; }),
+          my:       p.my_vote || '',
+          ok:       p.group_ok || false
+        };
+      });
+      if (nameEl) nameEl.textContent = 'Squad';
+    } else {
+      if (nameEl) nameEl.textContent = 'Your Squad';
+    }
+    renderPlan();
+    renderPicks();
+  })
+  .catch(function(err) {
+    console.error('[loadGroupPicks]', err.message);
+    // Fall back to demo data so app still works
+    renderPlan();
+    renderPicks();
+  });
+}
+
+/* Cast vote via API, then refresh */
+function voteApi(pickId, status) {
+  fetch(BASE + '/api/vote', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-telegram-init-data': (tg && tg.initData) || 'test',
+      'x-chat-id': groupId || ''
+    },
+    body: JSON.stringify({ pickId: pickId, status: status })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    // Update local pick with server response
+    var p = PICKS.filter(function(x) { return x.id === pickId; })[0];
+    if (p && data.votes) {
+      p.votes = data.votes.map(function(v) { return {n: sn(v.first_name||v.username||'User'), s: v.status}; });
+      p.my    = data.my_vote || '';
+      p.ok    = data.group_ok || false;
+      renderPicks(); renderPlan();
+    }
+    if (data.group_ok) setTimeout(function() { showToast('\u2705 Group ok!'); }, 600);
+  })
+  .catch(function() { /* silent fail — local state already updated */ });
 }
 
 /* ─── TRENDING PAGE ─────────────────────────────────────────── */
@@ -1065,21 +1149,54 @@ function confirmAdd() {
   var btn = document.getElementById('m-confirm');
   btn.disabled = true;
   btn.textContent = 'Adding...';
-  var title = pendUrl.length > 40 ? pendUrl.slice(0, 40) + '...' : pendUrl;
-  var newPick = {
-    id: Date.now(), type: selType, title: title, desc: 'Just added',
-    by: tgUser ? (tgUser.first_name || 'You') : 'You',
-    reviewer: null, score: null, votes: [], my: 'want', ok: false
-  };
-  PICKS.unshift(newPick);
-  closeModal();
-  document.getElementById('link-inp').value = '';
-  renderPicks();
-  renderPlan();
-  showToast('Added! Check your Telegram group');
-  fetching = false;
-  btn.disabled = false;
-  btn.textContent = 'Add to SquadPicks';
+
+  if (groupId && groupId !== 'test_group') {
+    // Real group — post to API
+    fetch(BASE + '/api/picks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-telegram-init-data': (tg && tg.initData) || 'test',
+        'x-chat-id': groupId || ''
+      },
+      body: JSON.stringify({ url: pendUrl, groupId: groupId, type: selType,
+        groupTitle: document.getElementById('group-name').textContent || 'Squad' })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.pick) {
+        var np = {
+          id: data.pick.id, type: data.pick.type || selType,
+          title: data.pick.title || pendUrl.slice(0,40),
+          desc: data.pick.description || '', by: tgUser.first_name || 'You',
+          reviewer: null, score: null, thumb: data.pick.image_url || null,
+          votes: [], my: 'want', ok: false
+        };
+        PICKS.unshift(np);
+      }
+      closeModal();
+      document.getElementById('link-inp').value = '';
+      renderPicks(); renderPlan();
+      showToast('Added! Squad can now vote');
+    })
+    .catch(function() {
+      showToast('Could not add — check your connection');
+    })
+    .finally(function() {
+      fetching = false; btn.disabled = false; btn.textContent = 'Add to SquadPicks';
+    });
+  } else {
+    // Demo mode
+    var title = pendUrl.length > 40 ? pendUrl.slice(0, 40) + '...' : pendUrl;
+    PICKS.unshift({ id: Date.now(), type: selType, title: title, desc: 'Just added',
+      by: tgUser ? (tgUser.first_name || 'You') : 'You',
+      reviewer: null, score: null, votes: [], my: 'want', ok: false });
+    closeModal();
+    document.getElementById('link-inp').value = '';
+    renderPicks(); renderPlan();
+    showToast('Added! (demo mode)');
+    fetching = false; btn.disabled = false; btn.textContent = 'Add to SquadPicks';
+  }
 }
 
 /* ─── TOAST ─────────────────────────────────────────────────── */
