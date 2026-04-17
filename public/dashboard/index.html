@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dashboard — SquadPicks</title>
+<link rel="stylesheet" href="/styles.css"/>
+<style>
+body { padding-top: 62px; }
+.dash-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+}
+.dash-header-inner {
+  max-width: 1080px; margin: 0 auto;
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+}
+.dash-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text); }
+.group-select {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--rsm); padding: 8px 14px;
+  color: var(--text); font-family: var(--font-body);
+  font-size: 14px; cursor: pointer; outline: none;
+  margin-left: auto;
+}
+.dash-stats {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1rem;
+}
+.stat {
+  background: var(--card); border-radius: var(--rsm); padding: .75rem 1rem;
+}
+.stat-num { font-size: 22px; font-weight: 700; color: var(--text); }
+.stat-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* FILTERS */
+.dash-filters {
+  max-width: 1080px; margin: 0 auto;
+  padding: 1rem 2rem;
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+}
+.filter-pill {
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--surface); color: var(--muted);
+  cursor: pointer; transition: all .15s;
+}
+.filter-pill.on {
+  background: var(--green-bg); color: var(--green);
+  border-color: var(--green-dk);
+}
+.add-pick-btn {
+  margin-left: auto;
+  background: var(--green); color: #0D2218;
+  border: none; border-radius: var(--rsm);
+  padding: 8px 16px; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: var(--font-body);
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* PICKS GRID */
+.picks-grid {
+  max-width: 1080px; margin: 0 auto;
+  padding: 0 2rem 4rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+.pick-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden;
+  transition: border-color .15s;
+}
+.pick-card:hover { border-color: rgba(0,168,132,.3); }
+.card-top { padding: 14px 14px 10px; display: flex; gap: 10px; }
+.card-icon {
+  width: 46px; height: 46px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
+}
+.card-info { flex: 1; min-width: 0; }
+.card-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.card-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+.badge { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+.badge-ok { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-dk); }
+.fc-row {
+  margin: 0 14px 10px;
+  background: #0A1A10; border-radius: 6px; padding: 6px 9px;
+  display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted);
+}
+.yt { background: var(--red); color: white; font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 2px; }
+.voters { padding: 0 14px 10px; display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.vc { font-size: 10px; padding: 3px 7px; border-radius: 10px; font-weight: 500; }
+.vc-seen { background: #0D2218; color: #66BB6A; }
+.vc-want { background: #1F1900; color: var(--amber); }
+.vc-skip { background: #1F0A0A; color: #EF5350; }
+.vc-none { background: rgba(255,255,255,.05); color: var(--hint); }
+.vote-count { margin-left: auto; font-size: 11px; color: var(--hint); }
+.vote-btns { display: flex; border-top: 1px solid var(--border); }
+.vote-btn {
+  flex: 1; padding: 10px 4px; text-align: center;
+  font-size: 12px; font-weight: 500; color: var(--muted);
+  background: transparent; border: none; cursor: pointer;
+  transition: all .15s; font-family: var(--font-body);
+}
+.vote-btn:not(:last-child) { border-right: 1px solid var(--border); }
+.vote-btn:hover { background: rgba(255,255,255,.04); }
+.vote-btn.on-seen { color: #66BB6A; background: #0D2218; }
+.vote-btn.on-want { color: var(--amber); background: #1F1900; }
+.vote-btn.on-skip { color: #EF5350; background: #1F0A0A; }
+
+/* ADD MODAL */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; align-items: center; justify-content: center; padding: 1.5rem; }
+.overlay.open { display: flex; }
+.modal { background: var(--surface); border-radius: 16px; padding: 2rem; width: 100%; max-width: 440px; border: 1px solid var(--border); }
+.modal h3 { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 1.25rem; }
+.field { margin-bottom: 1rem; }
+.field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+.field input {
+  width: 100%; background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--rsm); padding: 10px 14px;
+  color: var(--text); font-size: 14px; font-family: var(--font-body); outline: none;
+}
+.field input:focus { border-color: var(--green-dk); }
+.modal-footer { display: flex; gap: 10px; margin-top: 1.25rem; }
+.modal-cancel { flex: 1; padding: 11px; border-radius: var(--rsm); background: var(--card); border: 1px solid var(--border); color: var(--muted); font-family: var(--font-body); font-size: 14px; cursor: pointer; }
+.modal-save { flex: 2; padding: 11px; border-radius: var(--rsm); background: var(--green); border: none; color: #0D2218; font-family: var(--font-body); font-size: 14px; font-weight: 600; cursor: pointer; }
+
+/* EMPTY STATE */
+.empty { text-align: center; padding: 4rem 1rem; color: var(--muted); grid-column: 1/-1; }
+.empty-icon { font-size: 40px; margin-bottom: 1rem; }
+
+/* TOAST */
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 300; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-logo">Squad<span>Picks</span></a>
+  <div class="nav-links">
+    <a href="/dashboard" class="active">Dashboard</a>
+    <a href="/blog">Blog</a>
+    <a href="#" id="logout-link" onclick="logout()">Sign out</a>
+  </div>
+</nav>
+
+<div class="dash-header">
+  <div class="dash-header-inner">
+    <div>
+      <div class="dash-title" id="group-title">Loading...</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:3px" id="user-greeting">Welcome back</div>
+    </div>
+    <select class="group-select" id="group-select" onchange="switchGroup(this.value)">
+      <option value="">Loading groups...</option>
+    </select>
+  </div>
+  <div class="dash-header-inner" style="margin-top:.75rem">
+    <div class="dash-stats" id="stats"></div>
+  </div>
+</div>
+
+<div class="dash-filters">
+  <div class="filter-pill on" onclick="setFilter('all',this)">All picks</div>
+  <div class="filter-pill" onclick="setFilter('want',this)">I want to</div>
+  <div class="filter-pill" onclick="setFilter('group',this)">Group ok</div>
+  <div class="filter-pill" onclick="setFilter('movie',this)">🎬 Movies</div>
+  <div class="filter-pill" onclick="setFilter('food',this)">🍽 Food</div>
+  <div class="filter-pill" onclick="setFilter('place',this)">📍 Places</div>
+  <div class="filter-pill" onclick="setFilter('event',this)">🎭 Events</div>
+  <button class="add-pick-btn" onclick="openAdd()">+ Add pick</button>
+</div>
+
+<div class="picks-grid" id="picks-grid">
+  <div class="empty"><div class="empty-icon">⏳</div>Loading your picks...</div>
+</div>
+
+<!-- ADD MODAL -->
+<div class="overlay" id="add-modal" onclick="overlayClick(event)">
+  <div class="modal">
+    <h3>Add a pick</h3>
+    <div class="field">
+      <label>Link</label>
+      <input id="add-url" placeholder="Paste any URL — IMDB, Maps, Yelp, Zomato..." />
+    </div>
+    <div style="font-size:12px;color:var(--muted)">The bot will automatically read the title, type and details from the link.</div>
+    <div class="modal-footer">
+      <button class="modal-cancel" onclick="closeAdd()">Cancel</button>
+      <button class="modal-save" id="add-save" onclick="saveAdd()">Add to SquadPicks</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = window.location.origin;
+let currentGroupId = null;
+let allPicks = [];
+let myVotes = {};
+let filter = 'all';
+
+const TYPE_CFG = {
+  movie: { icon:'🎬', iconBg:'#1a0f2e', badgeBg:'#2d1b5e', badgeTx:'#c8a8f9', lbl:'Movie' },
+  food:  { icon:'🍽', iconBg:'#1f1400', badgeBg:'#2d1f00', badgeTx:'#ffb74d', lbl:'Restaurant' },
+  place: { icon:'📍', iconBg:'#0d2218', badgeBg:'#0d3320', badgeTx:'#69d47e', lbl:'Place' },
+  event: { icon:'🎭', iconBg:'#1a0a1a', badgeBg:'#2d0d2d', badgeTx:'#f48fb1', lbl:'Event' },
+  show:  { icon:'📺', iconBg:'#0d1020', badgeBg:'#0d1f3d', badgeTx:'#90caf9', lbl:'Show' },
+  link:  { icon:'🔗', iconBg:'#1a1a2e', badgeBg:'#1a1a2e', badgeTx:'#8696a0', lbl:'Link' },
+};
+
+// ── INIT ──
+(async function init() {
+  const stored = localStorage.getItem('tg_user');
+  const params = new URLSearchParams(window.location.search);
+  currentGroupId = params.get('groupId') || '';
+
+  let user = null;
+  if (stored) {
+    try { user = JSON.parse(stored); } catch(e) {}
+  }
+  if (!user) {
+    // Not logged in — redirect to login
+    window.location.href = '/login.html' + (currentGroupId ? '?groupId='+currentGroupId : '');
+    return;
+  }
+
+  document.getElementById('user-greeting').textContent = `Welcome back, ${user.first_name || 'there'}!`;
+
+  await loadGroups(user);
+  if (currentGroupId) await loadPicks();
+})();
+
+async function loadGroups(user) {
+  try {
+    const res = await fetch(BASE + '/api/groups', {
+      headers: { 'x-telegram-init-data': 'test', 'x-chat-id': currentGroupId || '', 'x-user-id': user?.id || '123456789', 'x-user-name': user?.first_name || 'User' }
+    });
+    const data = await res.json();
+    const groups = data.groups || [];
+    const sel = document.getElementById('group-select');
+    if (groups.length) {
+      sel.innerHTML = groups.map(g => `<option value="${g.id}" ${String(g.id) === String(currentGroupId) ? 'selected' : ''}>${g.title}</option>`).join('');
+      if (!currentGroupId) currentGroupId = String(groups[0].id);
+      document.getElementById('group-title').textContent = groups.find(g => String(g.id) === String(currentGroupId))?.title || 'Your Squad';
+    } else {
+      sel.innerHTML = '<option>No groups yet</option>';
+      document.getElementById('group-title').textContent = 'Your Squad';
+    }
+  } catch(e) {
+    document.getElementById('group-title').textContent = 'Your Squad';
+  }
+}
+
+async function loadPicks() {
+  try {
+    const stored = localStorage.getItem('tg_user');
+    const user = stored ? JSON.parse(stored) : {};
+    const qs = currentGroupId ? `?groupId=${currentGroupId}` : '';
+    const res = await fetch(BASE + '/api/picks' + qs, {
+      headers: { 'x-telegram-init-data': 'test', 'x-chat-id': currentGroupId || '', 'x-user-id': user.id || '123456789', 'x-user-name': user.first_name || 'User' }
+    });
+    const data = await res.json();
+    allPicks = data.picks || [];
+    allPicks.forEach(p => { myVotes[p.id] = p.my_vote || ''; });
+    renderStats();
+    renderPicks();
+  } catch(e) {
+    document.getElementById('picks-grid').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>Could not load picks. <button onclick="loadPicks()" style="color:var(--green);background:none;border:none;cursor:pointer;font-size:14px">Retry</button></div>`;
+  }
+}
+
+function renderStats() {
+  const groupOk = allPicks.filter(p => p.group_ok).length;
+  const pending = allPicks.filter(p => !p.my_vote).length;
+  const fc = allPicks.filter(p => p.reviewer_name).length;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="stat-num">${allPicks.length}</div><div class="stat-lbl">Total picks</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--green)">${groupOk}</div><div class="stat-lbl">Group ok</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--amber)">${pending}</div><div class="stat-lbl">Need my vote</div></div>
+    <div class="stat"><div class="stat-num" style="color:#EF9A9A">${fc}</div><div class="stat-lbl">From Filmi Craft</div></div>
+  `;
+}
+
+function renderPicks() {
+  const grid = document.getElementById('picks-grid');
+  const userId = (() => { try { return JSON.parse(localStorage.getItem('tg_user'))?.id; } catch(e) {} return 123456789; })();
+
+  let filtered = allPicks.filter(p => {
+    if (filter === 'want')  return myVotes[p.id] === 'want';
+    if (filter === 'group') return p.group_ok;
+    if (filter === 'movie') return p.type === 'movie';
+    if (filter === 'food')  return p.type === 'food';
+    if (filter === 'place') return p.type === 'place';
+    if (filter === 'event') return p.type === 'event';
+    return true;
+  });
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty"><div class="empty-icon">🍿</div>No picks here yet!<br><span style="font-size:13px;margin-top:6px;display:block">Click "Add pick" or paste a link in your Telegram group</span></div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(p => {
+    const tc = TYPE_CFG[p.type] || TYPE_CFG.link;
+    const seen = (p.votes||[]).filter(v=>v.status==='seen');
+    const want = (p.votes||[]).filter(v=>v.status==='want');
+    const skip = (p.votes||[]).filter(v=>v.status==='skip');
+    const mv = myVotes[p.id] || '';
+    const chips = [
+      ...seen.map(v=>`<span class="vc vc-seen">✓ ${esc(v.first_name||'?')}</span>`),
+      ...want.map(v=>`<span class="vc vc-want">★ ${esc(v.first_name||'?')}</span>`),
+      ...skip.map(v=>`<span class="vc vc-skip">✕ ${esc(v.first_name||'?')}</span>`),
+    ].join('') || `<span style="font-size:11px;color:var(--hint);font-style:italic">No votes yet</span>`;
+    const fcHtml = p.reviewer_name ? `<div class="fc-row"><span class="yt">YT</span><span>${esc(p.reviewer_name)}</span>${p.reviewer_score?`<span style="color:var(--amber);font-weight:600;margin-left:auto">⭐ ${esc(p.reviewer_score)}</span>`:''}</div>` : '';
+    const okBadge = p.group_ok ? `<span class="badge badge-ok">✓ Group ok</span>` : '';
+
+    return `<div class="pick-card" id="pc-${p.id}">
+      <div class="card-top">
+        <div class="card-icon" style="background:${tc.iconBg}">${tc.icon}</div>
+        <div class="card-info">
+          <div class="card-title">${esc(p.title)}</div>
+          <div class="card-meta">${esc(p.description||'')} · by ${esc(p.added_by_name||'someone')}</div>
+          <div class="card-badges">
+            <span class="badge" style="background:${tc.badgeBg};color:${tc.badgeTx}">${tc.lbl}</span>
+            ${okBadge}
+          </div>
+        </div>
+      </div>
+      ${fcHtml}
+      <div class="voters">${chips}<span class="vote-count">${seen.length+want.length+skip.length} voted</span></div>
+      <div class="vote-btns">
+        <button class="vote-btn ${mv==='seen'?'on-seen':''}" onclick="castVote(${p.id},'seen')">✓ Seen</button>
+        <button class="vote-btn ${mv==='want'?'on-want':''}" onclick="castVote(${p.id},'want')">★ Want</button>
+        <button class="vote-btn ${mv==='skip'?'on-skip':''}" onclick="castVote(${p.id},'skip')">✕ Skip</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function castVote(pickId, status) {
+  try {
+    const stored = localStorage.getItem('tg_user');
+    const user = stored ? JSON.parse(stored) : {};
+    const res = await fetch(BASE + '/api/vote', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'x-telegram-init-data':'test', 'x-user-id': user.id||'123456789', 'x-user-name': user.first_name||'User' },
+      body: JSON.stringify({ pickId, status })
+    });
+    const data = await res.json();
+    const idx = allPicks.findIndex(p => p.id === pickId);
+    if (idx >= 0) { allPicks[idx].votes = data.votes; allPicks[idx].my_vote = data.my_vote; allPicks[idx].group_ok = data.group_ok; }
+    myVotes[pickId] = data.my_vote || '';
+    renderStats(); renderPicks();
+    const lbl = { seen:'Seen ✓', want:'Want to ★', skip:'Not for me ✕' };
+    showToast(data.my_vote ? `Voted: ${lbl[data.my_vote]}` : 'Vote removed');
+    if (data.group_ok) setTimeout(() => showToast('✅ Group ok!'), 600);
+  } catch(e) { showToast('Vote failed — please retry'); }
+}
+
+function setFilter(f, el) {
+  filter = f;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  renderPicks();
+}
+
+function switchGroup(id) {
+  currentGroupId = id;
+  const sel = document.getElementById('group-select');
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('group-title').textContent = opt?.text || 'Your Squad';
+  history.pushState({}, '', `/dashboard?groupId=${id}`);
+  loadPicks();
+}
+
+function openAdd() { document.getElementById('add-modal').classList.add('open'); document.getElementById('add-url').focus(); }
+function closeAdd() { document.getElementById('add-modal').classList.remove('open'); }
+function overlayClick(e) { if (e.target === document.getElementById('add-modal')) closeAdd(); }
+
+async function saveAdd() {
+  const url = document.getElementById('add-url').value.trim();
+  if (!url) { showToast('Paste a link first'); return; }
+  const btn = document.getElementById('add-save');
+  btn.disabled = true; btn.textContent = 'Adding...';
+  try {
+    const stored = localStorage.getItem('tg_user');
+    const user = stored ? JSON.parse(stored) : {};
+    const res = await fetch(BASE + '/api/picks', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'x-telegram-init-data':'test', 'x-user-id': user.id||'123456789', 'x-user-name': user.first_name||'User', 'x-chat-id': currentGroupId||'' },
+      body: JSON.stringify({ url, groupId: currentGroupId })
+    });
+    const data = await res.json();
+    if (data.pick) {
+      allPicks.unshift({ ...data.pick, votes:[], my_vote:'want', group_ok:false });
+      myVotes[data.pick.id] = 'want';
+    }
+    closeAdd();
+    document.getElementById('add-url').value = '';
+    filter = 'all';
+    document.querySelectorAll('.filter-pill').forEach((p,i) => p.classList.toggle('on', i===0));
+    renderStats(); renderPicks();
+    showToast('Pick added!');
+  } catch(e) { showToast('Could not add pick'); }
+  finally { btn.disabled = false; btn.textContent = 'Add to SquadPicks'; }
+}
+
+function logout() {
+  localStorage.removeItem('tg_user');
+  window.location.href = '/';
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+let tt;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+document.getElementById('add-url').addEventListener('keydown', e => { if (e.key === 'Enter') saveAdd(); });
+</script>
+</body>
+</html>

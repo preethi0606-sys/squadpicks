@@ -2,708 +2,467 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>SquadPicks</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SquadPicks — Your squad. Any plan. One bot.</title>
+<meta name="description" content="SquadPicks is the Telegram bot that turns any link into a group decision. Movies, restaurants, places, events — paste a link, your squad votes, plans get made."/>
+<meta property="og:title" content="SquadPicks"/>
+<meta property="og:description" content="Your squad. Any plan. One bot."/>
+<meta property="og:image" content="/og-image.png"/>
+<link rel="stylesheet" href="/styles.css"/>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{
-  --bg:#17212b;--surface:#1f2d3d;--card:#243342;--border:rgba(255,255,255,0.07);
-  --text:#e9edef;--muted:#8696a0;--hint:#4d6a7e;
-  --green:#00a884;--green-bg:#0d2218;--green-dim:#007a60;
-  --amber:#ffb74d;--amber-bg:#1a1200;
-  --red:#ef5350;--red-bg:#1f0a0a;
-  --blue:#4fa3e3;--purple:#ce93d8;
-  --r:12px;--rsm:8px;
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex; align-items: center;
+  padding: 100px 2rem 5rem;
+  position: relative; overflow: hidden;
 }
-body{font-family:-apple-system,'Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 60% 60% at 70% 50%, rgba(0,168,132,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-inner {
+  max-width: 1080px; margin: 0 auto;
+  display: flex; gap: 4rem; align-items: center;
+}
+.hero-text { flex: 1; }
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--green-bg); border: 1px solid var(--green-dk);
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 12px; font-weight: 500; color: var(--green);
+  margin-bottom: 1.5rem;
+}
+.hero-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+h1.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(44px, 7vw, 76px);
+  font-weight: 900; line-height: 1.05;
+  color: var(--text); margin-bottom: 1.25rem;
+  letter-spacing: -1.5px;
+}
+h1.hero-title .accent { color: var(--green); }
+.hero-sub {
+  font-size: 18px; color: var(--muted);
+  max-width: 460px; line-height: 1.75;
+  margin-bottom: 2rem;
+}
+.hero-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 2.5rem; }
+.tag {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 13px; color: var(--muted);
+}
+.hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 
-/* ── HEADER ── */
-.hdr{background:var(--surface);padding:12px 16px 0;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
-.hdr-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.logo{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-.5px}
-.logo span{color:var(--green)}
-.squad-pill{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
-.squad-dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
-.user-av{width:28px;height:28px;border-radius:50%;background:var(--green-bg);border:1.5px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--green)}
-.tabs{display:flex;gap:3px;background:rgba(0,0,0,0.2);border-radius:var(--rsm);padding:3px;margin-bottom:0}
-.tab{flex:1;padding:8px 4px;text-align:center;font-size:12px;font-weight:500;border-radius:6px;cursor:pointer;color:var(--muted);border:none;background:transparent;transition:all .15s}
-.tab.on{background:var(--card);color:var(--text)}
+/* ── PHONE MOCKUP ── */
+.hero-phone-wrap { flex: 0 0 300px; }
+.phone {
+  background: var(--surface);
+  border: 1px solid var(--green-dk);
+  border-radius: 28px; overflow: hidden;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+}
+.ph-bar {
+  background: #1F2C34; padding: 10px 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.ph-av {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #2A3942; display: flex; align-items: center;
+  justify-content: center; font-size: 14px;
+}
+.ph-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.ph-sub { font-size: 10px; color: var(--muted); }
+.ph-chat { background: #0E1621; padding: 10px; }
+.bubble {
+  border-radius: 8px; padding: 7px 10px; margin-bottom: 5px;
+  font-size: 12px; max-width: 85%;
+}
+.bubble.them { background: #182533; color: var(--text); }
+.bubble.me { background: #005C4B; color: var(--text); margin-left: auto; }
+.bubble.bot {
+  background: #1A2F45; border-left: 3px solid var(--green);
+  color: var(--text); max-width: 100%;
+}
+.bot-name { font-size: 10px; font-weight: 600; color: var(--green); margin-bottom: 3px; }
+.bot-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.bot-meta { font-size: 10px; color: var(--muted); margin-bottom: 6px; }
+.fc-pill {
+  background: #0A1A10; border-radius: 5px; padding: 4px 7px;
+  font-size: 10px; color: var(--muted);
+  display: flex; align-items: center; gap: 5px; margin-bottom: 6px;
+}
+.yt { background: var(--red); color: white; font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 2px; }
+.vote-chips { display: flex; gap: 3px; margin-bottom: 6px; flex-wrap: wrap; }
+.vc { font-size: 9px; padding: 2px 6px; border-radius: 8px; }
+.vc-w { background: #1F1900; color: var(--amber); }
+.vc-n { background: rgba(255,255,255,.05); color: var(--hint); }
+.vote-row { display: flex; border-top: 1px solid rgba(255,255,255,.08); }
+.vb {
+  flex: 1; padding: 6px 4px; text-align: center;
+  font-size: 10px; font-weight: 500; color: var(--green);
+  background: transparent; border: none; cursor: default;
+}
+.vb:not(:last-child) { border-right: 1px solid rgba(255,255,255,.08); }
+.ok-pill {
+  background: var(--green-bg); border: 1px solid var(--green-dk);
+  border-radius: 6px; padding: 5px 8px;
+  font-size: 10px; color: var(--green); font-weight: 600;
+  margin-top: 5px;
+}
 
-/* ── FILTER CHIPS ── */
-.chips{display:flex;gap:6px;padding:10px 12px;overflow-x:auto;scrollbar-width:none}
-.chips::-webkit-scrollbar{display:none}
-.chip{flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
-.chip.on{background:var(--green-bg);color:var(--green);border-color:var(--green-dim)}
+/* ── PROBLEM STRIP ── */
+.problem-strip {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 3.5rem 2rem;
+}
+.problem-grid {
+  max-width: 1080px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+  gap: 1.5rem;
+}
+.problem-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1.5rem;
+}
+.problem-label {
+  font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em;
+  padding: 2px 8px; border-radius: 4px;
+  display: inline-block; margin-bottom: .75rem;
+}
+.problem-card h3 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.problem-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
 
-/* ── CARDS ── */
-.list{padding:8px 12px 110px;display:flex;flex-direction:column;gap:10px}
-.card{background:var(--card);border-radius:var(--r);overflow:hidden;border:1px solid var(--border)}
-.card-top{padding:12px 12px 8px;display:flex;gap:10px;align-items:flex-start}
-.card-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-.card-body{flex:1;min-width:0}
-.card-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card-meta{font-size:11px;color:var(--muted);margin-bottom:5px}
-.badges{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:.04em}
-.badge-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-dim)}
-.fc-row{margin:0 12px 8px;background:#0a1a10;border-radius:7px;padding:6px 9px;display:flex;align-items:center;gap:7px}
-.yt{background:#c62828;color:#fff;font-size:8px;font-weight:800;padding:2px 4px;border-radius:3px;flex-shrink:0}
-.fc-lbl{font-size:11px;color:var(--muted);flex:1}
-.fc-sc{font-size:11px;font-weight:600;color:var(--amber)}
-.voters{padding:0 12px 8px;display:flex;gap:4px;flex-wrap:wrap;align-items:center}
-.vc{font-size:10px;padding:3px 7px;border-radius:10px;font-weight:500}
-.vc-seen{background:#0d2218;color:#66bb6a}
-.vc-want{background:var(--amber-bg);color:var(--amber)}
-.vc-skip{background:var(--red-bg);color:var(--red)}
-.vc-none{background:rgba(255,255,255,.05);color:var(--hint)}
-.vote-count{margin-left:auto;font-size:10px;color:var(--hint)}
-.vbtns{display:flex;border-top:1px solid var(--border)}
-.vbtn{flex:1;padding:10px 4px;text-align:center;font-size:12px;font-weight:500;color:var(--muted);background:transparent;border:none;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:4px}
-.vbtn:not(:last-child){border-right:1px solid var(--border)}
-.vbtn:active{opacity:.7}
-.vbtn.on-seen{color:#66bb6a;background:#0d2218}
-.vbtn.on-want{color:var(--amber);background:var(--amber-bg)}
-.vbtn.on-skip{color:var(--red);background:var(--red-bg)}
+/* ── HOW IT WORKS ── */
+.steps-grid {
+  display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+  gap: 1.5rem;
+}
+.step { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.75rem; }
+.step-num {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--green); display: flex;
+  align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 17px;
+  font-weight: 700; color: #0D2218; margin-bottom: 1rem;
+}
+.step-badge {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px; margin-bottom: .75rem;
+  background: var(--green-bg); color: var(--green); border: 1px solid var(--green-dk);
+}
+.step h3 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.step p { font-size: 13px; color: var(--muted); line-height: 1.6; }
 
-/* ── SUMMARY ── */
-.sum-section{background:var(--card);border-radius:var(--r);overflow:hidden;margin-bottom:10px}
-.sum-hdr{padding:10px 14px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
-.sum-row{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.sum-row:last-child{border-bottom:none}
-.sum-title{font-size:13px;color:var(--text)}
-.sum-tag{font-size:10px;color:var(--muted)}
-.sum-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px}
+/* ── FEATURES ── */
+.features-section { background: var(--surface); }
+.features-grid {
+  display: grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr));
+  gap: 1.25rem;
+}
+.feat {
+  background: var(--card); border-radius: var(--r);
+  padding: 1.5rem; border-left: 3px solid;
+}
+.feat-tag {
+  font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px;
+  display: inline-block; margin-bottom: .75rem;
+}
+.feat h3 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.feat p { font-size: 13px; color: var(--muted); line-height: 1.6; }
 
-/* ── FC TAB ── */
-.fc-channel{background:var(--card);border-radius:var(--r);padding:14px;display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.fc-av{width:44px;height:44px;border-radius:50%;background:#c62828;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
-.fc-ch-name{font-size:14px;font-weight:600;color:var(--text)}
-.fc-ch-sub{font-size:11px;color:var(--muted);margin-top:2px}
-.fc-active{margin-left:auto;font-size:9px;font-weight:700;padding:3px 8px;border-radius:4px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-dim)}
-.rev-card{background:var(--card);border-radius:var(--r);overflow:hidden;margin-bottom:10px}
-.rev-top{padding:12px 14px 8px;display:flex;gap:10px}
-.rev-poster{width:50px;height:50px;border-radius:8px;background:#1a0f2e;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
-.rev-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
-.rev-meta{font-size:11px;color:var(--muted);margin-bottom:5px}
-.stars{display:flex;gap:2px;align-items:center}
-.star{font-size:12px}
-.rev-score{font-size:13px;font-weight:700;color:var(--amber);margin-left:5px}
-.rev-quote{font-size:11px;color:var(--muted);font-style:italic;margin-top:4px}
-.rev-actions{display:flex;border-top:1px solid var(--border)}
-.rev-btn{flex:1;padding:10px;text-align:center;font-size:12px;font-weight:500;border:none;background:transparent;cursor:pointer}
-.rev-btn:not(:last-child){border-right:1px solid var(--border)}
-.rev-btn.add{color:var(--green)}
-.rev-btn.watch{color:var(--blue)}
-.rev-btn:active{opacity:.7}
+/* ── PRICING ── */
+.pricing-grid {
+  display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr));
+  gap: 1.25rem; align-items: start;
+}
+.price-card {
+  background: var(--card); border-radius: var(--r);
+  padding: 2rem; border: 1px solid var(--border);
+}
+.price-card.featured { border: 2px solid var(--green); }
+.popular {
+  background: var(--green); color: #0D2218;
+  font-size: 10px; font-weight: 700;
+  padding: 3px 10px; border-radius: 4px;
+  display: inline-block; margin-bottom: 1rem;
+  letter-spacing: .04em;
+}
+.price-name {
+  font-family: var(--font-display);
+  font-size: 26px; font-weight: 700; margin-bottom: 4px;
+}
+.price-amount { font-size: 20px; font-weight: 600; margin-bottom: 1.25rem; }
+.price-divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+.price-feat { display: flex; gap: 8px; margin-bottom: 10px; font-size: 14px; color: var(--text); }
+.check { color: var(--green); flex-shrink: 0; }
+.price-note { font-size: 12px; color: var(--muted); font-style: italic; margin-top: 1.25rem; }
 
-/* ── ADD BAR ── */
-.add-bar{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:10px 12px env(safe-area-inset-bottom,16px);z-index:50}
-.add-row{display:flex;gap:8px;align-items:center}
-.add-inp{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:22px;padding:10px 16px;color:var(--text);font-size:13px;outline:none;transition:border-color .15s}
-.add-inp:focus{border-color:var(--green-dim)}
-.add-inp::placeholder{color:var(--hint)}
-.send-btn{width:40px;height:40px;border-radius:50%;background:var(--green);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
-.send-btn:active{background:var(--green-dim)}
-.send-btn svg{width:16px;height:16px;fill:#fff}
-
-/* ── LOADING / EMPTY ── */
-.loading{padding:3rem 1rem;text-align:center;color:var(--muted);font-size:14px}
-.spin{display:inline-block;width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:10px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.empty{padding:3rem 1rem;text-align:center;color:var(--muted);font-size:14px}
-.empty-icon{font-size:36px;margin-bottom:10px}
-
-/* ── MODAL ── */
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;align-items:flex-end}
-.overlay.open{display:flex}
-.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:20px 16px 36px;width:100%;animation:up .2s ease}
-@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.mhandle{width:36px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 16px}
-.mtitle{font-size:16px;font-weight:600;color:var(--text);margin-bottom:12px}
-.murl{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--muted);margin-bottom:12px;word-break:break-all;line-height:1.5}
-.mstatus{font-size:13px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px}
-.mstatus .spin{width:16px;height:16px;margin:0}
-.type-row{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
-.topt{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:500;border:1px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer;transition:all .15s}
-.topt.on{border-color:var(--green-dim);background:var(--green-bg);color:var(--green)}
-.mfetched{background:var(--green-bg);border:1px solid var(--green-dim);border-radius:8px;padding:10px 12px;margin-bottom:12px;display:none}
-.mfetched-title{font-size:13px;font-weight:600;color:var(--green);margin-bottom:2px}
-.mfetched-desc{font-size:11px;color:var(--muted)}
-.mbtn{width:100%;padding:14px;border-radius:12px;background:var(--green);border:none;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s}
-.mbtn:active{background:var(--green-dim)}
-.mbtn:disabled{background:var(--hint);cursor:not-allowed}
-.mcancel{width:100%;padding:10px;border-radius:12px;background:transparent;border:none;color:var(--muted);font-size:14px;cursor:pointer;margin-top:6px}
-
-/* ── TOAST ── */
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:22px;padding:8px 18px;font-size:13px;font-weight:500;opacity:0;transition:opacity .2s;pointer-events:none;z-index:100;white-space:nowrap}
-.toast.show{opacity:1}
+/* ── CTA BAND ── */
+.cta-band { background: var(--green-bg); border-top: 1px solid rgba(0,168,132,.3); border-bottom: 1px solid rgba(0,168,132,.3); padding: 4rem 2rem; }
+.cta-inner { max-width: 640px; margin: 0 auto; text-align: center; }
+.cta-inner h2 { font-family: var(--font-display); font-size: clamp(26px,4vw,38px); font-weight: 700; color: var(--text); margin-bottom: .75rem; }
+.cta-inner p { font-size: 16px; color: var(--muted); margin-bottom: 2rem; }
+.cta-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 </style>
 </head>
 <body>
 
-<div class="hdr">
-  <div class="hdr-top">
-    <div class="logo">Squad<span>Picks</span></div>
-    <div class="squad-pill">
-      <div class="squad-dot"></div>
-      <span id="group-name">Loading...</span>
+<nav class="nav">
+  <a href="/" class="nav-logo">Squad<span>Picks</span></a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="/blog">Blog</a>
+    <a href="/login" class="nav-cta">Get started</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-text">
+      <div class="hero-eyebrow"><div class="hero-dot"></div>Telegram-first · Zero app downloads</div>
+      <h1 class="hero-title">Your squad.<br><span class="accent">Any plan.</span><br>One bot.</h1>
+      <p class="hero-sub">Paste any link into your Telegram group — movie, restaurant, place or event — and your whole family votes right there in the chat. Plans get made.</p>
+      <div class="hero-tags">
+        <span class="tag">🎬 Movies</span>
+        <span class="tag">🍜 Restaurants</span>
+        <span class="tag">📍 Places</span>
+        <span class="tag">🎭 Events</span>
+        <span class="tag">📺 Filmi Craft reviews</span>
+      </div>
+      <div class="hero-actions">
+        <a href="/login" class="btn btn-tg">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.026 9.547c-.148.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.31l-2.95-.924c-.642-.2-.655-.642.136-.95l11.532-4.448c.537-.194 1.006.131.834.943h.53v.317z"/></svg>
+          Start with Telegram
+        </a>
+        <a href="#how" class="btn btn-outline">See how it works</a>
+      </div>
     </div>
-    <div class="user-av" id="user-av">?</div>
-  </div>
-  <div class="tabs">
-    <button class="tab on" onclick="goTab('picks',this)">Picks</button>
-    <button class="tab" onclick="goTab('summary',this)">Summary</button>
-    <button class="tab" onclick="goTab('filmicraft',this)">Filmi Craft</button>
-  </div>
-</div>
-
-<!-- PICKS TAB -->
-<div id="tab-picks">
-  <div class="chips">
-    <div class="chip on" onclick="setFilter('all',this)">All</div>
-    <div class="chip" onclick="setFilter('want',this)">I want to</div>
-    <div class="chip" onclick="setFilter('group',this)">Group ok</div>
-    <div class="chip" onclick="setFilter('movie',this)">🎬 Movies</div>
-    <div class="chip" onclick="setFilter('food',this)">🍽 Food</div>
-    <div class="chip" onclick="setFilter('place',this)">📍 Places</div>
-    <div class="chip" onclick="setFilter('event',this)">🎭 Events</div>
-  </div>
-  <div class="list" id="picks-list">
-    <div class="loading"><div class="spin"></div><br>Loading picks...</div>
-  </div>
-</div>
-
-<!-- SUMMARY TAB -->
-<div id="tab-summary" style="display:none;padding:12px 12px 100px">
-  <div id="summary-content">
-    <div class="loading"><div class="spin"></div><br>Loading summary...</div>
-  </div>
-</div>
-
-<!-- FILMI CRAFT TAB -->
-<div id="tab-filmicraft" style="display:none;padding:12px 12px 100px">
-  <div class="fc-channel">
-    <div class="fc-av">FC</div>
-    <div>
-      <div class="fc-ch-name">Filmi Craft</div>
-      <div class="fc-ch-sub">Tamil & World cinema · 352K subscribers</div>
-    </div>
-    <div class="fc-active">Active</div>
-  </div>
-  <div id="fc-content">
-    <div class="loading"><div class="spin"></div><br>Loading reviews...</div>
-  </div>
-</div>
-
-<!-- ADD BAR (picks tab only) -->
-<div class="add-bar" id="add-bar">
-  <div class="add-row">
-    <input class="add-inp" id="link-inp" placeholder="Paste any link — IMDB, Maps, Yelp, Zomato..." />
-    <button class="send-btn" onclick="openAddModal()">
-      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
-    </button>
-  </div>
-</div>
-
-<!-- ADD MODAL -->
-<div class="overlay" id="modal" onclick="overlayClick(event)">
-  <div class="modal">
-    <div class="mhandle"></div>
-    <div class="mtitle">Add a pick</div>
-    <div class="murl" id="m-url"></div>
-    <div class="mstatus" id="m-status" style="display:none">
-      <div class="spin"></div> Reading link...
-    </div>
-    <div class="mfetched" id="m-fetched">
-      <div class="mfetched-title" id="m-fetched-title"></div>
-      <div class="mfetched-desc" id="m-fetched-desc"></div>
-    </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:500;text-transform:uppercase;letter-spacing:.04em">Type</div>
-    <div class="type-row" id="type-row">
-      <div class="topt on" onclick="setType('movie',this)">🎬 Movie</div>
-      <div class="topt" onclick="setType('food',this)">🍽 Restaurant</div>
-      <div class="topt" onclick="setType('place',this)">📍 Place</div>
-      <div class="topt" onclick="setType('event',this)">🎭 Event</div>
-      <div class="topt" onclick="setType('show',this)">📺 Show</div>
-    </div>
-    <button class="mbtn" id="m-confirm" onclick="confirmAdd()">Add to SquadPicks</button>
-    <button class="mcancel" onclick="closeModal()">Cancel</button>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-// ── STATE ──────────────────────────────────────────────────
-const tg     = window.Telegram?.WebApp;
-let tgUser   = null;
-let groupId  = null;
-let allPicks = [];
-let filter   = 'all';
-let selType  = 'movie';
-let pendUrl  = '';
-let fetching = false;
-
-const BASE = window.location.origin;
-
-const TYPE_CFG = {
-  movie: { icon:'🎬', iconBg:'#1a0f2e', badgeBg:'#2d1b5e', badgeTx:'#c8a8f9', lbl:'Movie'      },
-  food:  { icon:'🍽', iconBg:'#1f1400', badgeBg:'#2d1f00', badgeTx:'#ffb74d', lbl:'Restaurant'  },
-  place: { icon:'📍', iconBg:'#0d2218', badgeBg:'#0d3320', badgeTx:'#69d47e', lbl:'Place'       },
-  event: { icon:'🎭', iconBg:'#1a0a1a', badgeBg:'#2d0d2d', badgeTx:'#f48fb1', lbl:'Event'       },
-  show:  { icon:'📺', iconBg:'#0d1020', badgeBg:'#0d1f3d', badgeTx:'#90caf9', lbl:'Show'        },
-  link:  { icon:'🔗', iconBg:'#1a1a2e', badgeBg:'#1a1a2e', badgeTx:'#8696a0', lbl:'Link'        },
-};
-
-// ── INIT ───────────────────────────────────────────────────
-(async function init() {
-  // Setup Telegram WebApp
-  if (tg) {
-    tg.ready();
-    tg.expand();
-    tg.setHeaderColor('#17212b');
-    tgUser  = tg.initDataUnsafe?.user;
-    // startapp param is how the group passes its chatId to the Mini App
-    // It arrives as start_param in initDataUnsafe when opened via t.me/bot/app?startapp=CHATID
-    const startapp = tg.initDataUnsafe?.start_param
-                  || new URLSearchParams(window.location.search).get('startapp')
-                  || new URLSearchParams(window.location.search).get('groupId');
-    groupId = startapp;
-  }
-
-  // Fallback for testing outside Telegram
-  if (!tgUser) {
-    tgUser  = { id:123456789, first_name:'Priya', username:'priya_test' };
-    groupId = groupId || new URLSearchParams(window.location.search).get('groupId') || 'test_group';
-  }
-
-  // Show user avatar initials
-  const initials = (tgUser.first_name||'?').charAt(0).toUpperCase();
-  document.getElementById('user-av').textContent = initials;
-
-  await loadPicks();
-})();
-
-// ── API HELPER ─────────────────────────────────────────────
-
-async function api(method, path, body) {
-  const headers = {
-    'Content-Type': 'application/json',
-    'x-telegram-init-data': tg?.initData || 'test',
-    'x-chat-id': groupId || ''
-  };
-  const opts = { method, headers };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(BASE + '/api' + path, opts);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `HTTP ${res.status}`);
-  }
-  return res.json();
-}
-
-// ── LOAD PICKS ─────────────────────────────────────────────
-
-async function loadPicks() {
-  try {
-    document.getElementById('picks-list').innerHTML =
-      `<div class="loading"><div class="spin"></div><br>Loading picks...</div>`;
-    const qs = groupId ? `?groupId=${groupId}` : '';
-    const data = await api('GET', `/picks${qs}`);
-    allPicks = data.picks || [];
-
-    // Update group name
-    if (allPicks.length > 0) {
-      document.getElementById('group-name').textContent = 'Squad';
-    } else {
-      document.getElementById('group-name').textContent = 'Your squad';
-    }
-
-    renderPicks();
-  } catch (err) {
-    console.error('loadPicks error:', err);
-    document.getElementById('picks-list').innerHTML =
-      `<div class="empty"><div class="empty-icon">⚠️</div>Could not load picks.<br>
-       <span style="font-size:12px;margin-top:6px;display:block">Check your connection and try again.</span>
-       <button onclick="loadPicks()" style="margin-top:12px;padding:8px 16px;background:var(--green);color:#0d2218;border:none;border-radius:8px;font-weight:600;cursor:pointer">Retry</button></div>`;
-  }
-}
-
-// ── RENDER PICKS ───────────────────────────────────────────
-
-function renderPicks() {
-  const list = document.getElementById('picks-list');
-  const userId = tgUser?.id;
-
-  let filtered = allPicks.filter(p => {
-    if (filter === 'want')  return p.my_vote === 'want';
-    if (filter === 'group') return p.group_ok;
-    if (filter === 'movie') return p.type === 'movie';
-    if (filter === 'food')  return p.type === 'food';
-    if (filter === 'place') return p.type === 'place';
-    if (filter === 'event') return p.type === 'event';
-    return true;
-  });
-
-  if (!filtered.length) {
-    list.innerHTML = `<div class="empty">
-      <div class="empty-icon">🍿</div>
-      No picks here yet!<br>
-      <span style="font-size:12px;margin-top:6px;display:block">Paste a link below to add one</span>
-    </div>`;
-    return;
-  }
-
-  list.innerHTML = filtered.map(p => buildCard(p)).join('');
-}
-
-function buildCard(p) {
-  const tc   = TYPE_CFG[p.type] || TYPE_CFG.link;
-  const seen = (p.votes||[]).filter(v=>v.status==='seen');
-  const want = (p.votes||[]).filter(v=>v.status==='want');
-  const skip = (p.votes||[]).filter(v=>v.status==='skip');
-  const mv   = p.my_vote || '';
-
-  const chips = [
-    ...seen.map(v=>`<span class="vc vc-seen">✓ ${esc(v.first_name||v.username||'?')}</span>`),
-    ...want.map(v=>`<span class="vc vc-want">★ ${esc(v.first_name||v.username||'?')}</span>`),
-    ...skip.map(v=>`<span class="vc vc-skip">✕ ${esc(v.first_name||v.username||'?')}</span>`),
-  ].join('');
-
-  const totalVoted = seen.length + want.length + skip.length;
-
-  const fcHtml = p.reviewer_name ? `
-    <div class="fc-row">
-      <span class="yt">YT</span>
-      <span class="fc-lbl">${esc(p.reviewer_name)} reviewed this</span>
-      <span class="fc-sc">${p.reviewer_score ? '⭐ '+esc(p.reviewer_score) : ''}</span>
-    </div>` : '';
-
-  const okBadge = p.group_ok
-    ? `<span class="badge badge-ok">✓ Group ok</span>` : '';
-
-  return `<div class="card" id="card-${p.id}">
-    <div class="card-top">
-      <div class="card-icon" style="background:${tc.iconBg}">${tc.icon}</div>
-      <div class="card-body">
-        <div class="card-title">${esc(p.title)}</div>
-        <div class="card-meta">${esc(p.description||'')} · by ${esc(p.added_by_name||'someone')}</div>
-        <div class="badges">
-          <span class="badge" style="background:${tc.badgeBg};color:${tc.badgeTx}">${tc.lbl}</span>
-          ${okBadge}
+    <div class="hero-phone-wrap">
+      <div class="phone">
+        <div class="ph-bar">
+          <div class="ph-av">👨‍👩‍👧‍👦</div>
+          <div>
+            <div class="ph-name">Family Squad</div>
+            <div class="ph-sub">Priya, Raj, Meera, Dev · @SquadPicksBot</div>
+          </div>
+        </div>
+        <div class="ph-chat">
+          <div class="bubble them"><div style="font-size:10px;font-weight:600;color:#4FC3F7;margin-bottom:2px">Raj</div>Check this out! imdb.com/kaantha</div>
+          <div class="bubble bot">
+            <div class="bot-name">SquadPicksBot</div>
+            <div class="bot-title">🎬 Kaantha (2025)</div>
+            <div class="bot-meta">Tamil · Dulquer Salmaan · Action drama</div>
+            <div class="fc-pill"><span class="yt">YT</span> Filmi Craft · <span style="color:var(--amber);font-weight:600">★ 4.1/5</span></div>
+            <div class="vote-chips">
+              <span class="vc vc-w">★ Raj</span>
+              <span class="vc vc-n">? Priya</span>
+              <span class="vc vc-n">? Meera</span>
+              <span class="vc vc-n">? Dev</span>
+            </div>
+            <div class="vote-row">
+              <span class="vb">✓ Seen</span>
+              <span class="vb">★ Want</span>
+              <span class="vb">✕ Skip</span>
+            </div>
+          </div>
+          <div class="bubble me">I want to watch! ★</div>
+          <div class="bubble bot">
+            <div class="bot-name">SquadPicksBot</div>
+            <div class="ok-pill">✓ Group ok — everyone can watch Kaantha!</div>
+          </div>
         </div>
       </div>
     </div>
-    ${fcHtml}
-    <div class="voters">
-      ${chips || `<span style="font-size:11px;color:var(--hint);font-style:italic">No votes yet — be first!</span>`}
-      <span class="vote-count">${totalVoted} voted</span>
+  </div>
+</section>
+
+<!-- PROBLEM STRIP -->
+<div class="problem-strip">
+  <div class="problem-grid">
+    <div class="problem-card">
+      <div class="problem-label" style="background:#1A0808;color:#EF9A9A">PROBLEM 1</div>
+      <h3>Links get buried</h3>
+      <p>Someone shares a great restaurant in WhatsApp. 200 messages later it's gone forever.</p>
     </div>
-    <div class="vbtns">
-      <button class="vbtn ${mv==='seen'?'on-seen':''}" onclick="castVote(${p.id},'seen')">✓ Seen</button>
-      <button class="vbtn ${mv==='want'?'on-want':''}" onclick="castVote(${p.id},'want')">★ Want</button>
-      <button class="vbtn ${mv==='skip'?'on-skip':''}" onclick="castVote(${p.id},'skip')">✕ Skip</button>
+    <div class="problem-card">
+      <div class="problem-label" style="background:#1A1200;color:#FFB74D">PROBLEM 2</div>
+      <h3>Nobody knows who's seen what</h3>
+      <p>Every movie night starts with "have you seen this?" to four different people.</p>
     </div>
-  </div>`;
-}
+    <div class="problem-card">
+      <div class="problem-label" style="background:#0D2218;color:#69D47E">PROBLEM 3</div>
+      <h3>No group consensus</h3>
+      <p>You plan a trip and discover halfway through that two people have already been there.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-label" style="background:#0A1E30;color:#90CAF9">PROBLEM 4</div>
+      <h3>Decisions take forever</h3>
+      <p>The "what should we watch?" conversation loop. Every. Single. Weekend.</p>
+    </div>
+  </div>
+</div>
 
-// ── VOTE ───────────────────────────────────────────────────
-
-async function castVote(pickId, status) {
-  try {
-    const data = await api('POST', '/vote', { pickId, status });
-    // Update local state
-    const idx = allPicks.findIndex(p => p.id === pickId);
-    if (idx >= 0) {
-      allPicks[idx].votes    = data.votes;
-      allPicks[idx].my_vote  = data.my_vote;
-      allPicks[idx].group_ok = data.group_ok;
-    }
-    renderPicks();
-    const lbl = { seen:'Seen ✓', want:'Want to ★', skip:'Not for me ✕' };
-    showToast(data.my_vote ? `Voted: ${lbl[data.my_vote]}` : 'Vote removed');
-
-    // Haptic feedback
-    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-
-    // Show group ok notification
-    if (data.group_ok) {
-      setTimeout(() => showToast('✅ Group ok — everyone can do this!'), 600);
-    }
-  } catch (err) {
-    showToast('Vote failed — please retry');
-    console.error('castVote error:', err);
-  }
-}
-
-// ── ADD PICK ───────────────────────────────────────────────
-
-function openAddModal() {
-  const url = document.getElementById('link-inp').value.trim();
-  if (!url) { showToast('Paste a link first!'); return; }
-  pendUrl = url;
-  document.getElementById('m-url').textContent = url;
-  document.getElementById('m-fetched').style.display = 'none';
-  document.getElementById('m-status').style.display = 'none';
-  document.getElementById('m-confirm').disabled = false;
-
-  // Auto-detect type
-  const det = autoDetectType(url);
-  selType = det;
-  document.querySelectorAll('.topt').forEach(o => {
-    o.classList.toggle('on', o.textContent.toLowerCase().includes(det.substring(0,3)));
-  });
-
-  document.getElementById('modal').classList.add('open');
-}
-
-function autoDetectType(url) {
-  if (/imdb|letterboxd|rottentomatoes/.test(url)) return 'movie';
-  if (/maps\.google|goo\.gl\/maps|maps\.app\.goo\.gl/.test(url)) return 'place';
-  if (/yelp|zomato|swiggy|opentable/.test(url)) return 'food';
-  if (/eventbrite|bookmyshow|meetup/.test(url)) return 'event';
-  if (/netflix|hotstar|sonyliv|primevideo/.test(url)) return 'show';
-  return 'movie';
-}
-
-function setType(type, el) {
-  selType = type;
-  document.querySelectorAll('.topt').forEach(o => o.classList.remove('on'));
-  el.classList.add('on');
-}
-
-async function confirmAdd() {
-  if (fetching) return;
-  fetching = true;
-  const btn = document.getElementById('m-confirm');
-  btn.disabled = true;
-  btn.textContent = 'Adding...';
-
-  try {
-    const data = await api('POST', '/picks', {
-      url:       pendUrl,
-      groupId:   groupId,
-      groupTitle: document.getElementById('group-name').textContent
-    });
-
-    // Add to local list
-    const newPick = {
-      ...data.pick,
-      votes:    [],
-      my_vote:  'want',
-      group_ok: false
-    };
-    allPicks.unshift(newPick);
-
-    // Auto-vote "want" for the person who added it
-    try { await api('POST', '/vote', { pickId: data.pick.id, status: 'want' }); } catch(e){}
-
-    closeModal();
-    document.getElementById('link-inp').value = '';
-
-    // Go back to "all" filter
-    filter = 'all';
-    document.querySelectorAll('.chip').forEach((c,i) => c.classList.toggle('on', i===0));
-    renderPicks();
-    showToast('Pick added! Squad can now vote 🎉');
-
-    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-  } catch (err) {
-    showToast('Could not add pick — please retry');
-    console.error('confirmAdd error:', err);
-  } finally {
-    fetching = false;
-    btn.disabled = false;
-    btn.textContent = 'Add to SquadPicks';
-  }
-}
-
-function closeModal() {
-  document.getElementById('modal').classList.remove('open');
-}
-function overlayClick(e) {
-  if (e.target === document.getElementById('modal')) closeModal();
-}
-
-// ── TABS ───────────────────────────────────────────────────
-
-function goTab(tab, el) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
-  el.classList.add('on');
-  document.getElementById('tab-picks').style.display      = tab==='picks'      ? 'block' : 'none';
-  document.getElementById('tab-summary').style.display    = tab==='summary'    ? 'block' : 'none';
-  document.getElementById('tab-filmicraft').style.display = tab==='filmicraft' ? 'block' : 'none';
-  document.getElementById('add-bar').style.display        = tab==='picks'      ? 'block' : 'none';
-
-  if (tab === 'summary')    loadSummary();
-  if (tab === 'filmicraft') loadFCPicks();
-}
-
-// ── SUMMARY ────────────────────────────────────────────────
-
-async function loadSummary() {
-  const el = document.getElementById('summary-content');
-  el.innerHTML = `<div class="loading"><div class="spin"></div><br>Loading...</div>`;
-  try {
-    const qs = groupId ? `?groupId=${groupId}` : '';
-    const data = await api('GET', `/summary${qs}`);
-    renderSummary(data);
-  } catch (err) {
-    el.innerHTML = `<div class="empty">Could not load summary</div>`;
-  }
-}
-
-function renderSummary({ groupOk, hasSkip, pending }) {
-  const el = document.getElementById('summary-content');
-  let html = '';
-
-  if (groupOk?.length) {
-    html += `<div class="sum-section">
-      <div class="sum-hdr" style="color:#66bb6a">✓ Group can do together (${groupOk.length})</div>
-      ${groupOk.map(({pick,votes}) => {
-        const w = votes.filter(v=>v.status==='want').length;
-        const s = votes.filter(v=>v.status==='seen').length;
-        return `<div class="sum-row">
-          <div><div class="sum-title">${TYPE_CFG[pick.type]?.icon||'🔗'} ${esc(pick.title)}</div>
-          <div class="sum-tag">${pick.reviewer_score?'FC ★'+pick.reviewer_score+' · ':''}${w?w+' want · ':''}${s?s+' seen':''}</div></div>
-          <span class="sum-badge" style="background:var(--green-bg);color:var(--green)">Group ok</span>
-        </div>`;
-      }).join('')}
-    </div>`;
-  }
-
-  if (hasSkip?.length) {
-    html += `<div class="sum-section">
-      <div class="sum-hdr" style="color:var(--amber)">⚠ Someone said not for me (${hasSkip.length})</div>
-      ${hasSkip.map(({pick,votes}) => {
-        const skippers = votes.filter(v=>v.status==='skip').map(v=>v.first_name||'?').join(', ');
-        return `<div class="sum-row">
-          <div><div class="sum-title">${esc(pick.title)}</div>
-          <div class="sum-tag">${esc(skippers)} skipped</div></div>
-        </div>`;
-      }).join('')}
-    </div>`;
-  }
-
-  if (pending?.length) {
-    html += `<div class="sum-section">
-      <div class="sum-hdr" style="color:var(--hint)">⏳ No votes yet (${pending.length})</div>
-      ${pending.map(({pick}) => `<div class="sum-row">
-        <div class="sum-title">${esc(pick.title)}</div>
-      </div>`).join('')}
-    </div>`;
-  }
-
-  if (!html) {
-    html = `<div class="empty"><div class="empty-icon">📋</div>No picks yet! Add some links to get started.</div>`;
-  }
-
-  document.getElementById('summary-content').innerHTML = html;
-}
-
-// ── FILMI CRAFT ────────────────────────────────────────────
-
-async function loadFCPicks() {
-  const el = document.getElementById('fc-content');
-  el.innerHTML = `<div class="loading"><div class="spin"></div><br>Loading reviews...</div>`;
-  try {
-    const data = await api('GET', '/fcpicks');
-    renderFCPicks(data.picks || []);
-  } catch (err) {
-    el.innerHTML = `<div class="empty">Could not load Filmi Craft reviews</div>`;
-  }
-}
-
-function renderFCPicks(picks) {
-  const el = document.getElementById('fc-content');
-  if (!picks.length) {
-    el.innerHTML = `<div class="empty">
-      <div class="empty-icon">📺</div>
-      No reviews yet.<br>
-      <span style="font-size:12px;margin-top:6px;display:block">The bot checks Filmi Craft every Friday.</span>
-    </div>`;
-    return;
-  }
-  el.innerHTML = picks.map((p, i) => {
-    const score = parseFloat(p.reviewer_score) || 0;
-    const stars = Math.round(score);
-    const starsHtml = Array.from({length:5},(_,j) =>
-      `<span class="star" style="color:${j<stars?'#ffb74d':'#2a3942'}">★</span>`
-    ).join('');
-    const added = new Date(p.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    return `<div class="rev-card">
-      <div class="rev-top">
-        <div class="rev-poster">🎬</div>
-        <div style="flex:1;min-width:0">
-          <div class="rev-title">${esc(p.title)}</div>
-          <div class="rev-meta">${esc(p.description||'')}</div>
-          <div class="stars">${starsHtml}<span class="rev-score">${esc(p.reviewer_score||'')}</span>
-            <span style="font-size:10px;color:var(--hint);margin-left:6px">${added}</span></div>
-          ${p.reviewer_quote?`<div class="rev-quote">"${esc(p.reviewer_quote)}"</div>`:''}
-        </div>
+<!-- HOW IT WORKS -->
+<section class="section" id="how">
+  <div class="container">
+    <div class="section-tag">How it works</div>
+    <h2 class="section-title">Three steps. Plans get made.</h2>
+    <p class="section-sub">No new app to download. No account for your family. Just add the bot to your Telegram group and start.</p>
+    <div class="steps-grid">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-badge">LINK</div>
+        <h3>Someone pastes a link</h3>
+        <p>Any URL — IMDB, Google Maps, Yelp, Zomato, Eventbrite. The bot reads it and figures out what it is automatically.</p>
       </div>
-      <div class="rev-actions">
-        <button class="rev-btn add" onclick="addFCPick(${i})">+ Add to picks</button>
-        ${p.reviewer_video_id
-          ? `<button class="rev-btn watch" onclick="openYT('${p.reviewer_video_id}')">▶ Watch review</button>`
-          : `<button class="rev-btn watch" style="color:var(--hint)" disabled>▶ Watch review</button>`}
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-badge">CARD</div>
+        <h3>Bot posts a pick card</h3>
+        <p>A clean card appears in the chat with the title, details and three vote buttons — right inside Telegram. No link to click, no app to open.</p>
       </div>
-    </div>`;
-  }).join('');
-}
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-badge">VOTE</div>
+        <h3>Everyone taps their vote</h3>
+        <p>Seen/Been · Want to · Not for me. When nobody says skip, the bot flags "Group ok" — your squad can do this together.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-badge">AUTO</div>
+        <h3>Filmi Craft alerts you</h3>
+        <p>The bot monitors Filmi Craft every Friday. New review posted → automatic card in your group. Zero effort from anyone.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-async function addFCPick(idx) {
-  try {
-    const data = await api('GET', '/fcpicks');
-    const pick = (data.picks||[])[idx];
-    if (!pick) return;
-    await api('POST', '/vote', { pickId: pick.id, status: 'want' });
-    const pickIdx = allPicks.findIndex(p => p.id === pick.id);
-    if (pickIdx < 0) {
-      allPicks.unshift({ ...pick, votes: [], my_vote: 'want', group_ok: false });
-    }
-    showToast(`${pick.title} added to picks!`);
-    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-  } catch (err) {
-    showToast('Could not add pick');
-  }
-}
+<!-- FEATURES -->
+<section class="section features-section" id="features">
+  <div class="container">
+    <div class="section-tag">Features</div>
+    <h2 class="section-title">Everything your squad needs.</h2>
+    <p class="section-sub">Nothing you don't. Built for real families and friend groups — not power users.</p>
+    <div class="features-grid">
+      <div class="feat" style="border-color:var(--green)">
+        <div class="feat-tag" style="background:var(--green-bg);color:var(--green)">UNIVERSAL</div>
+        <h3>Any link, auto-detected</h3>
+        <p>IMDB · Google Maps · Yelp · Zomato · Eventbrite · YouTube. Paste anything and the bot reads the title, type and details automatically.</p>
+      </div>
+      <div class="feat" style="border-color:#9C27B0">
+        <div class="feat-tag" style="background:#1A0F2E;color:#CE93D8">MOVIES & SHOWS</div>
+        <h3>Film & TV tracking</h3>
+        <p>Title, year, genre, runtime. Know instantly who's seen it and who still needs to — no more asking around.</p>
+      </div>
+      <div class="feat" style="border-color:#4CAF50">
+        <div class="feat-tag" style="background:#0D2210;color:#81C784">PLACES & FOOD</div>
+        <h3>Restaurants & locations</h3>
+        <p>Google Maps, Yelp and Zomato parsed with address, cuisine and price range. Track which places the squad has already visited.</p>
+      </div>
+      <div class="feat" style="border-color:var(--red)">
+        <div class="feat-tag" style="background:#1A0808;color:#EF9A9A">FILMI CRAFT</div>
+        <h3>YouTube reviewer feed</h3>
+        <p>Bot monitors Filmi Craft every Friday. New review → automatic card with score and quote. Your squad always knows what's worth watching.</p>
+      </div>
+      <div class="feat" style="border-color:#2196F3">
+        <div class="feat-tag" style="background:#0A1E30;color:#90CAF9">/SUMMARY</div>
+        <h3>Group consensus view</h3>
+        <p>Type /summary and instantly see what the group can do together, what has a skip, and who still hasn't voted.</p>
+      </div>
+      <div class="feat" style="border-color:var(--amber)">
+        <div class="feat-tag" style="background:var(--green-bg);color:var(--amber)">WEEKLY DIGEST</div>
+        <h3>Sunday roundup</h3>
+        <p>Every Sunday the bot posts new picks, Filmi Craft reviews from the week, and a nudge to anyone who hasn't voted yet.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-function openYT(videoId) {
-  const url = `https://youtube.com/watch?v=${videoId}`;
-  if (tg?.openLink) tg.openLink(url);
-  else window.open(url, '_blank');
-}
+<!-- PRICING -->
+<section class="section" id="pricing">
+  <div class="container">
+    <div class="section-tag">Pricing</div>
+    <h2 class="section-title">Free to start. Premium when you need more.</h2>
+    <p class="section-sub">No credit card needed. Get your family hooked first.</p>
+    <div class="pricing-grid">
+      <div class="price-card">
+        <div class="price-name" style="color:var(--muted)">Free</div>
+        <div class="price-amount" style="color:var(--muted)">Forever free</div>
+        <hr class="price-divider"/>
+        <div class="price-feat"><span class="check">✓</span> Groups up to 6 members</div>
+        <div class="price-feat"><span class="check">✓</span> 1 YouTube reviewer channel</div>
+        <div class="price-feat"><span class="check">✓</span> All link types</div>
+        <div class="price-feat"><span class="check">✓</span> Weekly digest</div>
+        <div class="price-feat"><span class="check">✓</span> /summary command</div>
+        <div class="price-note">Gets families hooked</div>
+      </div>
+      <div class="price-card featured">
+        <div class="popular">MOST POPULAR</div>
+        <div class="price-name" style="color:var(--green)">Squad+</div>
+        <div class="price-amount">$2.99 / month</div>
+        <hr class="price-divider"/>
+        <div class="price-feat"><span class="check">✓</span> Groups up to 20 members</div>
+        <div class="price-feat"><span class="check">✓</span> Up to 5 reviewer channels</div>
+        <div class="price-feat"><span class="check">✓</span> Priority link detection</div>
+        <div class="price-feat"><span class="check">✓</span> Monthly analytics digest</div>
+        <div class="price-feat"><span class="check">✓</span> Custom bot name</div>
+        <div class="price-note">For active family groups</div>
+      </div>
+      <div class="price-card">
+        <div class="price-name" style="color:var(--amber)">Community</div>
+        <div class="price-amount">$9.99 / month</div>
+        <hr class="price-divider"/>
+        <div class="price-feat"><span class="check">✓</span> Unlimited members</div>
+        <div class="price-feat"><span class="check">✓</span> Unlimited reviewer channels</div>
+        <div class="price-feat"><span class="check">✓</span> Multi-language support</div>
+        <div class="price-feat"><span class="check">✓</span> Branded cards</div>
+        <div class="price-feat"><span class="check">✓</span> API access</div>
+        <div class="price-note">For fan communities &amp; clubs</div>
+      </div>
+    </div>
+  </div>
+</section>
 
-// ── FILTER ─────────────────────────────────────────────────
+<!-- CTA BAND -->
+<div class="cta-band">
+  <div class="cta-inner">
+    <h2>Ready to sort your squad?</h2>
+    <p>Add SquadPicks to your Telegram group in 30 seconds. Free forever for groups of 6.</p>
+    <div class="cta-actions">
+      <a href="/login" class="btn btn-tg">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.026 9.547c-.148.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.31l-2.95-.924c-.642-.2-.655-.642.136-.95l11.532-4.448c.537-.194 1.006.131.834.943h.53v.317z"/></svg>
+        Start with Telegram
+      </a>
+      <a href="/blog" class="btn btn-outline">Read the blog</a>
+    </div>
+  </div>
+</div>
 
-function setFilter(f, el) {
-  filter = f;
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
-  el.classList.add('on');
-  renderPicks();
-}
+<footer class="footer">
+  <div class="footer-logo">Squad<span>Picks</span></div>
+  <p>Your squad. Any plan. One bot.</p>
+  <div class="footer-links">
+    <a href="/">Home</a>
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="/blog">Blog</a>
+    <a href="/login">Login</a>
+    <a href="https://t.me/squadpicks_bot" target="_blank">Telegram Bot</a>
+  </div>
+  <p style="margin-top:1.5rem;font-size:11px;color:var(--hint)">© 2025 SquadPicks · Telegram-first · Zero friction · Any activity</p>
+</footer>
 
-// ── HELPERS ────────────────────────────────────────────────
-
-function esc(str) {
-  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-let toastT;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastT);
-  toastT = setTimeout(() => t.classList.remove('show'), 2200);
-}
-
-// Enter key on input
-document.getElementById('link-inp').addEventListener('keydown', e => {
-  if (e.key === 'Enter') openAddModal();
-});
-</script>
 </body>
 </html>

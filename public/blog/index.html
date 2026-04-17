@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Blog — SquadPicks</title>
+<link rel="stylesheet" href="/styles.css"/>
+<style>
+body { padding-top: 62px; }
+.blog-hero {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 4rem 2rem;
+  text-align: center;
+}
+.blog-hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 900; color: var(--text);
+  margin-bottom: .75rem; letter-spacing: -1px;
+}
+.blog-hero p { font-size: 17px; color: var(--muted); max-width: 480px; margin: 0 auto; }
+
+.blog-grid {
+  max-width: 1080px; margin: 0 auto;
+  padding: 3rem 2rem 5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+.blog-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden;
+  text-decoration: none; color: inherit;
+  display: block; transition: border-color .15s;
+}
+.blog-card:hover { border-color: rgba(0,168,132,.35); }
+.blog-card.featured {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.blog-banner {
+  aspect-ratio: 16/9;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 60px;
+}
+.blog-banner.featured-banner { aspect-ratio: auto; min-height: 220px; }
+.blog-body { padding: 1.5rem; }
+.blog-tag {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px;
+  background: var(--green-bg); color: var(--green);
+  border: 1px solid var(--green-dk);
+  margin-bottom: .75rem;
+}
+.blog-title {
+  font-family: var(--font-display);
+  font-size: 20px; font-weight: 700;
+  color: var(--text); line-height: 1.25;
+  margin-bottom: .5rem;
+}
+.blog-card.featured .blog-title { font-size: 26px; }
+.blog-excerpt { font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 1rem; }
+.blog-meta { display: flex; align-items: center; gap: .75rem; font-size: 12px; color: var(--hint); }
+.blog-av { width: 26px; height: 26px; border-radius: 50%; background: var(--green-bg); border: 1px solid var(--green-dk); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--green); }
+
+/* SINGLE POST */
+.post-page { display: none; }
+.post-page.active { display: block; }
+.post-hero { background: var(--surface); border-bottom: 1px solid var(--border); padding: 4rem 2rem; }
+.post-container { max-width: 700px; margin: 0 auto; }
+.post-back { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; text-decoration: none; margin-bottom: 1.5rem; transition: color .15s; }
+.post-back:hover { color: var(--green); }
+.post-title { font-family: var(--font-display); font-size: clamp(28px,4vw,44px); font-weight: 900; color: var(--text); line-height: 1.1; margin-bottom: 1rem; }
+.post-body { padding: 3rem 2rem 5rem; }
+.post-body .post-container { font-size: 16px; color: var(--muted); line-height: 1.8; }
+.post-body .post-container h2 { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--text); margin: 2rem 0 .75rem; }
+.post-body .post-container h3 { font-size: 18px; font-weight: 600; color: var(--text); margin: 1.5rem 0 .5rem; }
+.post-body .post-container p { margin-bottom: 1.25rem; }
+.post-body .post-container ul { margin: 0 0 1.25rem 1.5rem; }
+.post-body .post-container li { margin-bottom: .5rem; }
+.post-body .post-container strong { color: var(--text); font-weight: 600; }
+.callout { background: var(--green-bg); border: 1px solid var(--green-dk); border-radius: var(--rsm); padding: 1rem 1.25rem; margin: 1.5rem 0; color: var(--green); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-logo">Squad<span>Picks</span></a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/blog" class="active">Blog</a>
+    <a href="/login" class="nav-cta">Get started</a>
+  </div>
+</nav>
+
+<!-- BLOG LIST -->
+<div id="blog-list">
+  <div class="blog-hero">
+    <div class="section-tag">Updates & stories</div>
+    <h1>The SquadPicks Blog</h1>
+    <p>Product updates, how we built it, and stories from squads using SquadPicks.</p>
+  </div>
+
+  <div class="blog-grid">
+    <!-- FEATURED -->
+    <a class="blog-card featured" href="/blog?post=why-we-built-this" onclick="openPost('why-we-built-this',event)">
+      <div class="blog-banner featured-banner" style="background:var(--green-bg)">
+        <span style="font-size:80px">🍿</span>
+      </div>
+      <div class="blog-body">
+        <div class="blog-tag">ORIGIN STORY</div>
+        <div class="blog-title">Why we built SquadPicks — the WhatsApp problem nobody solved</div>
+        <div class="blog-excerpt">Every family group chat has the same problem. Someone shares a restaurant link. 200 messages later it's buried. We built the bot we always wanted.</div>
+        <div class="blog-meta">
+          <div class="blog-av">SP</div>
+          <span>SquadPicks Team</span>
+          <span>·</span>
+          <span>April 2025</span>
+          <span>·</span>
+          <span>5 min read</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="blog-card" href="/blog?post=filmicraft" onclick="openPost('filmicraft',event)">
+      <div class="blog-banner" style="background:#1A0808"><span>📺</span></div>
+      <div class="blog-body">
+        <div class="blog-tag">FEATURE</div>
+        <div class="blog-title">How we integrated Filmi Craft into SquadPicks</div>
+        <div class="blog-excerpt">Your squad now gets automatic review cards every Friday from Tamil cinema's most trusted reviewer.</div>
+        <div class="blog-meta">
+          <div class="blog-av">SP</div>
+          <span>SquadPicks Team</span>
+          <span>·</span>
+          <span>April 2025</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="blog-card" href="/blog?post=telegram-mini-app" onclick="openPost('telegram-mini-app',event)">
+      <div class="blog-banner" style="background:#0A1E30"><span>🚀</span></div>
+      <div class="blog-body">
+        <div class="blog-tag">PRODUCT UPDATE</div>
+        <div class="blog-title">SquadPicks is now a Telegram Mini App</div>
+        <div class="blog-excerpt">We shipped a full-screen app that opens inside Telegram — rich UI, real-time voting, no app download needed.</div>
+        <div class="blog-meta">
+          <div class="blog-av">SP</div>
+          <span>SquadPicks Team</span>
+          <span>·</span>
+          <span>April 2025</span>
+        </div>
+      </div>
+    </a>
+
+    <a class="blog-card" href="/blog?post=how-families-use-it" onclick="openPost('how-families-use-it',event)">
+      <div class="blog-banner" style="background:#1A1200"><span>👨‍👩‍👧‍👦</span></div>
+      <div class="blog-body">
+        <div class="blog-tag">STORY</div>
+        <div class="blog-title">How one family uses SquadPicks every week</div>
+        <div class="blog-excerpt">From chaotic WhatsApp threads to a clean weekly rhythm. A real story from the first family group to adopt SquadPicks.</div>
+        <div class="blog-meta">
+          <div class="blog-av">SP</div>
+          <span>SquadPicks Team</span>
+          <span>·</span>
+          <span>March 2025</span>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- SINGLE POST VIEW -->
+<div id="post-view" class="post-page">
+  <div class="post-hero">
+    <div class="post-container">
+      <a href="/blog" class="post-back" onclick="closePost(event)">← Back to blog</a>
+      <div id="post-tag" class="section-tag"></div>
+      <div id="post-title" class="post-title"></div>
+      <div class="blog-meta" style="margin-top:1rem">
+        <div class="blog-av">SP</div>
+        <span>SquadPicks Team</span>
+        <span>·</span>
+        <span id="post-date"></span>
+      </div>
+    </div>
+  </div>
+  <div class="post-body">
+    <div class="post-container" id="post-content"></div>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="footer-logo">Squad<span>Picks</span></div>
+  <p>Your squad. Any plan. One bot.</p>
+  <div class="footer-links">
+    <a href="/">Home</a>
+    <a href="/#features">Features</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/blog">Blog</a>
+    <a href="/login">Login</a>
+  </div>
+</footer>
+
+<script>
+const POSTS = {
+  'why-we-built-this': {
+    tag: 'ORIGIN STORY', date: 'April 2025',
+    title: 'Why we built SquadPicks — the WhatsApp problem nobody solved',
+    content: `
+      <p>It started with a family WhatsApp group. Someone shared a Google Maps link to a new restaurant. Fifteen messages later the conversation had moved on. Two weeks after that, someone asked "what was that restaurant someone mentioned?" Nobody could find it.</p>
+      <p>This happens in every family group chat. Every friend group. Every squad that tries to coordinate anything together. Links get buried. Recommendations get lost. And every movie night starts with the same twenty-minute loop of "I dunno, what do you want to watch?"</p>
+      <h2>The existing solutions didn't fit</h2>
+      <p>There are apps for this — EatUps, CineMatch, Decido. But every single one requires everyone to download a new app and create an account. That's the friction that kills them. Getting a family of five to all install the same app and sign up on the same night is a project in itself.</p>
+      <p>What we wanted was something that worked <strong>inside the chat we already use</strong>. No new app. No new account. No convincing anyone of anything.</p>
+      <h2>The insight</h2>
+      <p>The insight was simple: most families and friend groups already have Telegram. And Telegram has a Bot API that lets you build powerful bots that live inside group chats. You just add @SquadPicksBot to your existing group and it starts working immediately.</p>
+      <div class="callout">💡 The key difference: SquadPicks lives where your conversations already happen. It doesn't ask you to move somewhere new.</div>
+      <h2>What we built</h2>
+      <p>The bot does one thing extremely well: it turns any link into a group decision. Paste an IMDB link, a Google Maps location, a Yelp restaurant, an Eventbrite event — the bot reads it, posts a clean card, and lets everyone vote with a single tap.</p>
+      <p>Seen/Been · Want to · Not for me. When nobody says skip, the bot flags "Group ok" — your squad can do this together. No more coordination overhead.</p>
+      <h2>What's next</h2>
+      <p>We're building the Filmi Craft integration, a weekly digest, a web dashboard, and eventually an iOS app. But the core will always be the same: your squad, any plan, one bot.</p>
+    `
+  },
+  'filmicraft': {
+    tag: 'FEATURE', date: 'April 2025',
+    title: 'How we integrated Filmi Craft into SquadPicks',
+    content: `
+      <p>Filmi Craft is one of the most trusted Tamil and world cinema review channels on YouTube with 352K subscribers. If you're into Tamil films, you've watched their reviews. They cover everything from blockbusters to hidden gems, with honest ratings and sharp analysis.</p>
+      <h2>The problem with YouTube reviews</h2>
+      <p>Even if you follow Filmi Craft, you still have to manually share the video in your family group. Then someone has to remember to add it to the "watch list". Then someone else asks "have we decided on this?" The manual coordination tax is real.</p>
+      <h2>How the integration works</h2>
+      <p>Every Friday the SquadPicks bot checks the Filmi Craft YouTube channel for new videos using the YouTube Data API. When a new review is detected, the bot:</p>
+      <ul>
+        <li>Extracts the movie name from the video title</li>
+        <li>Parses the rating (e.g. 4.1/5) from the title automatically</li>
+        <li>Posts a card in every active SquadPicks group with the score and a watch review button</li>
+      </ul>
+      <div class="callout">📺 Your squad gets the review automatically every Friday — no manual sharing, no missed recommendations.</div>
+      <h2>Friday timing</h2>
+      <p>We chose Friday intentionally. Most families plan their weekend activities on Friday evening. The Filmi Craft digest arriving on Friday morning means the squad can vote on what to watch before the weekend starts.</p>
+      <h2>Adding more reviewers</h2>
+      <p>The Squad+ plan allows up to 5 reviewer channels. If you follow other YouTube reviewers — in Malayalam, Hindi, Telugu or English — you can add them too. The Community plan supports unlimited channels.</p>
+    `
+  },
+  'telegram-mini-app': {
+    tag: 'PRODUCT UPDATE', date: 'April 2025',
+    title: 'SquadPicks is now a Telegram Mini App',
+    content: `
+      <p>Today we're shipping the SquadPicks Telegram Mini App — a full-screen web app that opens inside Telegram when you tap the 🚀 Open SquadPicks button on any pick card.</p>
+      <h2>What's in the Mini App</h2>
+      <p>The Mini App gives you a richer interface than the bot's text cards. You get:</p>
+      <ul>
+        <li>A scrollable feed of all your squad's picks with filter chips</li>
+        <li>Tap to vote with instant visual feedback</li>
+        <li>A Summary tab showing group consensus at a glance</li>
+        <li>A Filmi Craft tab with all recent reviews and ratings</li>
+        <li>Add any link directly from the app's input bar</li>
+      </ul>
+      <h2>How to open it</h2>
+      <p>When the bot posts a pick card in your group, you'll see a 🚀 Open SquadPicks button at the bottom of the card. Tap it and the Mini App opens as a full-screen panel inside Telegram — no browser, no new app, just a rich UI that feels completely native.</p>
+      <div class="callout">🚀 Access via t.me/squadpicks_bot/Squadpicks or tap any pick card in your group.</div>
+      <h2>Why Telegram Mini Apps?</h2>
+      <p>Telegram Mini Apps let us ship a rich mobile UI without asking anyone to install a new app. The bot already lives in your chat — the Mini App is just a richer way to interact with it. Both work together: votes cast in the app update the bot's cards in real time, and vice versa.</p>
+    `
+  },
+  'how-families-use-it': {
+    tag: 'STORY', date: 'March 2025',
+    title: 'How one family uses SquadPicks every week',
+    content: `
+      <p>Meet the Krishnamurthys — a family of five spread across Surrey, Brampton and downtown Toronto. They have a WhatsApp group that's been active for years. Before SquadPicks, coordinating what to do together on weekends was a weekend-long negotiation.</p>
+      <h2>The before</h2>
+      <p>"Someone would share a restaurant link on Tuesday. By Friday nobody could find it. We'd spend an hour scrolling up trying to find it," says Priya, the eldest daughter. "And with movies — everyone had seen different things and we'd end up watching something three people had already seen."</p>
+      <h2>The switch</h2>
+      <p>Priya added @SquadPicksBot to the family's Telegram group on a Thursday evening. She pasted a Zomato link to a new Tamil restaurant. The bot responded with a card. Her parents voted within minutes. Her brother added a movie he'd been wanting to watch. Her aunt asked "what's this?" — and was immediately hooked.</p>
+      <div class="callout">👨‍👩‍👧‍👦 "The wow moment was when the bot said 'Group ok' for the restaurant. We'd all voted and nobody said no. We just went." — Priya K.</div>
+      <h2>The weekly rhythm now</h2>
+      <p>Every Friday morning the family gets the SquadPicks weekly digest — new picks from the week plus the latest Filmi Craft review. They vote during Friday lunch. By Friday evening they know what the weekend plan is.</p>
+      <p>"We've done more things together in the last two months than in the six months before. The bot just removes all the friction," says Priya.</p>
+    `
+  }
+};
+
+function openPost(id, e) {
+  if (e) e.preventDefault();
+  const post = POSTS[id];
+  if (!post) return;
+  document.getElementById('blog-list').style.display = 'none';
+  document.getElementById('post-view').classList.add('active');
+  document.getElementById('post-tag').textContent = post.tag;
+  document.getElementById('post-title').textContent = post.title;
+  document.getElementById('post-date').textContent = post.date;
+  document.getElementById('post-content').innerHTML = post.content;
+  history.pushState({ post: id }, '', `/blog?post=${id}`);
+  window.scrollTo(0, 0);
+}
+
+function closePost(e) {
+  if (e) e.preventDefault();
+  document.getElementById('blog-list').style.display = 'block';
+  document.getElementById('post-view').classList.remove('active');
+  history.pushState({}, '', '/blog');
+  window.scrollTo(0, 0);
+}
+
+// Handle direct URL with ?post=
+const params = new URLSearchParams(window.location.search);
+const postId = params.get('post');
+if (postId && POSTS[postId]) openPost(postId);
+
+window.addEventListener('popstate', () => {
+  const p = new URLSearchParams(window.location.search).get('post');
+  if (p && POSTS[p]) openPost(p);
+  else closePost();
+});
+</script>
+</body>
+</html>

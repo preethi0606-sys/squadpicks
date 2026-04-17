@@ -53,3 +53,60 @@ CREATE INDEX IF NOT EXISTS idx_votes_pick_id ON votes(pick_id);
 CREATE INDEX IF NOT EXISTS idx_votes_user_id ON votes(user_id);
 
 -- Done! Your SquadPicks database is ready.
+
+-- ─── TRENDING TABLES (added for scraping cron jobs) ──────────────────────────
+
+-- 6. Netflix Top 10 — refreshed every Thursday
+CREATE TABLE IF NOT EXISTS trending_netflix (
+  id          SERIAL PRIMARY KEY,
+  rank        INTEGER NOT NULL,              -- 1-10
+  title       TEXT NOT NULL,
+  type        TEXT DEFAULT 'show',           -- 'show' | 'movie'
+  genre       TEXT,
+  image_url   TEXT,
+  netflix_url TEXT,
+  region      TEXT NOT NULL,                 -- 'canada' | 'us' | 'india'
+  weeks_in_top10 INTEGER DEFAULT 1,
+  score       TEXT,                          -- IMDb score if scraped
+  fetched_at  TIMESTAMPTZ DEFAULT NOW(),
+  week_of     DATE NOT NULL DEFAULT CURRENT_DATE,
+  UNIQUE(title, region, week_of)
+);
+
+-- 7. Prime Video Top 10 — refreshed every Thursday
+CREATE TABLE IF NOT EXISTS trending_prime (
+  id          SERIAL PRIMARY KEY,
+  rank        INTEGER NOT NULL,
+  title       TEXT NOT NULL,
+  type        TEXT DEFAULT 'show',
+  genre       TEXT,
+  image_url   TEXT,
+  prime_url   TEXT,
+  region      TEXT NOT NULL,                 -- 'ca' | 'in'
+  fetched_at  TIMESTAMPTZ DEFAULT NOW(),
+  week_of     DATE NOT NULL DEFAULT CURRENT_DATE,
+  UNIQUE(title, region, week_of)
+);
+
+-- 8. IMDb Top Picks — refreshed every Thursday
+CREATE TABLE IF NOT EXISTS trending_imdb (
+  id          SERIAL PRIMARY KEY,
+  rank        INTEGER NOT NULL,
+  title       TEXT NOT NULL,
+  type        TEXT DEFAULT 'movie',          -- 'movie' | 'show'
+  year        TEXT,
+  rating      TEXT,                          -- IMDb rating e.g. "8.4"
+  votes       TEXT,                          -- e.g. "2.3M"
+  genre       TEXT,
+  image_url   TEXT,
+  imdb_url    TEXT,
+  category    TEXT NOT NULL,                 -- 'top_movies' | 'top_shows' | 'fan_picks'
+  fetched_at  TIMESTAMPTZ DEFAULT NOW(),
+  week_of     DATE NOT NULL DEFAULT CURRENT_DATE,
+  UNIQUE(title, category, week_of)
+);
+
+-- Indexes for trending tables
+CREATE INDEX IF NOT EXISTS idx_trending_netflix_week ON trending_netflix(week_of, region);
+CREATE INDEX IF NOT EXISTS idx_trending_prime_week   ON trending_prime(week_of, region);
+CREATE INDEX IF NOT EXISTS idx_trending_imdb_week    ON trending_imdb(week_of, category);

@@ -12,6 +12,7 @@ const {
 const { startYouTubeMonitor, formatLatestFCPicks } = require('./youtube');
 const { startDigestCron, sendWeeklyDigest } = require('./digest');
 const { startServer } = require('./server');
+const { startScraperCron } = require('./scraper');
 
 // ─── INIT BOT ──────────────────────────────────────────────
 
@@ -96,11 +97,8 @@ function buildPickKeyboard(pickId, chatId, isGroup) {
     { text: '⭐ Want to',      callback_data: `vote_${pickId}_want` },
     { text: '❌ Not for me',   callback_data: `vote_${pickId}_skip` },
   ];
-  // In groups: use url button (works everywhere)
-  // In private: use web_app button (opens inline without leaving chat)
-  const appButton = isGroup
-    ? { text: '🚀 Open SquadPicks', url: miniUrl }
-    : { text: '🚀 Open SquadPicks', web_app: { url: process.env.MINI_APP_URL || miniUrl } };
+  // Always show mini app button — url type works in both groups and private chats
+  const appButton = { text: '🚀 Open SquadPicks', url: miniUrl };
   return { inline_keyboard: [ voteRow, [ appButton ] ] };
 }
 
@@ -156,7 +154,7 @@ async function handleLink(bot, msg, url, from) {
     const sent = await bot.sendMessage(chatId, cardText, {
       parse_mode: 'HTML',
       reply_markup: keyboard,
-      disable_web_page_preview: true
+      disable_web_page_preview: false
     });
     await db.updatePickMessageId(pick.id, sent.message_id);
     console.log('[Link] Card sent successfully, message ID:', sent.message_id);
@@ -238,7 +236,7 @@ async function handleCommand(bot, msg, text, from) {
 
     case '/fcpicks': {
       const t = await formatLatestFCPicks();
-      await bot.sendMessage(chatId, t, { parse_mode: 'HTML', disable_web_page_preview: true });
+      await bot.sendMessage(chatId, t, { parse_mode: 'HTML', disable_web_page_preview: false });
       break;
     }
 
@@ -372,7 +370,7 @@ bot.on('callback_query', async (query) => {
     if (cmd === 'pending') return handleCommand(bot, fakeMsg, '/pending', from);
     if (cmd === 'fcpicks') {
       const t = await formatLatestFCPicks();
-      return bot.sendMessage(chatId, t, { parse_mode: 'HTML', disable_web_page_preview: true });
+      return bot.sendMessage(chatId, t, { parse_mode: 'HTML', disable_web_page_preview: false });
     }
     if (cmd === 'suggest') return handleCommand(bot, fakeMsg, '/suggest', from);
     return;
@@ -434,6 +432,7 @@ process.on('unhandledRejection', (reason) => {
 
 startYouTubeMonitor(bot);
 startDigestCron(bot);
+startScraperCron();
 
 startServer();
 console.log('SquadPicks is running! Add your bot to a Telegram group to get started.');

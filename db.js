@@ -151,3 +151,103 @@ module.exports = {
   getVotesForPicks, getUserPendingPicks,
   wasVideoPosted, markVideoPosted
 };
+
+// ─── TRENDING DATA ──────────────────────────────────────────
+
+async function upsertTrendingNetflix(rows) {
+  if (!rows.length) return;
+  const weekOf = new Date().toISOString().slice(0, 10);
+  // Clear old rows for this region this week first, then insert fresh
+  for (const row of rows) {
+    await supabase.from('trending_netflix')
+      .upsert({ ...row, week_of: weekOf, fetched_at: new Date().toISOString() },
+               { onConflict: 'title,region,week_of' });
+  }
+  console.log(`[DB] Upserted ${rows.length} Netflix rows`);
+}
+
+async function upsertTrendingPrime(rows) {
+  if (!rows.length) return;
+  const weekOf = new Date().toISOString().slice(0, 10);
+  for (const row of rows) {
+    await supabase.from('trending_prime')
+      .upsert({ ...row, week_of: weekOf, fetched_at: new Date().toISOString() },
+               { onConflict: 'title,region,week_of' });
+  }
+  console.log(`[DB] Upserted ${rows.length} Prime rows`);
+}
+
+async function upsertTrendingImdb(rows) {
+  if (!rows.length) return;
+  const weekOf = new Date().toISOString().slice(0, 10);
+  for (const row of rows) {
+    await supabase.from('trending_imdb')
+      .upsert({ ...row, week_of: weekOf, fetched_at: new Date().toISOString() },
+               { onConflict: 'title,category,week_of' });
+  }
+  console.log(`[DB] Upserted ${rows.length} IMDb rows`);
+}
+
+async function getLatestNetflixTop10(region) {
+  const { data, error } = await supabase
+    .from('trending_netflix')
+    .select('*')
+    .eq('region', region)
+    .order('week_of', { ascending: false })
+    .order('rank', { ascending: true })
+    .limit(10);
+  if (error) { console.error('getLatestNetflixTop10:', error.message); return []; }
+  return data || [];
+}
+
+async function getLatestPrimeTop10(region) {
+  const { data, error } = await supabase
+    .from('trending_prime')
+    .select('*')
+    .eq('region', region)
+    .order('week_of', { ascending: false })
+    .order('rank', { ascending: true })
+    .limit(10);
+  if (error) { console.error('getLatestPrimeTop10:', error.message); return []; }
+  return data || [];
+}
+
+async function getLatestImdbTop10(category) {
+  const { data, error } = await supabase
+    .from('trending_imdb')
+    .select('*')
+    .eq('category', category)
+    .order('week_of', { ascending: false })
+    .order('rank', { ascending: true })
+    .limit(10);
+  if (error) { console.error('getLatestImdbTop10:', error.message); return []; }
+  return data || [];
+}
+
+// Mixed top 10: Netflix + Prime, sorted by week then rank
+async function getMixedStreamingTop10(region) {
+  const [nf, pv] = await Promise.all([
+    getLatestNetflixTop10(region),
+    getLatestPrimeTop10(region === 'canada' ? 'ca' : region === 'india' ? 'in' : 'ca')
+  ]);
+  // Tag with source
+  const tagged = [
+    ...nf.map(r => ({ ...r, source: 'netflix', badge: 'N', badgeColor: '#E50914',
+      url: r.netflix_url || `https://www.netflix.com/search?q=${encodeURIComponent(r.title)}` })),
+    ...pv.map(r => ({ ...r, source: 'prime',   badge: 'P', badgeColor: '#00A8E0',
+      url: r.prime_url   || `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(r.title)}` }))
+  ];
+  // Sort: newest week_of first, then by rank
+  tagged.sort((a, b) => {
+    if (b.week_of > a.week_of) return 1;
+    if (b.week_of < a.week_of) return -1;
+    return (a.rank || 99) - (b.rank || 99);
+  });
+  return tagged.slice(0, 10);
+}
+
+module.exports = Object.assign(module.exports, {
+  upsertTrendingNetflix, upsertTrendingPrime, upsertTrendingImdb,
+  getLatestNetflixTop10, getLatestPrimeTop10, getLatestImdbTop10,
+  getMixedStreamingTop10
+});
