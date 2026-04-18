@@ -3,215 +3,138 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SquadPicks — Your squad. Any plan. One bot.</title>
-<meta name="description" content="SquadPicks is the Telegram bot that turns any link into a group decision. Movies, restaurants, places, events — paste a link, your squad votes, plans get made."/>
-<meta property="og:title" content="SquadPicks"/>
-<meta property="og:description" content="Your squad. Any plan. One bot."/>
-<meta property="og:image" content="/og-image.png"/>
+<title>Dashboard — SquadPicks</title>
 <link rel="stylesheet" href="/styles.css"/>
 <style>
-/* ── HERO ── */
-.hero {
-  min-height: 100vh;
-  display: flex; align-items: center;
-  padding: 100px 2rem 5rem;
-  position: relative; overflow: hidden;
-}
-.hero::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse 60% 60% at 70% 50%, rgba(0,168,132,0.08) 0%, transparent 70%);
-  pointer-events: none;
-}
-.hero-inner {
-  max-width: 1080px; margin: 0 auto;
-  display: flex; gap: 4rem; align-items: center;
-}
-.hero-text { flex: 1; }
-.hero-eyebrow {
-  display: inline-flex; align-items: center; gap: 7px;
-  background: var(--green-bg); border: 1px solid var(--green-dk);
-  border-radius: 20px; padding: 5px 14px;
-  font-size: 12px; font-weight: 500; color: var(--green);
-  margin-bottom: 1.5rem;
-}
-.hero-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
-h1.hero-title {
-  font-family: var(--font-display);
-  font-size: clamp(44px, 7vw, 76px);
-  font-weight: 900; line-height: 1.05;
-  color: var(--text); margin-bottom: 1.25rem;
-  letter-spacing: -1.5px;
-}
-h1.hero-title .accent { color: var(--green); }
-.hero-sub {
-  font-size: 18px; color: var(--muted);
-  max-width: 460px; line-height: 1.75;
-  margin-bottom: 2rem;
-}
-.hero-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 2.5rem; }
-.tag {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 20px; padding: 5px 14px;
-  font-size: 13px; color: var(--muted);
-}
-.hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
-
-/* ── PHONE MOCKUP ── */
-.hero-phone-wrap { flex: 0 0 300px; }
-.phone {
+body { padding-top: 62px; }
+.dash-header {
   background: var(--surface);
-  border: 1px solid var(--green-dk);
-  border-radius: 28px; overflow: hidden;
-  box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+  border-bottom: 1px solid var(--border);
+  padding: 1.5rem 2rem;
 }
-.ph-bar {
-  background: #1F2C34; padding: 10px 14px;
-  display: flex; align-items: center; gap: 8px;
+.dash-header-inner {
+  max-width: 1080px; margin: 0 auto;
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
 }
-.ph-av {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: #2A3942; display: flex; align-items: center;
-  justify-content: center; font-size: 14px;
+.dash-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text); }
+.group-select {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--rsm); padding: 8px 14px;
+  color: var(--text); font-family: var(--font-body);
+  font-size: 14px; cursor: pointer; outline: none;
+  margin-left: auto;
 }
-.ph-name { font-size: 13px; font-weight: 600; color: var(--text); }
-.ph-sub { font-size: 10px; color: var(--muted); }
-.ph-chat { background: #0E1621; padding: 10px; }
-.bubble {
-  border-radius: 8px; padding: 7px 10px; margin-bottom: 5px;
-  font-size: 12px; max-width: 85%;
+.dash-stats {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1rem;
 }
-.bubble.them { background: #182533; color: var(--text); }
-.bubble.me { background: #005C4B; color: var(--text); margin-left: auto; }
-.bubble.bot {
-  background: #1A2F45; border-left: 3px solid var(--green);
-  color: var(--text); max-width: 100%;
+.stat {
+  background: var(--card); border-radius: var(--rsm); padding: .75rem 1rem;
 }
-.bot-name { font-size: 10px; font-weight: 600; color: var(--green); margin-bottom: 3px; }
-.bot-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
-.bot-meta { font-size: 10px; color: var(--muted); margin-bottom: 6px; }
-.fc-pill {
-  background: #0A1A10; border-radius: 5px; padding: 4px 7px;
-  font-size: 10px; color: var(--muted);
-  display: flex; align-items: center; gap: 5px; margin-bottom: 6px;
+.stat-num { font-size: 22px; font-weight: 700; color: var(--text); }
+.stat-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* FILTERS */
+.dash-filters {
+  max-width: 1080px; margin: 0 auto;
+  padding: 1rem 2rem;
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+}
+.filter-pill {
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--surface); color: var(--muted);
+  cursor: pointer; transition: all .15s;
+}
+.filter-pill.on {
+  background: var(--green-bg); color: var(--green);
+  border-color: var(--green-dk);
+}
+.add-pick-btn {
+  margin-left: auto;
+  background: var(--green); color: #0D2218;
+  border: none; border-radius: var(--rsm);
+  padding: 8px 16px; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: var(--font-body);
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* PICKS GRID */
+.picks-grid {
+  max-width: 1080px; margin: 0 auto;
+  padding: 0 2rem 4rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+.pick-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden;
+  transition: border-color .15s;
+}
+.pick-card:hover { border-color: rgba(0,168,132,.3); }
+.card-top { padding: 14px 14px 10px; display: flex; gap: 10px; }
+.card-icon {
+  width: 46px; height: 46px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
+}
+.card-info { flex: 1; min-width: 0; }
+.card-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.card-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+.badge { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+.badge-ok { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-dk); }
+.fc-row {
+  margin: 0 14px 10px;
+  background: #0A1A10; border-radius: 6px; padding: 6px 9px;
+  display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted);
 }
 .yt { background: var(--red); color: white; font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 2px; }
-.vote-chips { display: flex; gap: 3px; margin-bottom: 6px; flex-wrap: wrap; }
-.vc { font-size: 9px; padding: 2px 6px; border-radius: 8px; }
-.vc-w { background: #1F1900; color: var(--amber); }
-.vc-n { background: rgba(255,255,255,.05); color: var(--hint); }
-.vote-row { display: flex; border-top: 1px solid rgba(255,255,255,.08); }
-.vb {
-  flex: 1; padding: 6px 4px; text-align: center;
-  font-size: 10px; font-weight: 500; color: var(--green);
-  background: transparent; border: none; cursor: default;
+.voters { padding: 0 14px 10px; display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.vc { font-size: 10px; padding: 3px 7px; border-radius: 10px; font-weight: 500; }
+.vc-seen { background: #0D2218; color: #66BB6A; }
+.vc-want { background: #1F1900; color: var(--amber); }
+.vc-skip { background: #1F0A0A; color: #EF5350; }
+.vc-none { background: rgba(255,255,255,.05); color: var(--hint); }
+.vote-count { margin-left: auto; font-size: 11px; color: var(--hint); }
+.vote-btns { display: flex; border-top: 1px solid var(--border); }
+.vote-btn {
+  flex: 1; padding: 10px 4px; text-align: center;
+  font-size: 12px; font-weight: 500; color: var(--muted);
+  background: transparent; border: none; cursor: pointer;
+  transition: all .15s; font-family: var(--font-body);
 }
-.vb:not(:last-child) { border-right: 1px solid rgba(255,255,255,.08); }
-.ok-pill {
-  background: var(--green-bg); border: 1px solid var(--green-dk);
-  border-radius: 6px; padding: 5px 8px;
-  font-size: 10px; color: var(--green); font-weight: 600;
-  margin-top: 5px;
-}
+.vote-btn:not(:last-child) { border-right: 1px solid var(--border); }
+.vote-btn:hover { background: rgba(255,255,255,.04); }
+.vote-btn.on-seen { color: #66BB6A; background: #0D2218; }
+.vote-btn.on-want { color: var(--amber); background: #1F1900; }
+.vote-btn.on-skip { color: #EF5350; background: #1F0A0A; }
 
-/* ── PROBLEM STRIP ── */
-.problem-strip {
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  padding: 3.5rem 2rem;
+/* ADD MODAL */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; align-items: center; justify-content: center; padding: 1.5rem; }
+.overlay.open { display: flex; }
+.modal { background: var(--surface); border-radius: 16px; padding: 2rem; width: 100%; max-width: 440px; border: 1px solid var(--border); }
+.modal h3 { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 1.25rem; }
+.field { margin-bottom: 1rem; }
+.field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+.field input {
+  width: 100%; background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--rsm); padding: 10px 14px;
+  color: var(--text); font-size: 14px; font-family: var(--font-body); outline: none;
 }
-.problem-grid {
-  max-width: 1080px; margin: 0 auto;
-  display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
-  gap: 1.5rem;
-}
-.problem-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r); padding: 1.5rem;
-}
-.problem-label {
-  font-size: 9px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .08em;
-  padding: 2px 8px; border-radius: 4px;
-  display: inline-block; margin-bottom: .75rem;
-}
-.problem-card h3 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
-.problem-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.field input:focus { border-color: var(--green-dk); }
+.modal-footer { display: flex; gap: 10px; margin-top: 1.25rem; }
+.modal-cancel { flex: 1; padding: 11px; border-radius: var(--rsm); background: var(--card); border: 1px solid var(--border); color: var(--muted); font-family: var(--font-body); font-size: 14px; cursor: pointer; }
+.modal-save { flex: 2; padding: 11px; border-radius: var(--rsm); background: var(--green); border: none; color: #0D2218; font-family: var(--font-body); font-size: 14px; font-weight: 600; cursor: pointer; }
 
-/* ── HOW IT WORKS ── */
-.steps-grid {
-  display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
-  gap: 1.5rem;
-}
-.step { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.75rem; }
-.step-num {
-  width: 38px; height: 38px; border-radius: 50%;
-  background: var(--green); display: flex;
-  align-items: center; justify-content: center;
-  font-family: var(--font-display); font-size: 17px;
-  font-weight: 700; color: #0D2218; margin-bottom: 1rem;
-}
-.step-badge {
-  display: inline-block; font-size: 10px; font-weight: 700;
-  padding: 2px 8px; border-radius: 4px; margin-bottom: .75rem;
-  background: var(--green-bg); color: var(--green); border: 1px solid var(--green-dk);
-}
-.step h3 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
-.step p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+/* EMPTY STATE */
+.empty { text-align: center; padding: 4rem 1rem; color: var(--muted); grid-column: 1/-1; }
+.empty-icon { font-size: 40px; margin-bottom: 1rem; }
 
-/* ── FEATURES ── */
-.features-section { background: var(--surface); }
-.features-grid {
-  display: grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr));
-  gap: 1.25rem;
-}
-.feat {
-  background: var(--card); border-radius: var(--r);
-  padding: 1.5rem; border-left: 3px solid;
-}
-.feat-tag {
-  font-size: 10px; font-weight: 700;
-  padding: 2px 8px; border-radius: 4px;
-  display: inline-block; margin-bottom: .75rem;
-}
-.feat h3 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
-.feat p { font-size: 13px; color: var(--muted); line-height: 1.6; }
-
-/* ── PRICING ── */
-.pricing-grid {
-  display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr));
-  gap: 1.25rem; align-items: start;
-}
-.price-card {
-  background: var(--card); border-radius: var(--r);
-  padding: 2rem; border: 1px solid var(--border);
-}
-.price-card.featured { border: 2px solid var(--green); }
-.popular {
-  background: var(--green); color: #0D2218;
-  font-size: 10px; font-weight: 700;
-  padding: 3px 10px; border-radius: 4px;
-  display: inline-block; margin-bottom: 1rem;
-  letter-spacing: .04em;
-}
-.price-name {
-  font-family: var(--font-display);
-  font-size: 26px; font-weight: 700; margin-bottom: 4px;
-}
-.price-amount { font-size: 20px; font-weight: 600; margin-bottom: 1.25rem; }
-.price-divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
-.price-feat { display: flex; gap: 8px; margin-bottom: 10px; font-size: 14px; color: var(--text); }
-.check { color: var(--green); flex-shrink: 0; }
-.price-note { font-size: 12px; color: var(--muted); font-style: italic; margin-top: 1.25rem; }
-
-/* ── CTA BAND ── */
-.cta-band { background: var(--green-bg); border-top: 1px solid rgba(0,168,132,.3); border-bottom: 1px solid rgba(0,168,132,.3); padding: 4rem 2rem; }
-.cta-inner { max-width: 640px; margin: 0 auto; text-align: center; }
-.cta-inner h2 { font-family: var(--font-display); font-size: clamp(26px,4vw,38px); font-weight: 700; color: var(--text); margin-bottom: .75rem; }
-.cta-inner p { font-size: 16px; color: var(--muted); margin-bottom: 2rem; }
-.cta-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+/* TOAST */
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 300; }
+.toast.show { opacity: 1; }
 </style>
 </head>
 <body>
@@ -219,250 +142,288 @@ h1.hero-title .accent { color: var(--green); }
 <nav class="nav">
   <a href="/" class="nav-logo">Squad<span>Picks</span></a>
   <div class="nav-links">
-    <a href="#how">How it works</a>
-    <a href="#features">Features</a>
-    <a href="#pricing">Pricing</a>
+    <a href="/dashboard" class="active">Dashboard</a>
     <a href="/blog">Blog</a>
-    <a href="/login" class="nav-cta">Get started</a>
+    <a href="#" id="logout-link" onclick="logout()">Sign out</a>
   </div>
 </nav>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-inner">
-    <div class="hero-text">
-      <div class="hero-eyebrow"><div class="hero-dot"></div>Telegram-first · Zero app downloads</div>
-      <h1 class="hero-title">Your squad.<br><span class="accent">Any plan.</span><br>One bot.</h1>
-      <p class="hero-sub">Paste any link into your Telegram group — movie, restaurant, place or event — and your whole family votes right there in the chat. Plans get made.</p>
-      <div class="hero-tags">
-        <span class="tag">🎬 Movies</span>
-        <span class="tag">🍜 Restaurants</span>
-        <span class="tag">📍 Places</span>
-        <span class="tag">🎭 Events</span>
-        <span class="tag">📺 Filmi Craft reviews</span>
-      </div>
-      <div class="hero-actions">
-        <a href="/login" class="btn btn-tg">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.026 9.547c-.148.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.31l-2.95-.924c-.642-.2-.655-.642.136-.95l11.532-4.448c.537-.194 1.006.131.834.943h.53v.317z"/></svg>
-          Start with Telegram
-        </a>
-        <a href="#how" class="btn btn-outline">See how it works</a>
-      </div>
+<div class="dash-header">
+  <div class="dash-header-inner">
+    <div>
+      <div class="dash-title" id="group-title">Loading...</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:3px" id="user-greeting">Welcome back</div>
     </div>
-    <div class="hero-phone-wrap">
-      <div class="phone">
-        <div class="ph-bar">
-          <div class="ph-av">👨‍👩‍👧‍👦</div>
-          <div>
-            <div class="ph-name">Family Squad</div>
-            <div class="ph-sub">Priya, Raj, Meera, Dev · @SquadPicksBot</div>
-          </div>
-        </div>
-        <div class="ph-chat">
-          <div class="bubble them"><div style="font-size:10px;font-weight:600;color:#4FC3F7;margin-bottom:2px">Raj</div>Check this out! imdb.com/kaantha</div>
-          <div class="bubble bot">
-            <div class="bot-name">SquadPicksBot</div>
-            <div class="bot-title">🎬 Kaantha (2025)</div>
-            <div class="bot-meta">Tamil · Dulquer Salmaan · Action drama</div>
-            <div class="fc-pill"><span class="yt">YT</span> Filmi Craft · <span style="color:var(--amber);font-weight:600">★ 4.1/5</span></div>
-            <div class="vote-chips">
-              <span class="vc vc-w">★ Raj</span>
-              <span class="vc vc-n">? Priya</span>
-              <span class="vc vc-n">? Meera</span>
-              <span class="vc vc-n">? Dev</span>
-            </div>
-            <div class="vote-row">
-              <span class="vb">✓ Seen</span>
-              <span class="vb">★ Want</span>
-              <span class="vb">✕ Skip</span>
-            </div>
-          </div>
-          <div class="bubble me">I want to watch! ★</div>
-          <div class="bubble bot">
-            <div class="bot-name">SquadPicksBot</div>
-            <div class="ok-pill">✓ Group ok — everyone can watch Kaantha!</div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <select class="group-select" id="group-select" onchange="switchGroup(this.value)">
+      <option value="">Loading groups...</option>
+    </select>
   </div>
-</section>
+  <div class="dash-header-inner" style="margin-top:.75rem">
+    <div class="dash-stats" id="stats"></div>
+  </div>
+</div>
 
-<!-- PROBLEM STRIP -->
-<div class="problem-strip">
-  <div class="problem-grid">
-    <div class="problem-card">
-      <div class="problem-label" style="background:#1A0808;color:#EF9A9A">PROBLEM 1</div>
-      <h3>Links get buried</h3>
-      <p>Someone shares a great restaurant in WhatsApp. 200 messages later it's gone forever.</p>
+<div class="dash-filters">
+  <div class="filter-pill on" onclick="setFilter('all',this)">All picks</div>
+  <div class="filter-pill" onclick="setFilter('want',this)">I want to</div>
+  <div class="filter-pill" onclick="setFilter('group',this)">Group ok</div>
+  <div class="filter-pill" onclick="setFilter('movie',this)">🎬 Movies</div>
+  <div class="filter-pill" onclick="setFilter('food',this)">🍽 Food</div>
+  <div class="filter-pill" onclick="setFilter('place',this)">📍 Places</div>
+  <div class="filter-pill" onclick="setFilter('event',this)">🎭 Events</div>
+  <button class="add-pick-btn" onclick="openAdd()">+ Add pick</button>
+</div>
+
+<div class="picks-grid" id="picks-grid">
+  <div class="empty"><div class="empty-icon">⏳</div>Loading your picks...</div>
+</div>
+
+<!-- ADD MODAL -->
+<div class="overlay" id="add-modal" onclick="overlayClick(event)">
+  <div class="modal">
+    <h3>Add a pick</h3>
+    <div class="field">
+      <label>Link</label>
+      <input id="add-url" placeholder="Paste any URL — IMDB, Maps, Yelp, Zomato..." />
     </div>
-    <div class="problem-card">
-      <div class="problem-label" style="background:#1A1200;color:#FFB74D">PROBLEM 2</div>
-      <h3>Nobody knows who's seen what</h3>
-      <p>Every movie night starts with "have you seen this?" to four different people.</p>
-    </div>
-    <div class="problem-card">
-      <div class="problem-label" style="background:#0D2218;color:#69D47E">PROBLEM 3</div>
-      <h3>No group consensus</h3>
-      <p>You plan a trip and discover halfway through that two people have already been there.</p>
-    </div>
-    <div class="problem-card">
-      <div class="problem-label" style="background:#0A1E30;color:#90CAF9">PROBLEM 4</div>
-      <h3>Decisions take forever</h3>
-      <p>The "what should we watch?" conversation loop. Every. Single. Weekend.</p>
+    <div style="font-size:12px;color:var(--muted)">The bot will automatically read the title, type and details from the link.</div>
+    <div class="modal-footer">
+      <button class="modal-cancel" onclick="closeAdd()">Cancel</button>
+      <button class="modal-save" id="add-save" onclick="saveAdd()">Add to SquadPicks</button>
     </div>
   </div>
 </div>
 
-<!-- HOW IT WORKS -->
-<section class="section" id="how">
-  <div class="container">
-    <div class="section-tag">How it works</div>
-    <h2 class="section-title">Three steps. Plans get made.</h2>
-    <p class="section-sub">No new app to download. No account for your family. Just add the bot to your Telegram group and start.</p>
-    <div class="steps-grid">
-      <div class="step">
-        <div class="step-num">1</div>
-        <div class="step-badge">LINK</div>
-        <h3>Someone pastes a link</h3>
-        <p>Any URL — IMDB, Google Maps, Yelp, Zomato, Eventbrite. The bot reads it and figures out what it is automatically.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div class="step-badge">CARD</div>
-        <h3>Bot posts a pick card</h3>
-        <p>A clean card appears in the chat with the title, details and three vote buttons — right inside Telegram. No link to click, no app to open.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-badge">VOTE</div>
-        <h3>Everyone taps their vote</h3>
-        <p>Seen/Been · Want to · Not for me. When nobody says skip, the bot flags "Group ok" — your squad can do this together.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">4</div>
-        <div class="step-badge">AUTO</div>
-        <h3>Filmi Craft alerts you</h3>
-        <p>The bot monitors Filmi Craft every Friday. New review posted → automatic card in your group. Zero effort from anyone.</p>
-      </div>
-    </div>
-  </div>
-</section>
+<div class="toast" id="toast"></div>
 
-<!-- FEATURES -->
-<section class="section features-section" id="features">
-  <div class="container">
-    <div class="section-tag">Features</div>
-    <h2 class="section-title">Everything your squad needs.</h2>
-    <p class="section-sub">Nothing you don't. Built for real families and friend groups — not power users.</p>
-    <div class="features-grid">
-      <div class="feat" style="border-color:var(--green)">
-        <div class="feat-tag" style="background:var(--green-bg);color:var(--green)">UNIVERSAL</div>
-        <h3>Any link, auto-detected</h3>
-        <p>IMDB · Google Maps · Yelp · Zomato · Eventbrite · YouTube. Paste anything and the bot reads the title, type and details automatically.</p>
-      </div>
-      <div class="feat" style="border-color:#9C27B0">
-        <div class="feat-tag" style="background:#1A0F2E;color:#CE93D8">MOVIES & SHOWS</div>
-        <h3>Film & TV tracking</h3>
-        <p>Title, year, genre, runtime. Know instantly who's seen it and who still needs to — no more asking around.</p>
-      </div>
-      <div class="feat" style="border-color:#4CAF50">
-        <div class="feat-tag" style="background:#0D2210;color:#81C784">PLACES & FOOD</div>
-        <h3>Restaurants & locations</h3>
-        <p>Google Maps, Yelp and Zomato parsed with address, cuisine and price range. Track which places the squad has already visited.</p>
-      </div>
-      <div class="feat" style="border-color:var(--red)">
-        <div class="feat-tag" style="background:#1A0808;color:#EF9A9A">FILMI CRAFT</div>
-        <h3>YouTube reviewer feed</h3>
-        <p>Bot monitors Filmi Craft every Friday. New review → automatic card with score and quote. Your squad always knows what's worth watching.</p>
-      </div>
-      <div class="feat" style="border-color:#2196F3">
-        <div class="feat-tag" style="background:#0A1E30;color:#90CAF9">/SUMMARY</div>
-        <h3>Group consensus view</h3>
-        <p>Type /summary and instantly see what the group can do together, what has a skip, and who still hasn't voted.</p>
-      </div>
-      <div class="feat" style="border-color:var(--amber)">
-        <div class="feat-tag" style="background:var(--green-bg);color:var(--amber)">WEEKLY DIGEST</div>
-        <h3>Sunday roundup</h3>
-        <p>Every Sunday the bot posts new picks, Filmi Craft reviews from the week, and a nudge to anyone who hasn't voted yet.</p>
-      </div>
-    </div>
-  </div>
-</section>
+<script>
+const BASE = window.location.origin;
+let currentGroupId = null;
+let allPicks = [];
+let myVotes = {};
+let filter = 'all';
 
-<!-- PRICING -->
-<section class="section" id="pricing">
-  <div class="container">
-    <div class="section-tag">Pricing</div>
-    <h2 class="section-title">Free to start. Premium when you need more.</h2>
-    <p class="section-sub">No credit card needed. Get your family hooked first.</p>
-    <div class="pricing-grid">
-      <div class="price-card">
-        <div class="price-name" style="color:var(--muted)">Free</div>
-        <div class="price-amount" style="color:var(--muted)">Forever free</div>
-        <hr class="price-divider"/>
-        <div class="price-feat"><span class="check">✓</span> Groups up to 6 members</div>
-        <div class="price-feat"><span class="check">✓</span> 1 YouTube reviewer channel</div>
-        <div class="price-feat"><span class="check">✓</span> All link types</div>
-        <div class="price-feat"><span class="check">✓</span> Weekly digest</div>
-        <div class="price-feat"><span class="check">✓</span> /summary command</div>
-        <div class="price-note">Gets families hooked</div>
-      </div>
-      <div class="price-card featured">
-        <div class="popular">MOST POPULAR</div>
-        <div class="price-name" style="color:var(--green)">Squad+</div>
-        <div class="price-amount">$2.99 / month</div>
-        <hr class="price-divider"/>
-        <div class="price-feat"><span class="check">✓</span> Groups up to 20 members</div>
-        <div class="price-feat"><span class="check">✓</span> Up to 5 reviewer channels</div>
-        <div class="price-feat"><span class="check">✓</span> Priority link detection</div>
-        <div class="price-feat"><span class="check">✓</span> Monthly analytics digest</div>
-        <div class="price-feat"><span class="check">✓</span> Custom bot name</div>
-        <div class="price-note">For active family groups</div>
-      </div>
-      <div class="price-card">
-        <div class="price-name" style="color:var(--amber)">Community</div>
-        <div class="price-amount">$9.99 / month</div>
-        <hr class="price-divider"/>
-        <div class="price-feat"><span class="check">✓</span> Unlimited members</div>
-        <div class="price-feat"><span class="check">✓</span> Unlimited reviewer channels</div>
-        <div class="price-feat"><span class="check">✓</span> Multi-language support</div>
-        <div class="price-feat"><span class="check">✓</span> Branded cards</div>
-        <div class="price-feat"><span class="check">✓</span> API access</div>
-        <div class="price-note">For fan communities &amp; clubs</div>
-      </div>
-    </div>
-  </div>
-</section>
+const TYPE_CFG = {
+  movie: { icon:'🎬', iconBg:'#1a0f2e', badgeBg:'#2d1b5e', badgeTx:'#c8a8f9', lbl:'Movie' },
+  food:  { icon:'🍽', iconBg:'#1f1400', badgeBg:'#2d1f00', badgeTx:'#ffb74d', lbl:'Restaurant' },
+  place: { icon:'📍', iconBg:'#0d2218', badgeBg:'#0d3320', badgeTx:'#69d47e', lbl:'Place' },
+  event: { icon:'🎭', iconBg:'#1a0a1a', badgeBg:'#2d0d2d', badgeTx:'#f48fb1', lbl:'Event' },
+  show:  { icon:'📺', iconBg:'#0d1020', badgeBg:'#0d1f3d', badgeTx:'#90caf9', lbl:'Show' },
+  link:  { icon:'🔗', iconBg:'#1a1a2e', badgeBg:'#1a1a2e', badgeTx:'#8696a0', lbl:'Link' },
+};
 
-<!-- CTA BAND -->
-<div class="cta-band">
-  <div class="cta-inner">
-    <h2>Ready to sort your squad?</h2>
-    <p>Add SquadPicks to your Telegram group in 30 seconds. Free forever for groups of 6.</p>
-    <div class="cta-actions">
-      <a href="/login" class="btn btn-tg">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.026 9.547c-.148.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.31l-2.95-.924c-.642-.2-.655-.642.136-.95l11.532-4.448c.537-.194 1.006.131.834.943h.53v.317z"/></svg>
-        Start with Telegram
-      </a>
-      <a href="/blog" class="btn btn-outline">Read the blog</a>
-    </div>
-  </div>
-</div>
+// ── INIT ──
+(async function init() {
+  const stored = localStorage.getItem('tg_user');
+  const params = new URLSearchParams(window.location.search);
+  currentGroupId = params.get('groupId') || '';
 
-<footer class="footer">
-  <div class="footer-logo">Squad<span>Picks</span></div>
-  <p>Your squad. Any plan. One bot.</p>
-  <div class="footer-links">
-    <a href="/">Home</a>
-    <a href="#features">Features</a>
-    <a href="#pricing">Pricing</a>
-    <a href="/blog">Blog</a>
-    <a href="/login">Login</a>
-    <a href="https://t.me/squadpicks_bot" target="_blank">Telegram Bot</a>
-  </div>
-  <p style="margin-top:1.5rem;font-size:11px;color:var(--hint)">© 2025 SquadPicks · Telegram-first · Zero friction · Any activity</p>
-</footer>
+  let user = null;
+  if (stored) {
+    try { user = JSON.parse(stored); } catch(e) {}
+  }
+  if (!user) {
+    // Not logged in — redirect to login
+    window.location.href = '/login.html' + (currentGroupId ? '?groupId='+currentGroupId : '');
+    return;
+  }
 
+  document.getElementById('user-greeting').textContent = `Welcome back, ${user.first_name || 'there'}!`;
+
+  await loadGroups(user);
+  if (currentGroupId) await loadPicks();
+})();
+
+async function loadGroups(user) {
+  try {
+    const res = await fetch(BASE + '/api/groups', {
+      headers: { 'x-telegram-init-data': 'test', 'x-chat-id': currentGroupId || '', 'x-user-id': user?.id || '123456789', 'x-user-name': user?.first_name || 'User' }
+    });
+    const data = await res.json();
+    const groups = data.groups || [];
+    const sel = document.getElementById('group-select');
+    if (groups.length) {
+      sel.innerHTML = groups.map(g => `<option value="${g.id}" ${String(g.id) === String(currentGroupId) ? 'selected' : ''}>${g.title}</option>`).join('');
+      if (!currentGroupId) currentGroupId = String(groups[0].id);
+      document.getElementById('group-title').textContent = groups.find(g => String(g.id) === String(currentGroupId))?.title || 'Your Squad';
+    } else {
+      sel.innerHTML = '<option>No groups yet</option>';
+      document.getElementById('group-title').textContent = 'Your Squad';
+    }
+  } catch(e) {
+    document.getElementById('group-title').textContent = 'Your Squad';
+  }
+}
+
+async function loadPicks() {
+  try {
+    const stored = localStorage.getItem('tg_user');
+    const user = stored ? JSON.parse(stored) : {};
+    const qs = currentGroupId ? `?groupId=${currentGroupId}` : '';
+    const res = await fetch(BASE + '/api/picks' + qs, {
+      headers: { 'x-telegram-init-data': 'test', 'x-chat-id': currentGroupId || '', 'x-user-id': user.id || '123456789', 'x-user-name': user.first_name || 'User' }
+    });
+    const data = await res.json();
+    allPicks = data.picks || [];
+    allPicks.forEach(p => { myVotes[p.id] = p.my_vote || ''; });
+    renderStats();
+    renderPicks();
+  } catch(e) {
+    document.getElementById('picks-grid').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>Could not load picks. <button onclick="loadPicks()" style="color:var(--green);background:none;border:none;cursor:pointer;font-size:14px">Retry</button></div>`;
+  }
+}
+
+function renderStats() {
+  const groupOk = allPicks.filter(p => p.group_ok).length;
+  const pending = allPicks.filter(p => !p.my_vote).length;
+  const fc = allPicks.filter(p => p.reviewer_name).length;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="stat-num">${allPicks.length}</div><div class="stat-lbl">Total picks</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--green)">${groupOk}</div><div class="stat-lbl">Group ok</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--amber)">${pending}</div><div class="stat-lbl">Need my vote</div></div>
+    <div class="stat"><div class="stat-num" style="color:#EF9A9A">${fc}</div><div class="stat-lbl">From Filmi Craft</div></div>
+  `;
+}
+
+function renderPicks() {
+  const grid = document.getElementById('picks-grid');
+  const userId = (() => { try { return JSON.parse(localStorage.getItem('tg_user'))?.id; } catch(e) {} return 123456789; })();
+
+  let filtered = allPicks.filter(p => {
+    if (filter === 'want')  return myVotes[p.id] === 'want';
+    if (filter === 'group') return p.group_ok;
+    if (filter === 'movie') return p.type === 'movie';
+    if (filter === 'food')  return p.type === 'food';
+    if (filter === 'place') return p.type === 'place';
+    if (filter === 'event') return p.type === 'event';
+    return true;
+  });
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty"><div class="empty-icon">🍿</div>No picks here yet!<br><span style="font-size:13px;margin-top:6px;display:block">Click "Add pick" or paste a link in your Telegram group</span></div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(p => {
+    const tc = TYPE_CFG[p.type] || TYPE_CFG.link;
+    const seen = (p.votes||[]).filter(v=>v.status==='seen');
+    const want = (p.votes||[]).filter(v=>v.status==='want');
+    const skip = (p.votes||[]).filter(v=>v.status==='skip');
+    const mv = myVotes[p.id] || '';
+    const chips = [
+      ...seen.map(v=>`<span class="vc vc-seen">✓ ${esc(v.first_name||'?')}</span>`),
+      ...want.map(v=>`<span class="vc vc-want">★ ${esc(v.first_name||'?')}</span>`),
+      ...skip.map(v=>`<span class="vc vc-skip">✕ ${esc(v.first_name||'?')}</span>`),
+    ].join('') || `<span style="font-size:11px;color:var(--hint);font-style:italic">No votes yet</span>`;
+    const fcHtml = p.reviewer_name ? `<div class="fc-row"><span class="yt">YT</span><span>${esc(p.reviewer_name)}</span>${p.reviewer_score?`<span style="color:var(--amber);font-weight:600;margin-left:auto">⭐ ${esc(p.reviewer_score)}</span>`:''}</div>` : '';
+    const okBadge = p.group_ok ? `<span class="badge badge-ok">✓ Group ok</span>` : '';
+
+    return `<div class="pick-card" id="pc-${p.id}">
+      <div class="card-top">
+        <div class="card-icon" style="background:${tc.iconBg}">${tc.icon}</div>
+        <div class="card-info">
+          <div class="card-title">${esc(p.title)}</div>
+          <div class="card-meta">${esc(p.description||'')} · by ${esc(p.added_by_name||'someone')}</div>
+          <div class="card-badges">
+            <span class="badge" style="background:${tc.badgeBg};color:${tc.badgeTx}">${tc.lbl}</span>
+            ${okBadge}
+          </div>
+        </div>
+      </div>
+      ${fcHtml}
+      <div class="voters">${chips}<span class="vote-count">${seen.length+want.length+skip.length} voted</span></div>
+      <div class="vote-btns">
+        <button class="vote-btn ${mv==='seen'?'on-seen':''}" onclick="castVote(${p.id},'seen')">✓ Seen</button>
+        <button class="vote-btn ${mv==='want'?'on-want':''}" onclick="castVote(${p.id},'want')">★ Want</button>
+        <button class="vote-btn ${mv==='skip'?'on-skip':''}" onclick="castVote(${p.id},'skip')">✕ Skip</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function castVote(pickId, status) {
+  try {
+    const stored = localStorage.getItem('tg_user');
+    const user = stored ? JSON.parse(stored) : {};
+    const res = await fetch(BASE + '/api/vote', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'x-telegram-init-data':'test', 'x-user-id': user.id||'123456789', 'x-user-name': user.first_name||'User' },
+      body: JSON.stringify({ pickId, status })
+    });
+    const data = await res.json();
+    const idx = allPicks.findIndex(p => p.id === pickId);
+    if (idx >= 0) { allPicks[idx].votes = data.votes; allPicks[idx].my_vote = data.my_vote; allPicks[idx].group_ok = data.group_ok; }
+    myVotes[pickId] = data.my_vote || '';
+    renderStats(); renderPicks();
+    const lbl = { seen:'Seen ✓', want:'Want to ★', skip:'Not for me ✕' };
+    showToast(data.my_vote ? `Voted: ${lbl[data.my_vote]}` : 'Vote removed');
+    if (data.group_ok) setTimeout(() => showToast('✅ Group ok!'), 600);
+  } catch(e) { showToast('Vote failed — please retry'); }
+}
+
+function setFilter(f, el) {
+  filter = f;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  renderPicks();
+}
+
+function switchGroup(id) {
+  currentGroupId = id;
+  const sel = document.getElementById('group-select');
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('group-title').textContent = opt?.text || 'Your Squad';
+  history.pushState({}, '', `/dashboard?groupId=${id}`);
+  loadPicks();
+}
+
+function openAdd() { document.getElementById('add-modal').classList.add('open'); document.getElementById('add-url').focus(); }
+function closeAdd() { document.getElementById('add-modal').classList.remove('open'); }
+function overlayClick(e) { if (e.target === document.getElementById('add-modal')) closeAdd(); }
+
+async function saveAdd() {
+  const url = document.getElementById('add-url').value.trim();
+  if (!url) { showToast('Paste a link first'); return; }
+  const btn = document.getElementById('add-save');
+  btn.disabled = true; btn.textContent = 'Adding...';
+  try {
+    const stored = localStorage.getItem('tg_user');
+    const user = stored ? JSON.parse(stored) : {};
+    const res = await fetch(BASE + '/api/picks', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'x-telegram-init-data':'test', 'x-user-id': user.id||'123456789', 'x-user-name': user.first_name||'User', 'x-chat-id': currentGroupId||'' },
+      body: JSON.stringify({ url, groupId: currentGroupId })
+    });
+    const data = await res.json();
+    if (data.pick) {
+      allPicks.unshift({ ...data.pick, votes:[], my_vote:'want', group_ok:false });
+      myVotes[data.pick.id] = 'want';
+    }
+    closeAdd();
+    document.getElementById('add-url').value = '';
+    filter = 'all';
+    document.querySelectorAll('.filter-pill').forEach((p,i) => p.classList.toggle('on', i===0));
+    renderStats(); renderPicks();
+    showToast('Pick added!');
+  } catch(e) { showToast('Could not add pick'); }
+  finally { btn.disabled = false; btn.textContent = 'Add to SquadPicks'; }
+}
+
+function logout() {
+  localStorage.removeItem('tg_user');
+  window.location.href = '/';
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+let tt;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+document.getElementById('add-url').addEventListener('keydown', e => { if (e.key === 'Enter') saveAdd(); });
+</script>
 </body>
 </html>

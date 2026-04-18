@@ -229,6 +229,25 @@ body{font-family:var(--font-b);background:var(--cream);color:var(--text);min-hei
 .ei{font-size:36px;margin-bottom:10px}
 .toast{position:fixed;bottom:calc(var(--bnav-h) + 12px);left:50%;transform:translateX(-50%);background:var(--navy);color:var(--beige);border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:9px 18px;font-size:13px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;z-index:200;white-space:nowrap;max-width:90vw;text-align:center}
 .toast.show{opacity:1}
+
+/* PLAN CARD — clickable link */
+.plan-card-link{color:var(--text);text-decoration:none;font-weight:700;font-size:13px}
+.plan-card-link:hover{color:var(--blue)}
+.plan-link-icon{font-size:10px;color:var(--blue2);margin-left:2px}
+
+/* PICKS CARD — source link row */
+.pick-source-link{display:inline-block;font-size:11px;color:var(--blue);border:1px solid var(--beige3);border-radius:20px;padding:3px 10px;text-decoration:none;margin-bottom:6px;transition:background .15s}
+.pick-source-link:hover{background:var(--sky-bg)}
+
+/* TRENDING CATEGORY FILTER BAR */
+.trend-cat-bar{display:flex;gap:8px;padding:12px 14px 8px;background:var(--cream2);border-bottom:1px solid var(--beige3);position:sticky;top:56px;z-index:30;overflow-x:auto;scrollbar-width:none}
+.trend-cat-bar::-webkit-scrollbar{display:none}
+.tcb-btn{flex-shrink:0;padding:7px 18px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid var(--beige3);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;font-family:var(--font-b)}
+.tcb-btn.on{background:var(--navy);color:var(--beige);border-color:var(--navy)}
+
+/* TRENDING CATEGORY SECTIONS */
+.trend-cat-section{display:none}
+.trend-cat-section.on{display:block}
 </style>
 </head>
 <body>
@@ -305,33 +324,66 @@ body{font-family:var(--font-b);background:var(--cream);color:var(--text);min-hei
 
 <!-- TRENDING PAGE -->
 <div class="page" id="page-trending">
-  <div class="trending-wrap">
-    <div class="trend-sec-hdr">Top 10 from your channels <span class="tsh-tag" id="yt-tag">Filmi Craft</span></div>
-    <div class="trend-row" id="tr-movies"></div>
+  <!-- Category filter tabs -->
+  <div class="trend-cat-bar">
+    <button class="tcb-btn on" onclick="setTrendCat('movies',this)">&#x1F3AC; Movies</button>
+    <button class="tcb-btn"    onclick="setTrendCat('events',this)">&#x1F3AD; Events</button>
+    <button class="tcb-btn"    onclick="setTrendCat('places',this)">&#x1F4CD; Places</button>
+  </div>
 
-    <div class="trend-sec-hdr">
-      Top 10 on streaming
-      <span class="tsh-tag" style="background:linear-gradient(90deg,#E50914 50%,#00A8E0)">N &amp; P</span>
-      <span class="tsh-live" id="stream-live-badge" style="display:none">&#x25CF; LIVE</span>
-    </div>
-    <div id="tr-streaming-wrap">
-      <div class="trend-loading" id="tr-loading"><div class="trend-spin"></div> Loading live data&#8230;</div>
-    </div>
+  <!-- MOVIES SECTION -->
+  <div class="trend-cat-section on" id="tcat-movies">
+    <div class="trending-wrap">
+      <!-- YouTube from subscribed channels -->
+      <div class="trend-sec-hdr">Top 10 from your channels <span class="tsh-tag" id="yt-tag">Filmi Craft</span></div>
+      <div class="trend-row" id="tr-movies"></div>
 
-    <div class="trend-sec-hdr">
-      IMDb Top Picks
-      <span class="tsh-tag" style="background:#F5C518;color:#000;font-weight:900">IMDb</span>
-      <span class="tsh-live" id="imdb-live-badge" style="display:none">&#x25CF; LIVE</span>
-    </div>
-    <div id="tr-imdb-wrap">
-      <div class="trend-loading"><div class="trend-spin"></div> Loading IMDb data&#8230;</div>
-    </div>
+      <!-- Netflix Top 10 -->
+      <div class="trend-sec-hdr">
+        Netflix Top 10
+        <span class="tsh-tag" style="background:#E50914">N</span>
+        <span class="tsh-live" id="netflix-live-badge" style="display:none">&#x25CF; LIVE</span>
+      </div>
+      <div id="tr-netflix-wrap">
+        <div class="trend-loading"><div class="trend-spin"></div> Loading Netflix data&#8230;</div>
+      </div>
 
-    <div class="trend-sec-hdr">Top 10 restaurants <span class="tsh-tag">Zomato</span></div>
-    <div class="trend-row" id="tr-food"></div>
+      <!-- Prime Video Top 10 -->
+      <div class="trend-sec-hdr">
+        Prime Video Top 10
+        <span class="tsh-tag" style="background:#00A8E0">P</span>
+        <span class="tsh-live" id="prime-live-badge" style="display:none">&#x25CF; LIVE</span>
+      </div>
+      <div id="tr-prime-wrap">
+        <div class="trend-loading"><div class="trend-spin"></div> Loading Prime data&#8230;</div>
+      </div>
 
-    <div class="trend-sec-hdr">Top 10 events <span class="tsh-tag">Eventbrite</span></div>
-    <div class="trend-row" id="tr-events"></div>
+      <!-- IMDb Top Picks -->
+      <div class="trend-sec-hdr">
+        IMDb Top Picks
+        <span class="tsh-tag" style="background:#F5C518;color:#000;font-weight:900">IMDb</span>
+        <span class="tsh-live" id="imdb-live-badge" style="display:none">&#x25CF; LIVE</span>
+      </div>
+      <div id="tr-imdb-wrap">
+        <div class="trend-loading"><div class="trend-spin"></div> Loading IMDb data&#8230;</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EVENTS SECTION -->
+  <div class="trend-cat-section" id="tcat-events">
+    <div class="trending-wrap">
+      <div class="trend-sec-hdr">Top Events <span class="tsh-tag" style="background:#F05537">Eventbrite</span></div>
+      <div class="trend-row" id="tr-events"></div>
+    </div>
+  </div>
+
+  <!-- PLACES SECTION -->
+  <div class="trend-cat-section" id="tcat-places">
+    <div class="trending-wrap">
+      <div class="trend-sec-hdr">Top Restaurants <span class="tsh-tag" style="background:#E23744">Zomato</span></div>
+      <div class="trend-row" id="tr-food"></div>
+    </div>
   </div>
 </div>
 
@@ -641,10 +693,18 @@ function renderPlan() {
         + v1.map(function(v) { return '<span class="pvc pvc-ok">&#x2713; ' + sn(v.n) + '</span>'; }).join('')
         + v2.map(function(v) { return '<span class="pvc pvc-want">&#x2605; ' + sn(v.n) + '</span>'; }).join('')
         + v3.map(function(v) { return '<span class="pvc pvc-skip">&#x2715; ' + sn(v.n) + '</span>'; }).join('');
+      // Thumbnail: real image if available, else emoji
+      var thumbHtml = p.thumb
+        ? '<img src="' + esc(p.thumb) + '" style="width:78px;height:100%;object-fit:cover;display:block;" onerror="this.style.display=\'none\';this.parentNode.innerHTML=\'' + tc.emoji + '\'">'
+        : tc.emoji;
+      // Title: clickable if URL stored
+      var titleHtml = p.url
+        ? '<a href="' + esc(p.url) + '" target="_blank" class="plan-card-link">' + esc(p.title) + ' <span class="plan-link-icon">&#x2197;</span></a>'
+        : '<span>' + esc(p.title) + '</span>';
       html += '<div class="plan-card">'
-        + '<div class="plan-card-thumb" style="background:' + tc.grad + '">' + tc.emoji + '</div>'
+        + '<div class="plan-card-thumb" style="background:' + tc.grad + ';overflow:hidden;align-items:stretch">' + thumbHtml + '</div>'
         + '<div class="plan-card-body">'
-          + '<div class="plan-card-title">' + esc(p.title) + '</div>'
+          + '<div class="plan-card-title">' + titleHtml + '</div>'
           + '<div class="plan-card-meta">' + esc(p.desc) + '</div>'
           + '<div class="plan-badges">' + sb + '</div>'
           + '<div class="plan-voters">' + chips + '</div>'
@@ -691,8 +751,16 @@ function renderPicks() {
       ? '<div class="ch-strip"><span class="yt-badge">YT</span><span class="ch-name">' + esc(p.reviewer) + ' reviewed</span><span class="ch-score">&#x2B50; ' + esc(p.score) + '</span></div>'
       : '';
     var ok = p.ok ? '<div class="ok-banner">&#x2713; Group ok &#x2014; everyone can do this!</div>' : '';
+    // Thumbnail: real image or emoji fallback
+    var thumbInner = p.thumb
+      ? '<img src="' + esc(p.thumb) + '" style="width:100%;height:165px;object-fit:cover;position:absolute;inset:0;" onerror="this.style.display=\'none\'">' + tc.emoji
+      : tc.emoji;
+    // Link row below title
+    var linkRow = p.url
+      ? '<a href="' + esc(p.url) + '" target="_blank" class="pick-source-link">&#x1F517; Open link &#x2197;</a>'
+      : '';
     return '<div class="pcard" id="card-' + p.id + '">'
-      + '<div class="pcard-thumb" style="background:' + tc.grad + '">' + tc.emoji
+      + '<div class="pcard-thumb" style="background:' + tc.grad + '">' + thumbInner
         + '<div class="pcard-thumb-overlay"></div>'
         + '<div class="pcard-thumb-info">'
           + '<span class="pt-badge" style="background:' + tc.tb + ';color:' + tc.tt + '">' + tc.lbl + '</span>'
@@ -700,6 +768,7 @@ function renderPicks() {
         + '</div>'
       + '</div>'
       + '<div class="pcard-body">'
+        + linkRow
         + '<div class="pcard-meta">' + esc(p.desc) + '</div>'
         + '<div class="pcard-by">Added by ' + esc(p.by) + '</div><br/>'
         + chS
@@ -772,6 +841,7 @@ function loadGroupPicks() {
           reviewer: p.reviewer_name || null,
           score:    p.reviewer_score || null,
           thumb:    p.image_url || null,
+          url:      p.url || null,
           votes:    vs.map(function(v) { return {n: sn(v.first_name || v.username || 'User'), s: v.status}; }),
           my:       p.my_vote || '',
           ok:       p.group_ok || false
@@ -818,6 +888,14 @@ function voteApi(pickId, status) {
   .catch(function() { /* silent fail — local state already updated */ });
 }
 
+function setTrendCat(cat, btn) {
+  document.querySelectorAll('.tcb-btn').forEach(function(b) { b.classList.remove('on'); });
+  btn.classList.add('on');
+  document.querySelectorAll('.trend-cat-section').forEach(function(s) {
+    s.classList.toggle('on', s.id === 'tcat-' + cat);
+  });
+}
+
 /* ─── TRENDING PAGE ─────────────────────────────────────────── */
 function renderTrending() {
   /* YouTube — top 10 mixed from subscribed channels */
@@ -840,20 +918,25 @@ function renderTrending() {
   renderWideRow('tr-events', TREND_EVENTS, 'event');
 }
 
-/* Load live streaming data (Netflix + Prime from DB scraped weekly) */
+/* Load live streaming data — now split into Netflix + Prime from DB */
 function loadLiveStreamingData() {
   fetch(BASE + '/api/trending/streaming')
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      if (data.source === 'db') {
-        var lb = document.getElementById('stream-live-badge');
-        if (lb) lb.style.display = 'inline-block';
-      }
-      var items = (data.data && data.data.all && data.data.all.length)
-        ? data.data.all : STREAM_FALLBACK;
-      renderStreamRow('tr-streaming-wrap', items.slice(0, 10));
+      var isLive = data.source === 'db';
+      // Netflix row
+      var nfItems = (data.netflix && data.netflix.length) ? data.netflix : STREAM_FALLBACK.filter(function(x){return x.badge==='N';});
+      renderStreamRow('tr-netflix-wrap', nfItems.slice(0,10));
+      if (isLive && nfItems.length) { var lb=document.getElementById('netflix-live-badge'); if(lb) lb.style.display='inline-block'; }
+      // Prime row
+      var pvItems = (data.prime && data.prime.length) ? data.prime : STREAM_FALLBACK.filter(function(x){return x.badge==='P';});
+      renderStreamRow('tr-prime-wrap', pvItems.slice(0,10));
+      if (isLive && pvItems.length) { var lb2=document.getElementById('prime-live-badge'); if(lb2) lb2.style.display='inline-block'; }
     })
-    .catch(function() { renderStreamRow('tr-streaming-wrap', STREAM_FALLBACK); });
+    .catch(function() {
+      renderStreamRow('tr-netflix-wrap', STREAM_FALLBACK.filter(function(x){return x.badge==='N';}));
+      renderStreamRow('tr-prime-wrap',   STREAM_FALLBACK.filter(function(x){return x.badge==='P';}));
+    });
 }
 
 /* IMDb fallback data (shown until Thursday cron populates DB) */

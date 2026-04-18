@@ -2,51 +2,41 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>Login — SquadPicks</title>
 <link rel="stylesheet" href="/styles.css"/>
 <style>
-.login-page {
-  min-height: 100vh;
-  display: flex; align-items: center; justify-content: center;
-  padding: 6rem 1.5rem 3rem;
-  background: linear-gradient(135deg, var(--beige) 0%, var(--beige2) 100%);
-}
-.login-card {
-  background: var(--white);
-  border: 1px solid var(--beige3);
-  border-radius: 20px;
-  padding: 2.5rem;
-  width: 100%; max-width: 420px;
-  text-align: center;
-  box-shadow: 0 8px 40px rgba(124,58,237,0.12);
-}
-.login-logo {
-  font-family: var(--font-display);
-  font-size: 28px; font-weight: 700;
-  color: var(--text); margin-bottom: .4rem;
-}
-.login-logo span { color: var(--blue2); }
-.login-tagline { font-size: 14px; color: var(--muted); margin-bottom: 2rem; }
-.divider { border: none; border-top: 1px solid var(--beige3); margin: 1.5rem 0; }
-.login-note { font-size: 12px; color: var(--hint); margin-top: 1.5rem; line-height: 1.6; }
-.tg-widget-wrap { display: flex; justify-content: center; margin: 1rem 0; min-height: 40px; }
-.why-list { text-align: left; margin-bottom: 1.5rem; }
-.why-item { display: flex; gap: 10px; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
-.why-icon { color: var(--blue2); flex-shrink: 0; font-weight: 700; }
-.back-link { display: inline-block; font-size: 13px; color: var(--hint); text-decoration: none; margin-top: 1.5rem; }
-.back-link:hover { color: var(--blue2); }
-.error-msg { font-size: 13px; color: #DC2626; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 10px 14px; margin-top: 1rem; display: none; }
-.success-msg { font-size: 13px; color: #166534; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 10px 14px; margin-top: 1rem; display: none; }
-.loading-spinner { display: none; width: 20px; height: 20px; border: 2px solid var(--beige3); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; margin: .5rem auto; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.squad-info { background: var(--sky-bg); border: 1px solid var(--beige3); border-radius: 12px; padding: 1rem; margin-top: 1rem; text-align: left; display: none; }
-.squad-info h4 { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: .25rem; }
-.squad-info p { font-size: 12px; color: var(--muted); }
+.login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:6rem 1.5rem 3rem;background:linear-gradient(135deg,var(--beige) 0%,var(--beige2) 100%)}
+.login-card{background:var(--white);border:1px solid var(--beige3);border-radius:20px;padding:2.5rem;width:100%;max-width:420px;text-align:center;box-shadow:0 8px 40px rgba(124,58,237,0.12)}
+@media(max-width:480px){.login-card{padding:1.75rem 1.25rem;border-radius:16px}.login-page{padding:5rem 1rem 2rem}}
+.login-logo{font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--text);margin-bottom:.4rem}
+.login-logo span{color:var(--blue2)}
+.login-tagline{font-size:14px;color:var(--muted);margin-bottom:2rem}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px 20px;background:var(--white);border:1.5px solid var(--beige3);border-radius:12px;font-size:15px;font-weight:600;color:var(--text);cursor:pointer;text-decoration:none;transition:border-color .15s,box-shadow .15s;margin-bottom:12px}
+.google-btn:hover{border-color:var(--blue2);box-shadow:0 2px 12px rgba(124,58,237,0.15)}
+.or-divider{display:flex;align-items:center;gap:12px;margin:16px 0}
+.or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--beige3)}
+.or-divider span{font-size:12px;color:var(--hint);white-space:nowrap}
+.tg-section-label{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.tg-widget-wrap{display:flex;justify-content:center;margin:0 0 4px;min-height:40px}
+.divider{border:none;border-top:1px solid var(--beige3);margin:1.5rem 0}
+.login-note{font-size:12px;color:var(--hint);margin-top:1.5rem;line-height:1.6}
+.why-list{text-align:left;margin-bottom:1.5rem}
+.why-item{display:flex;gap:10px;font-size:13px;color:var(--muted);margin-bottom:8px}
+.why-icon{color:var(--blue2);flex-shrink:0;font-weight:700}
+.back-link{display:inline-block;font-size:13px;color:var(--hint);text-decoration:none;margin-top:1.5rem}
+.back-link:hover{color:var(--blue2)}
+.error-msg{font-size:13px;color:#DC2626;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;margin-top:1rem;display:none}
+.success-msg{font-size:13px;color:#166534;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px 14px;margin-top:1rem;display:none}
+.loading-spinner{display:none;width:20px;height:20px;border:2px solid var(--beige3);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin:.5rem auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.squad-info{background:var(--sky-bg);border:1px solid var(--beige3);border-radius:12px;padding:1rem;margin-top:1rem;text-align:left;display:none}
+.squad-info h4{font-size:14px;font-weight:700;color:var(--text);margin-bottom:.25rem}
+.squad-info p{font-size:12px;color:var(--muted)}
+.url-error{font-size:13px;color:#DC2626;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;margin-bottom:1rem;display:none}
 </style>
 </head>
 <body>
-
 <nav class="nav">
   <a href="/" class="nav-logo">Squad<span>Picks</span></a>
   <div class="nav-links">
@@ -54,25 +44,43 @@
     <a href="/blog">Blog</a>
     <a href="/login" class="active nav-cta">Login</a>
   </div>
+  <button class="nav-hamburger" id="nav-ham" onclick="toggleMobileNav()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+<div class="mobile-nav" id="mobile-nav">
+  <a href="/">Home</a>
+  <a href="/blog">Blog</a>
+  <a href="/login" class="active">Login</a>
+</div>
 
 <div class="login-page">
   <div class="login-card">
     <div class="login-logo">Squad<span>Picks</span></div>
     <div class="login-tagline">Sign in to manage your squad</div>
+    <div class="url-error" id="url-error"></div>
 
     <div class="why-list">
-      <div class="why-item"><span class="why-icon">✓</span> See all your squad's picks</div>
-      <div class="why-item"><span class="why-icon">✓</span> Manage YouTube channels</div>
-      <div class="why-item"><span class="why-icon">✓</span> View voting history</div>
+      <div class="why-item"><span class="why-icon">✓</span> See all your squad's picks &amp; votes</div>
+      <div class="why-item"><span class="why-icon">✓</span> Create groups with Gmail or Telegram</div>
+      <div class="why-item"><span class="why-icon">✓</span> Works without Telegram installed</div>
     </div>
 
-    <!-- Telegram Login Widget (real) -->
-    <!-- Replace YOUR_BOT_USERNAME with your actual bot username (without @) -->
+    <!-- Google Login -->
+    <a href="/auth/google" class="google-btn">
+      <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.5 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19.1 13 24 13c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.5 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+        <path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5.1l-6.2-5.2C29.4 35.5 26.8 36 24 36c-5.2 0-9.6-3.3-11.3-8H6.1C9.4 38.1 16.2 44 24 44z"/>
+        <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.4-2.4 4.4-4.4 5.8l6.2 5.2C41.2 35.6 44 30.2 44 24c0-1.3-.1-2.6-.4-3.9z"/>
+      </svg>
+      Continue with Google
+    </a>
+
+    <div class="or-divider"><span>or sign in with Telegram</span></div>
+    <div class="tg-section-label">Telegram</div>
     <div class="tg-widget-wrap" id="tg-widget">
-      <script
-        async
-        src="https://telegram.org/js/telegram-widget.js?22"
+      <script async src="https://telegram.org/js/telegram-widget.js?22"
         data-telegram-login="squadpicks_bot"
         data-size="large"
         data-onauth="onTelegramAuth(user)"
@@ -81,84 +89,44 @@
       </script>
     </div>
     <div class="loading-spinner" id="spinner"></div>
-    <div class="error-msg" id="error-msg"></div>
+    <div class="error-msg"   id="error-msg"></div>
     <div class="success-msg" id="success-msg"></div>
-    <div class="squad-info" id="squad-info"></div>
+    <div class="squad-info"  id="squad-info"></div>
 
     <hr class="divider"/>
     <div class="login-note">
-      SquadPicks uses Telegram's official OAuth.<br/>
-      We only access your name and Telegram ID — never your messages.
+      SquadPicks uses Telegram OAuth or Google Sign-In.<br/>
+      We only access your name and email — never your messages.
     </div>
     <a href="/" class="back-link">← Back to home</a>
   </div>
 </div>
 
 <script>
-function onTelegramAuth(user) {
-  // Called by Telegram widget after user authorises
-  var spinner = document.getElementById('spinner');
-  var errorEl = document.getElementById('error-msg');
-  var successEl = document.getElementById('success-msg');
-  var squadEl = document.getElementById('squad-info');
-  var widgetEl = document.getElementById('tg-widget');
-
-  widgetEl.style.display = 'none';
-  spinner.style.display = 'block';
-  errorEl.style.display = 'none';
-  successEl.style.display = 'none';
-
-  // Send auth data to server for verification
-  fetch('/api/auth/telegram', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(user)
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    spinner.style.display = 'none';
-    if (data.ok) {
-      successEl.textContent = 'Welcome, ' + (user.first_name || 'Squad member') + '! Redirecting...';
-      successEl.style.display = 'block';
-      if (data.groups && data.groups.length) {
-        squadEl.innerHTML = '<h4>Your squads</h4>' +
-          data.groups.map(function(g) { return '<p>&#x2022; ' + escHtml(g.title) + '</p>'; }).join('');
-        squadEl.style.display = 'block';
-      }
-      setTimeout(function() {
-        window.location.href = data.redirectUrl || '/dashboard';
-      }, 1500);
-    } else {
-      errorEl.textContent = data.error || 'Login failed. Please try again.';
-      errorEl.style.display = 'block';
-      widgetEl.style.display = 'flex';
-    }
-  })
-  .catch(function(err) {
-    spinner.style.display = 'none';
-    errorEl.textContent = 'Connection error. Please try again.';
-    errorEl.style.display = 'block';
-    widgetEl.style.display = 'flex';
-  });
+(function(){var p=new URLSearchParams(window.location.search);var err=p.get('error');var msgs={google_denied:'Google sign-in was cancelled. Please try again.',google_failed:'Google sign-in failed. Please try again or use Telegram.'};if(err&&msgs[err]){var el=document.getElementById('url-error');el.textContent=msgs[err];el.style.display='block';}})();
+function onTelegramAuth(user){
+  var spinner=document.getElementById('spinner');
+  var errorEl=document.getElementById('error-msg');
+  var successEl=document.getElementById('success-msg');
+  var squadEl=document.getElementById('squad-info');
+  var widgetEl=document.getElementById('tg-widget');
+  widgetEl.style.display='none';spinner.style.display='block';
+  errorEl.style.display='none';successEl.style.display='none';
+  fetch('/api/auth/telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(user)})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    spinner.style.display='none';
+    if(data.ok){
+      successEl.textContent='Welcome, '+(user.first_name||'Squad member')+'! Redirecting...';
+      successEl.style.display='block';
+      if(data.groups&&data.groups.length){squadEl.innerHTML='<h4>Your squads</h4>'+data.groups.map(function(g){return'<p>&#x2022; '+escHtml(g.title)+'</p>';}).join('');squadEl.style.display='block';}
+      setTimeout(function(){window.location.href=data.redirectUrl||'/dashboard';},1500);
+    }else{errorEl.textContent=data.error||'Login failed. Please try again.';errorEl.style.display='block';widgetEl.style.display='flex';}
+  }).catch(function(){spinner.style.display='none';errorEl.textContent='Connection error. Please try again.';errorEl.style.display='block';widgetEl.style.display='flex';});
 }
-
-function escHtml(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// If user came via Telegram redirect with hash params (OAuth redirect flow)
-(function checkRedirectAuth() {
-  var hash = window.location.hash.slice(1);
-  if (!hash) return;
-  var params = {};
-  hash.split('&').forEach(function(part) {
-    var eq = part.indexOf('=');
-    if (eq > 0) params[decodeURIComponent(part.slice(0,eq))] = decodeURIComponent(part.slice(eq+1));
-  });
-  if (params.id && params.hash) {
-    onTelegramAuth(params);
-  }
-})();
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+(function checkRedirectAuth(){var hash=window.location.hash.slice(1);if(!hash)return;var params={};hash.split('&').forEach(function(part){var eq=part.indexOf('=');if(eq>0)params[decodeURIComponent(part.slice(0,eq))]=decodeURIComponent(part.slice(eq+1));});if(params.id&&params.hash)onTelegramAuth(params);})();
+function toggleMobileNav(){document.getElementById('mobile-nav').classList.toggle('open');}
 </script>
 </body>
 </html>

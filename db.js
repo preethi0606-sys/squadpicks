@@ -23,12 +23,14 @@ async function getAllGroups() {
 
 // ─── PICKS ─────────────────────────────────────────────────
 
-async function savePick({ groupId, type, title, description, url, imageUrl,
+async function savePick({ groupId, type, title, description, url, imageUrl, sourceUrl,
   addedById, addedByName, reviewerName, reviewerScore, reviewerQuote, reviewerVideoId }) {
   const { data, error } = await supabase
     .from('picks')
     .insert({
-      group_id: groupId, type, title, description, url, image_url: imageUrl,
+      group_id: groupId, type, title, description,
+      url: sourceUrl || url,          // store the original source URL
+      image_url: imageUrl,
       added_by_id: addedById, added_by_name: addedByName,
       reviewer_name: reviewerName, reviewer_score: reviewerScore,
       reviewer_quote: reviewerQuote, reviewer_video_id: reviewerVideoId
@@ -37,6 +39,66 @@ async function savePick({ groupId, type, title, description, url, imageUrl,
     .single();
   if (error) { console.error('savePick error:', error.message); return null; }
   return data;
+}
+
+// ─── USERS (Google + Telegram) ──────────────────────────────
+
+async function upsertGoogleUser({ google_id, email, name, avatar }) {
+  const { data, error } = await supabase
+    .from('users')
+    .upsert({ google_id, email, name, avatar, updated_at: new Date().toISOString() },
+             { onConflict: 'google_id' })
+    .select().single();
+  if (error) { console.error('upsertGoogleUser error:', error.message); return null; }
+  return data;
+}
+
+async function upsertTelegramUser({ telegram_id, first_name, username }) {
+  const name = first_name || username || 'Member';
+  const { data, error } = await supabase
+    .from('users')
+    .upsert({ telegram_id, name, updated_at: new Date().toISOString() },
+             { onConflict: 'telegram_id' })
+    .select().single();
+  if (error) { console.error('upsertTelegramUser error:', error.message); return null; }
+  return data;
+}
+
+async function getUserById(id) {
+  const { data } = await supabase.from('users').select('*').eq('id', id).single();
+  return data;
+}
+
+// ─── WEB GROUPS ─────────────────────────────────────────────
+
+async function createWebGroup({ name, ownerId }) {
+  // Use a negative fake chat ID for web-only groups (won't clash with real Telegram IDs)
+  const webGroupId = -Math.floor(Math.random() * 9000000000 + 1000000000);
+  const { data, error } = await supabase
+    .from('groups')
+    .insert({ id: webGroupId, title: name, is_web_group: true, owner_id: ownerId })
+    .select().single();
+  if (error) { console.error('createWebGroup error:', error.message); return null; }
+  return data;
+}
+
+async function addGroupMember({ groupId, userId, email }) {
+  const { data, error } = await supabase
+    .from('group_members')
+    .upsert({ group_id: groupId, user_id: userId, email, status: 'active' },
+             { onConflict: 'group_id,user_id' })
+    .select().single();
+  if (error) { console.error('addGroupMember error:', error.message); return null; }
+  return data;
+}
+
+async function getUserGroups(userId) {
+  const { data, error } = await supabase
+    .from('group_members')
+    .select('group_id, groups(id, title, is_web_group)')
+    .eq('user_id', userId);
+  if (error) { console.error('getUserGroups error:', error.message); return []; }
+  return (data || []).map(r => r.groups).filter(Boolean);
 }
 
 async function updatePickMessageId(pickId, messageId) {
@@ -149,7 +211,9 @@ module.exports = {
   getRecentFilmiCraftPicks,
   upsertVote, deleteVote, getVote, getVotesForPick,
   getVotesForPicks, getUserPendingPicks,
-  wasVideoPosted, markVideoPosted
+  wasVideoPosted, markVideoPosted,
+  upsertGoogleUser, upsertTelegramUser, getUserById,
+  createWebGroup, addGroupMember, getUserGroups
 };
 
 // ─── TRENDING DATA ──────────────────────────────────────────

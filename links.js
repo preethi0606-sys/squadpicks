@@ -81,13 +81,14 @@ async function fetchMeta(url) {
       return {
         title,
         description: result.ogDescription || result.twitterDescription || '',
-        imageUrl: result.ogImage?.[0]?.url || '',
+        imageUrl:    result.ogImage?.[0]?.url || '',
+        sourceUrl:   url,   // ← always store original URL
       };
     }
     throw new Error('no title in result');
   } catch (err) {
     console.error('fetchMeta fallback for:', url, '-', err.message || err);
-    return { title: titleFromUrl(url), description: '', imageUrl: '' };
+    return { title: titleFromUrl(url), description: '', imageUrl: '', sourceUrl: url };
   }
 }
 

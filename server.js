@@ -3,16 +3,96 @@
 // DB is loaded lazily so nothing blocks the server from starting
 require('dotenv').config();
 
-const express = require('express');
-const cors    = require('cors');
-const path    = require('path');
-const crypto  = require('crypto');
+const express   = require('express');
+const cors      = require('cors');
+const path      = require('path');
+const crypto    = require('crypto');
+const fs        = require('fs');
+const session   = require('express-session');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use(session({
+  secret:            process.env.SESSION_SECRET || 'squadpicks-dev-secret',
+  resave:            false,
+  saveUninitialized: false,
+  cookie:            { secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 }
+}));
+
+// ─── GOOGLE OAUTH ──────────────────────────────────────────
+const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+const APP_URL              = process.env.APP_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:3000');
+
+// Step 1: Redirect user to Google
+app.get('/auth/google', (req, res) => {
+  const params = new URLSearchParams({
+    client_id:     GOOGLE_CLIENT_ID,
+    redirect_uri:  `${APP_URL}/auth/google/callback`,
+    response_type: 'code',
+    scope:         'openid profile email',
+    access_type:   'offline',
+    prompt:        'select_account'
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+// Step 2: Handle Google callback
+app.get('/auth/google/callback', async (req, res) => {
+  const { code, error } = req.query;
+  if (error || !code) return res.redirect('/login?error=google_denied');
+  try {
+    // Exchange code for tokens
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    new URLSearchParams({
+        code, client_id: GOOGLE_CLIENT_ID, client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: `${APP_URL}/auth/google/callback`, grant_type: 'authorization_code'
+      })
+    });
+    const tokens    = await tokenRes.json();
+    if (!tokens.access_token) throw new Error('No access token from Google');
+
+    // Get user profile
+    const profileRes  = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` }
+    });
+    const profile = await profileRes.json();
+    if (!profile.id)  throw new Error('Could not fetch Google profile');
+
+    // Upsert user in DB
+    const db   = getDb();
+    const user = await db.upsertGoogleUser({
+      google_id: profile.id,
+      email:     profile.email,
+      name:      profile.name,
+      avatar:    profile.picture
+    });
+    if (!user) throw new Error('Failed to save user');
+
+    // Set session
+    req.session.userId     = user.id;
+    req.session.userName   = user.name;
+    req.session.userEmail  = user.email;
+    req.session.userAvatar = user.avatar;
+    req.session.loginType  = 'google';
+
+    res.redirect('/dashboard');
+  } catch (e) {
+    console.error('[Google OAuth]', e.message);
+    res.redirect('/login?error=google_failed');
+  }
+});
+
+// ─── SESSION AUTH MIDDLEWARE ───────────────────────────────
+function requireWebAuth(req, res, next) {
+  if (req.session && req.session.userId) return next();
+  res.redirect('/login');
+}
 
 // ─── STATIC FILES ──────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
@@ -83,7 +163,17 @@ app.post('/api/picks', telegramAuth, async (req, res) => {
     await db.ensureGroup(chatId, groupTitle || 'SquadPicks Group');
     const meta = await links.fetchMeta(url);
     const type = links.detectType(url, meta);
-    const pick = await db.savePick({ groupId:chatId, type, title:meta.title, description:meta.description, url, imageUrl:meta.imageUrl, addedById:req.tgUser.id, addedByName:req.tgUser.first_name||'Someone', reviewerName:null, reviewerScore:null, reviewerQuote:null, reviewerVideoId:null });
+    const pick = await db.savePick({
+      groupId: chatId, type,
+      title:        meta.title,
+      description:  meta.description,
+      url:          url,
+      sourceUrl:    meta.sourceUrl || url,
+      imageUrl:     meta.imageUrl,
+      addedById:    req.tgUser.id,
+      addedByName:  req.tgUser.first_name || 'Someone',
+      reviewerName: null, reviewerScore: null, reviewerQuote: null, reviewerVideoId: null
+    });
     if (!pick) return res.status(500).json({ error: 'Failed to save' });
     if (global.squadPicksBot) {
       try {
@@ -143,54 +233,31 @@ app.get('/api/fcpicks', telegramAuth, async (req, res) => {
   } catch(e) { console.error('[GET /fcpicks]',e.message); res.status(500).json({ error: e.message }); }
 });
 
-// ─── PAGE ROUTES ────────────────────────────────────────────
-// Mini App (Telegram Web App)
-app.get('/app', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'app.html'));
-});
-// Login page
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-// Dashboard
-app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard', 'index.html'));
-});
-// Blog
-app.get('/blog', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'blog', 'index.html'));
-});
-// CATCH-ALL: serve landing page for anything else
-app.get('/{*splat}', (req, res) => {
-  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// ─── START ─────────────────────────────────────────────────
-function startServer() {
-  const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Server] OK — listening on 0.0.0.0:${PORT}`);
-  });
-  server.on('error', err => {
-    console.error('[Server] FAILED to start:', err.message);
-    process.exit(1);
-  });
-}
-
-
-// ─── API: TRENDING DATA (from scraped tables) ──────────────
+// ─── API: TRENDING — STREAMING (split Netflix + Prime) ─────
 app.get('/api/trending/streaming', async (req, res) => {
   try {
-    const region  = req.query.region  || 'canada';
-    const combined = await getDb().getMixedStreamingTop10(region);
-    // If DB has data, use it; else fall back to streaming.js static data
-    if (combined.length > 0) {
-      return res.json({ ok: true, data: { all: combined }, source: 'db', ts: new Date().toISOString() });
+    const region  = req.query.region || 'canada';
+    const primeRegion = (region === 'canada') ? 'ca' : (region === 'india') ? 'in' : 'ca';
+    const db = getDb();
+    const [netflix, prime] = await Promise.all([
+      db.getLatestNetflixTop10(region),
+      db.getLatestPrimeTop10(primeRegion)
+    ]);
+    const hasDbData = (netflix.length + prime.length) > 0;
+    if (hasDbData) {
+      // Tag sources
+      const nfTagged = netflix.map(r => ({ ...r, source:'netflix', badge:'N', badgeColor:'#E50914',
+        url: r.netflix_url || `https://www.netflix.com/search?q=${encodeURIComponent(r.title)}` }));
+      const pvTagged = prime.map(r => ({ ...r, source:'prime', badge:'P', badgeColor:'#00A8E0',
+        url: r.prime_url   || `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(r.title)}` }));
+      return res.json({ ok:true, netflix: nfTagged, prime: pvTagged, source:'db', ts: new Date().toISOString() });
     }
-    // Fallback to the static list in streaming.js
+    // Fallback
     const { getStreamingTop10 } = require('./streaming');
     const data = await getStreamingTop10(region);
-    res.json({ ok: true, data, source: 'fallback', ts: new Date().toISOString() });
+    const nf = (data.netflix || []).map(r => ({ ...r, source:'netflix', badge:'N', badgeColor:'#E50914' }));
+    const pv = (data.prime   || data.all || []).map(r => ({ ...r, source:'prime', badge:'P', badgeColor:'#00A8E0' }));
+    res.json({ ok:true, netflix: nf, prime: pv, source:'fallback', ts: new Date().toISOString() });
   } catch (e) {
     console.error('[GET /trending/streaming]', e.message);
     res.status(500).json({ ok: false, error: e.message });
@@ -208,7 +275,40 @@ app.get('/api/trending/imdb', async (req, res) => {
   }
 });
 
-// Manual trigger for admins (protect with a secret)
+// ─── API: WEB GROUPS ───────────────────────────────────────
+app.post('/api/groups/create', requireWebAuth, async (req, res) => {
+  try {
+    const db    = getDb();
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: 'name required' });
+    const group  = await db.createWebGroup({ name, ownerId: req.session.userId });
+    if (!group)  return res.status(500).json({ error: 'Failed to create group' });
+    await db.addGroupMember({ groupId: group.id, userId: req.session.userId, email: req.session.userEmail });
+    res.json({ ok: true, group });
+  } catch(e) { console.error('[POST /groups/create]', e.message); res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/groups/mine', requireWebAuth, async (req, res) => {
+  try {
+    const groups = await getDb().getUserGroups(req.session.userId);
+    res.json({ ok: true, groups });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── API: SESSION INFO ─────────────────────────────────────
+app.get('/api/session', (req, res) => {
+  if (req.session && req.session.userId) {
+    res.json({ ok: true, user: { id: req.session.userId, name: req.session.userName, email: req.session.userEmail, avatar: req.session.userAvatar, loginType: req.session.loginType } });
+  } else {
+    res.json({ ok: false });
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  req.session.destroy(() => res.json({ ok: true }));
+});
+
+// Manual trigger for admins
 app.post('/api/admin/scrape', async (req, res) => {
   const secret = req.headers['x-admin-secret'];
   if (!secret || secret !== process.env.ADMIN_SECRET) {
@@ -223,49 +323,7 @@ app.post('/api/admin/scrape', async (req, res) => {
   }
 });
 
-
-// ─── API: TELEGRAM LOGIN (for website) ─────────────────────
-app.post('/api/auth/telegram', async (req, res) => {
-  try {
-    const user = req.body;
-    if (!user || !user.id || !user.hash) {
-      return res.status(400).json({ ok: false, error: 'Missing auth data' });
-    }
-    // Verify Telegram hash
-    const { id, hash, ...data } = user;
-    const dataCheckStr = Object.keys(data).sort()
-      .map(k => `${k}=${data[k]}`).join('\n');
-    const secret = crypto.createHash('sha256')
-      .update(process.env.TELEGRAM_TOKEN || '').digest();
-    const expected = crypto.createHmac('sha256', secret)
-      .update(dataCheckStr).digest('hex');
-
-    if (expected !== hash) {
-      return res.status(401).json({ ok: false, error: 'Invalid Telegram auth' });
-    }
-    // Auth passed — look up their groups
-    const db = getDb();
-    const groups = await db.getAllGroups();
-    // Store session cookie (simple approach)
-    res.cookie('tg_user_id', String(user.id), {
-      httpOnly: true, secure: process.env.NODE_ENV === 'production',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
-    res.json({
-      ok: true,
-      user: { id: user.id, name: user.first_name, username: user.username },
-      groups,
-      redirectUrl: '/dashboard'
-    });
-  } catch(e) {
-    console.error('[Auth/Telegram]', e.message);
-    res.status(500).json({ ok: false, error: 'Server error' });
-  }
-});
-
-module.exports = { startServer };
-
-// ─── FIX 3+4: NOTIFY ENDPOINT — posts card to Telegram with mini app link ──
+// ─── API: NOTIFY ──────────────────────────────────────────
 app.post('/api/picks/notify', telegramAuth, async (req, res) => {
   try {
     const db = getDb(), links = getLinks();
@@ -277,7 +335,7 @@ app.post('/api/picks/notify', telegramAuth, async (req, res) => {
     const chatId = groupId || pick.group_id;
     if (global.squadPicksBot && chatId) {
       try {
-        const appUrl = miniAppUrl || (process.env.MINI_APP_URL ? `https://t.me/${process.env.BOT_USERNAME||'squadpicks_bot'}/${process.env.MINI_APP_SHORT_NAME||'Squadpicks'}?startapp=${chatId}` : null);
+        const appUrl = miniAppUrl || `https://t.me/${process.env.BOT_USERNAME||'squadpicks_bot'}/${process.env.MINI_APP_SHORT_NAME||'Squadpicks'}?startapp=${chatId}`;
         const keyboard = {
           inline_keyboard: [
             [
@@ -298,15 +356,94 @@ app.post('/api/picks/notify', telegramAuth, async (req, res) => {
   } catch(e) { console.error('[Notify]', e.message); res.status(500).json({ error: e.message }); }
 });
 
-// ─── API: TRENDING — Top 10 streaming across Netflix + Prime + Hotstar ─────
-app.get('/api/trending/streaming', async (req, res) => {
+// ─── API: TELEGRAM LOGIN (for website) ─────────────────────
+app.post('/api/auth/telegram', async (req, res) => {
   try {
-    const { getStreamingTop10 } = require('./streaming');
-    const country = req.query.country || 'ca';
-    const data = await getStreamingTop10(country);
-    res.json({ ok: true, data, source: process.env.RAPIDAPI_KEY ? 'live' : 'fallback', ts: new Date().toISOString() });
-  } catch (e) {
-    console.error('[GET /trending/streaming]', e.message);
-    res.status(500).json({ ok: false, error: e.message });
+    const user = req.body;
+    if (!user || !user.id || !user.hash) {
+      return res.status(400).json({ ok: false, error: 'Missing auth data' });
+    }
+    // Verify Telegram hash
+    const { id, hash, ...data } = user;
+    const dataCheckStr = Object.keys(data).sort()
+      .map(k => `${k}=${data[k]}`).join('\n');
+    const secret = crypto.createHash('sha256')
+      .update(process.env.TELEGRAM_TOKEN || '').digest();
+    const expected = crypto.createHmac('sha256', secret)
+      .update(dataCheckStr).digest('hex');
+
+    if (expected !== hash) {
+      return res.status(401).json({ ok: false, error: 'Invalid Telegram auth' });
+    }
+    // Upsert user
+    const db = getDb();
+    const dbUser = await db.upsertTelegramUser({ telegram_id: user.id, first_name: user.first_name, username: user.username });
+    // Set session
+    if (dbUser) {
+      req.session.userId     = dbUser.id;
+      req.session.userName   = user.first_name || user.username;
+      req.session.loginType  = 'telegram';
+    }
+    const groups = await db.getAllGroups();
+    res.cookie('tg_user_id', String(user.id), {
+      httpOnly: true, secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+    res.json({
+      ok: true,
+      user: { id: user.id, name: user.first_name, username: user.username },
+      groups,
+      redirectUrl: '/dashboard'
+    });
+  } catch(e) {
+    console.error('[Auth/Telegram]', e.message);
+    res.status(500).json({ ok: false, error: 'Server error' });
   }
 });
+
+// ─── PAGE ROUTES ────────────────────────────────────────────
+app.get('/app', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'app.html'));
+});
+
+// Login page — inject real bot username from env at serve time
+app.get('/login', (req, res) => {
+  try {
+    let html = fs.readFileSync(path.join(__dirname, 'public', 'login.html'), 'utf8');
+    const botUsername = process.env.BOT_USERNAME || 'squadpicks_bot';
+    html = html.replace(/data-telegram-login="[^"]*"/g, `data-telegram-login="${botUsername}"`);
+    const googleEnabled = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_ID !== '');
+    html = html.replace('__GOOGLE_ENABLED__', googleEnabled ? 'true' : 'false');
+    res.send(html);
+  } catch(e) {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  }
+});
+
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard', 'index.html'));
+});
+
+app.get('/blog', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'blog', 'index.html'));
+});
+
+// CATCH-ALL
+app.get('/{*splat}', (req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ─── START ─────────────────────────────────────────────────
+function startServer() {
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[Server] OK — listening on 0.0.0.0:${PORT}`);
+  });
+  server.on('error', err => {
+    console.error('[Server] FAILED to start:', err.message);
+    process.exit(1);
+  });
+}
+
+module.exports = { startServer };
+
