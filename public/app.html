@@ -136,7 +136,7 @@ body{font-family:var(--font-b);background:var(--cream);color:var(--text);min-hei
 .trend-row::-webkit-scrollbar{display:none}
 /* poster card */
 .tc-poster{flex-shrink:0;width:120px;border-radius:var(--rsm);overflow:hidden;background:var(--navy2);border:1px solid var(--beige3)}
-.tc-poster-img{width:120px;height:175px;display:flex;align-items:center;justify-content:center;font-size:52px;position:relative;overflow:hidden}
+.tc-poster-img{width:120px;height:175px;display:flex;align-items:center;justify-content:center;font-size:52px;position:relative;overflow:hidden;background:var(--navy2)}
 .tc-score{position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.65);color:#FFD700;font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px}
 .tc-stream-badge{position:absolute;top:6px;left:6px;font-size:8px;font-weight:900;padding:3px 7px;border-radius:5px;color:white;letter-spacing:.04em;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .tc-rank-badge{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.65);color:#FFD700;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.02em}
@@ -975,8 +975,14 @@ function renderImdbRow(wrapId, items) {
   var html = '<div class="trend-row">';
   for (var i = 0; i < items.length; i++) {
     var it = items[i];
+    var imgBg = it.image_url
+      ? 'background:#000;'
+      : 'background:var(--navy2);';
+    var imgContent = it.image_url
+      ? '<img src="' + esc(it.image_url) + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">'
+      : '&#127916;';
     html += '<div class="tc-poster">'
-      + '<div class="tc-poster-img">&#127916;'
+      + '<div class="tc-poster-img" style="' + imgBg + '">' + imgContent
         + '<div class="tc-stream-badge" style="background:#F5C518;color:#000;font-weight:900;font-size:7px">IMDb</div>'
         + '<div class="tc-rank-badge">#' + (i+1) + '</div>'
         + (it.rating ? '<div class="tc-score">&#11088; ' + esc(it.rating) + '</div>' : '')
@@ -1001,8 +1007,12 @@ function renderYTRow(elId, items) {
   var html = '';
   for (var i = 0; i < items.length; i++) {
     var item = items[i];
+    var imgBg = item.image_url ? 'background:#000;' : 'background:var(--navy2);';
+    var imgContent = item.image_url
+      ? '<img src="' + esc(item.image_url) + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">'
+      : (item.emoji || '\uD83C\uDFAC');
     html += '<div class="tc-poster">'
-      + '<div class="tc-poster-img">' + item.emoji
+      + '<div class="tc-poster-img" style="' + imgBg + '">' + imgContent
         + '<div class="tc-rank-badge">#' + (i + 1) + '</div>'
         + (item.score ? '<div class="tc-score">&#11088; ' + esc(item.score) + '</div>' : '')
       + '</div>'
@@ -1016,6 +1026,7 @@ function renderYTRow(elId, items) {
       + '</div>'
       + '<div class="tc-poster-actions">'
         + '<button class="tc-pa-btn tc-pa-add" data-title="' + esc(item.title) + '" data-score="' + esc(item.score || '') + '" data-type="movie" onclick="addTrendingEl(this)">+ Add picks</button>'
+        + (item.yt_url ? '<button class="tc-pa-btn tc-pa-open" data-url="' + esc(item.yt_url) + '" onclick="openStreamEl(this)"><svg width="9" height="9" viewBox="0 0 24 24" fill="#CC3300"><polygon points="5,3 19,12 5,21"/></svg> Watch</button>' : '')
       + '</div>'
       + '</div>';
   }
@@ -1029,8 +1040,12 @@ function renderStreamRow(wrapId, items) {
   for (var i = 0; i < items.length; i++) {
     var item = items[i];
     var bc = item.badgeColor || (item.badge === 'N' ? '#E50914' : item.badge === 'P' ? '#00A8E0' : '#1B51AA');
+    var imgBg = item.image_url ? 'background:#000;' : 'background:var(--navy2);';
+    var imgContent = item.image_url
+      ? '<img src="' + esc(item.image_url) + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">'
+      : (item.emoji || '\uD83D\uDCFA');
     rowHtml += '<div class="tc-poster">'
-      + '<div class="tc-poster-img">' + (item.emoji || '\uD83D\uDCFA')
+      + '<div class="tc-poster-img" style="' + imgBg + '">' + imgContent
         + '<div class="tc-stream-badge" style="background:' + esc(bc) + '">' + esc(item.badge || '') + '</div>'
         + '<div class="tc-rank-badge">#' + (i + 1) + '</div>'
         + (item.score ? '<div class="tc-score">&#11088; ' + esc(item.score) + '</div>' : '')
