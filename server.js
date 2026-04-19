@@ -298,6 +298,15 @@ app.get('/api/trending/imdb', async (req, res) => {
 });
 
 // ─── API: WEB GROUPS ───────────────────────────────────────
+
+// GET /api/groups — returns all groups (used by app.html for Telegram web users)
+app.get('/api/groups', async (req, res) => {
+  try {
+    const groups = await getDb().getAllGroups();
+    res.json({ ok: true, groups });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/groups/create', requireWebAuth, async (req, res) => {
   try {
     const db    = getDb();
@@ -475,12 +484,21 @@ app.post('/api/auth/telegram', async (req, res) => {
       );
     }
 
+    // Find the first group this user's Telegram ID belongs to
     const groups = await db.getAllGroups();
+    const firstGroup = groups && groups.length ? groups[0] : null;
+
+    // Telegram users → redirect to the Mini App (app.html) with their group context
+    // Google users → redirect to the web dashboard
+    const miniAppUrl = firstGroup
+      ? `/app?groupId=${firstGroup.id}`
+      : `/app`;
+
     res.json({
       ok:          true,
       user:        { id: user.id, name: user.first_name, username: user.username },
       groups,
-      redirectUrl: '/dashboard'
+      redirectUrl: miniAppUrl   // ← send Telegram users to the Mini App, not the web dashboard
     });
   } catch(e) {
     console.error('[Auth/Telegram]', e.message);

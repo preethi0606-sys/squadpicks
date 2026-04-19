@@ -157,13 +157,15 @@ function onTelegramAuth(user) {
   .then(function(data){
     spinner.style.display='none';
     if(data.ok){
-      successEl.textContent='Welcome, '+(user.first_name||'Squad member')+'! Redirecting...';
+      successEl.textContent='Welcome, '+(user.first_name||'Squad member')+'! Opening SquadPicks...';
       successEl.style.display='block';
       if(data.groups&&data.groups.length){
-        squadEl.innerHTML='<h4>Your squads</h4>'+data.groups.map(function(g){return'<p>&#x2022; '+escHtml(g.title)+'</p>';}).join('');
+        squadEl.innerHTML='<h4>Your squads</h4>'+data.groups.map(function(g){
+          return '<p><a href="/app?groupId='+encodeURIComponent(g.id)+'" style="color:var(--blue2);text-decoration:none;font-weight:600;">&#x1F680; '+escHtml(g.title)+'</a></p>';
+        }).join('');
         squadEl.style.display='block';
       }
-      setTimeout(function(){window.location.href=data.redirectUrl||'/dashboard';},1500);
+      setTimeout(function(){window.location.href=data.redirectUrl||'/app';},1200);
     } else {
       // Show a clear, actionable error
       var msg = data.error || 'Login failed.';

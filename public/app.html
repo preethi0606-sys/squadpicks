@@ -592,7 +592,8 @@ function esc(s) {
 }
 
 /* ─── INIT ─────────────────────────────────────────────────── */
-(function init() {
+(async function init() {
+  // 1. Try Telegram Mini App context (running inside Telegram)
   if (tg) {
     tg.ready();
     tg.expand();
@@ -601,19 +602,44 @@ function esc(s) {
               new URLSearchParams(location.search).get('startapp') ||
               new URLSearchParams(location.search).get('groupId');
   }
-  if (!tgUser) { tgUser = {id: 123456789, first_name: 'Priya', username: 'priya_test'}; }
-  if (!groupId) groupId = new URLSearchParams(location.search).get('groupId') || null;
 
+  // 2. groupId from URL params (works for both Telegram and web users)
+  if (!groupId) groupId = new URLSearchParams(location.search).get('groupId') ||
+                          new URLSearchParams(location.search).get('startapp') || null;
+
+  // 3. If no Telegram user yet, check server session (web-Telegram login via website)
+  if (!tgUser || tgUser.id === 123456789) {
+    try {
+      var sesRes = await fetch('/api/session');
+      var ses    = await sesRes.json();
+      if (ses.ok && ses.user) {
+        tgUser = { id: ses.user.id, first_name: ses.user.name || 'Member', username: '' };
+        // If no groupId yet and this is a Telegram user, load their groups
+        if (!groupId && ses.user.loginType === 'telegram') {
+          try {
+            var grpRes  = await fetch('/api/groups', { headers: { 'x-telegram-init-data': 'test', 'x-user-id': String(ses.user.id) } });
+            var grpData = await grpRes.json();
+            if (grpData.groups && grpData.groups.length) {
+              groupId = String(grpData.groups[0].id);
+            }
+          } catch(e) {}
+        }
+      }
+    } catch(e) {}
+  }
+
+  // 4. Final fallback — show demo data
+  if (!tgUser) { tgUser = {id: 123456789, first_name: 'Priya', username: 'priya_test'}; }
+
+  // Update UI with user identity
   document.getElementById('user-av').textContent = sn(tgUser.first_name).charAt(0).toUpperCase();
   document.getElementById('drawer-user-name').textContent = tgUser.first_name || 'Member';
 
   loadActiveChannels();
 
   if (groupId) {
-    // Real group — load from API
     loadGroupPicks();
   } else {
-    // No groupId — show demo data
     renderPlan();
     renderPicks();
   }
