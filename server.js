@@ -13,13 +13,21 @@ const session   = require('express-session');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust Railway's reverse proxy so secure cookies work over HTTPS
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json());
 app.use(session({
   secret:            process.env.SESSION_SECRET || 'squadpicks-dev-secret',
   resave:            false,
   saveUninitialized: false,
-  cookie:            { secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 }
+  cookie: {
+    secure:   process.env.NODE_ENV === 'production', // HTTPS only in prod
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' needed for cross-site on Railway
+    maxAge:   7 * 24 * 60 * 60 * 1000 // 7 days
+  }
 }));
 
 // ─── GOOGLE OAUTH ──────────────────────────────────────────
@@ -73,6 +81,9 @@ app.get('/auth/google/callback', async (req, res) => {
       avatar:    profile.picture
     });
     if (!user) throw new Error('Failed to save user');
+
+    // Auto-join any squads this email was invited to
+    await db.applyPendingInvites(user.id, profile.email);
 
     // Set session
     req.session.userId     = user.id;
@@ -236,23 +247,34 @@ app.get('/api/fcpicks', telegramAuth, async (req, res) => {
 // ─── API: TRENDING — STREAMING (split Netflix + Prime) ─────
 app.get('/api/trending/streaming', async (req, res) => {
   try {
-    const region  = req.query.region || 'canada';
+    const region      = req.query.region || 'canada';
     const primeRegion = (region === 'canada') ? 'ca' : (region === 'india') ? 'in' : 'ca';
     const db = getDb();
-    const [netflix, prime] = await Promise.all([
-      db.getLatestNetflixTop10(region),
-      db.getLatestPrimeTop10(primeRegion)
-    ]);
+
+    // Try DB first — try multiple region variants to handle data inserted under different keys
+    const netflixRegions = region === 'canada' ? ['canada', 'ca', 'us'] : [region];
+    const primeRegions   = primeRegion === 'ca'  ? ['ca', 'canada']     : [primeRegion];
+
+    let netflix = [], prime = [];
+    for (const r of netflixRegions) {
+      netflix = await db.getLatestNetflixTop10(r);
+      if (netflix.length) break;
+    }
+    for (const r of primeRegions) {
+      prime = await db.getLatestPrimeTop10(r);
+      if (prime.length) break;
+    }
+
     const hasDbData = (netflix.length + prime.length) > 0;
     if (hasDbData) {
-      // Tag sources
       const nfTagged = netflix.map(r => ({ ...r, source:'netflix', badge:'N', badgeColor:'#E50914',
         url: r.netflix_url || `https://www.netflix.com/search?q=${encodeURIComponent(r.title)}` }));
       const pvTagged = prime.map(r => ({ ...r, source:'prime', badge:'P', badgeColor:'#00A8E0',
         url: r.prime_url   || `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(r.title)}` }));
       return res.json({ ok:true, netflix: nfTagged, prime: pvTagged, source:'db', ts: new Date().toISOString() });
     }
-    // Fallback
+
+    // No DB data yet — use fallback static data
     const { getStreamingTop10 } = require('./streaming');
     const data = await getStreamingTop10(region);
     const nf = (data.netflix || []).map(r => ({ ...r, source:'netflix', badge:'N', badgeColor:'#E50914' }));
@@ -293,6 +315,41 @@ app.get('/api/groups/mine', requireWebAuth, async (req, res) => {
     const groups = await getDb().getUserGroups(req.session.userId);
     res.json({ ok: true, groups });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Link an existing Telegram group to a web/Google user account
+app.post('/api/groups/link-telegram', requireWebAuth, async (req, res) => {
+  try {
+    const db = getDb();
+    const { telegramGroupId, name } = req.body;
+    if (!telegramGroupId) return res.status(400).json({ error: 'telegramGroupId required' });
+    const chatId = parseInt(telegramGroupId, 10);
+    if (isNaN(chatId)) return res.status(400).json({ error: 'Invalid Telegram group ID' });
+    // Ensure the group exists in DB (creates it if not yet registered)
+    await db.ensureGroup(chatId, name || 'Telegram Group');
+    // Add the Google user as a member of this Telegram group
+    await db.addGroupMember({ groupId: chatId, userId: req.session.userId, email: req.session.userEmail });
+    res.json({ ok: true, groupId: chatId, name });
+  } catch(e) { console.error('[link-telegram]', e.message); res.status(500).json({ error: e.message }); }
+});
+
+// Invite a member by email to a web group
+app.post('/api/groups/invite', requireWebAuth, async (req, res) => {
+  try {
+    const db = getDb();
+    const { groupId, email } = req.body;
+    if (!groupId || !email) return res.status(400).json({ error: 'groupId and email required' });
+    // Check if user already exists in DB by email
+    const existing = await db.getUserByEmail(email);
+    if (existing) {
+      // User exists — add them as an active member right away
+      await db.addGroupMember({ groupId, userId: existing.id, email });
+      return res.json({ ok: true, status: 'added', message: `${email} added to squad` });
+    }
+    // User doesn't exist yet — record as invited (they join when they sign up)
+    await db.addPendingInvite({ groupId, email, invitedBy: req.session.userId });
+    res.json({ ok: true, status: 'invited', message: `Invite recorded for ${email}` });
+  } catch(e) { console.error('[invite]', e.message); res.status(500).json({ error: e.message }); }
 });
 
 // ─── API: SESSION INFO ─────────────────────────────────────

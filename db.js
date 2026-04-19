@@ -69,7 +69,37 @@ async function getUserById(id) {
   return data;
 }
 
-// ─── WEB GROUPS ─────────────────────────────────────────────
+async function getUserByEmail(email) {
+  const { data } = await supabase
+    .from('users').select('*').eq('email', email).single();
+  return data;
+}
+
+async function addPendingInvite({ groupId, email, invitedBy }) {
+  const { error } = await supabase
+    .from('group_members')
+    .upsert({ group_id: groupId, email, status: 'invited', invited_by: invitedBy },
+             { onConflict: 'group_id,email' });
+  if (error) console.error('addPendingInvite error:', error.message);
+}
+
+// When a new Google user signs up, auto-join any pending invites for their email
+async function applyPendingInvites(userId, email) {
+  try {
+    const { data: pending } = await supabase
+      .from('group_members')
+      .select('group_id')
+      .eq('email', email)
+      .eq('status', 'invited');
+    if (!pending || !pending.length) return;
+    for (const row of pending) {
+      await supabase.from('group_members')
+        .update({ user_id: userId, status: 'active' })
+        .eq('group_id', row.group_id).eq('email', email);
+    }
+    console.log(`[DB] Applied ${pending.length} pending invite(s) for ${email}`);
+  } catch(e) { console.error('applyPendingInvites error:', e.message); }
+}
 
 async function createWebGroup({ name, ownerId }) {
   // Use a negative fake chat ID for web-only groups (won't clash with real Telegram IDs)
@@ -212,8 +242,9 @@ module.exports = {
   upsertVote, deleteVote, getVote, getVotesForPick,
   getVotesForPicks, getUserPendingPicks,
   wasVideoPosted, markVideoPosted,
-  upsertGoogleUser, upsertTelegramUser, getUserById,
-  createWebGroup, addGroupMember, getUserGroups
+  upsertGoogleUser, upsertTelegramUser, getUserById, getUserByEmail,
+  createWebGroup, addGroupMember, getUserGroups,
+  addPendingInvite, applyPendingInvites
 };
 
 // ─── TRENDING DATA ──────────────────────────────────────────

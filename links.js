@@ -71,18 +71,106 @@ function titleFromUrl(url) {
   } catch (e) { return url; }
 }
 
+// ─── DEDICATED IMDB SCRAPER ────────────────────────────────
+// IMDB blocks open-graph-scraper. We fetch directly with browser headers
+// and parse the page HTML using cheerio.
+
+async function fetchImdbMeta(url) {
+  try {
+    const fetch   = (...a) => import('node-fetch').then(m => m.default(...a));
+    const cheerio = require('cheerio');
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(12000),
+    });
+    const html = await res.text();
+    const $ = cheerio.load(html);
+
+    // ── Method 1: JSON-LD structured data (most reliable) ──
+    let title = '', image = '', description = '', year = '', rating = '';
+    $('script[type="application/ld+json"]').each((_, el) => {
+      try {
+        const data = JSON.parse($(el).html() || '');
+        if (data['@type'] === 'Movie' || data['@type'] === 'TVSeries' || data['@type'] === 'TVEpisode') {
+          title       = title       || data.name || '';
+          image       = image       || (Array.isArray(data.image) ? data.image[0]?.url : data.image?.url || data.image) || '';
+          description = description || data.description || '';
+          year        = year        || (data.datePublished || '').slice(0, 4) || '';
+          rating      = rating      || data.aggregateRating?.ratingValue || '';
+        }
+      } catch(e) {}
+    });
+
+    // ── Method 2: og/meta tags ──
+    if (!title) {
+      title = $('meta[property="og:title"]').attr('content') ||
+              $('meta[name="twitter:title"]').attr('content') ||
+              $('title').text() || '';
+      // IMDB og:title includes " - IMDb" — strip it
+      title = title.replace(/\s*[-|]\s*IMDb\s*$/i, '').trim();
+    }
+    if (!image) {
+      image = $('meta[property="og:image"]').attr('content') ||
+              $('meta[name="twitter:image"]').attr('content') || '';
+    }
+    if (!description) {
+      description = $('meta[property="og:description"]').attr('content') ||
+                    $('meta[name="description"]').attr('content') || '';
+    }
+
+    // ── Method 3: DOM selectors ──
+    if (!title) {
+      title = $('[data-testid="hero__pageTitle"] span').first().text() ||
+              $('h1[data-testid="hero-title-block__title"]').text() ||
+              $('h1.sc-afe43def').text() || '';
+    }
+    if (!image) {
+      image = $('[data-testid="hero-media__poster"] img').attr('src') ||
+              $('img.ipc-image').first().attr('src') || '';
+    }
+    if (!year) {
+      year = $('[data-testid="hero-title-block__metadata"] a').first().text().trim() || '';
+    }
+    if (!rating) {
+      rating = $('[data-testid="hero-rating-bar__aggregate-rating__score"] span').first().text() || '';
+    }
+
+    if (!title) throw new Error('IMDB: could not parse title');
+
+    const desc = [description, year ? `(${year})` : '', rating ? `⭐ ${rating}` : ''].filter(Boolean).join(' · ');
+    return { title: title.trim(), description: desc, imageUrl: image, sourceUrl: url };
+  } catch (err) {
+    console.error('[fetchImdbMeta] error:', err.message);
+    return null; // caller will fall back to ogs
+  }
+}
+
 // ─── FETCH METADATA FROM ANY URL ───────────────────────────
 
 async function fetchMeta(url) {
+  // Use dedicated IMDB scraper for IMDB URLs — ogs gets blocked
+  if (/imdb\.com\/(title|name|film)/.test(url)) {
+    const imdbMeta = await fetchImdbMeta(url);
+    if (imdbMeta && imdbMeta.title && imdbMeta.title !== 'Movie on IMDB') {
+      console.log('[fetchMeta] IMDB direct scrape OK:', imdbMeta.title);
+      return imdbMeta;
+    }
+  }
+
   try {
     const { result } = await ogs({ url, timeout: 10000 });
     const title = result.ogTitle || result.twitterTitle || result.dcTitle || '';
     if (title) {
       return {
-        title,
+        title:       title.replace(/\s*[-|]\s*IMDb\s*$/i, '').trim(),
         description: result.ogDescription || result.twitterDescription || '',
         imageUrl:    result.ogImage?.[0]?.url || '',
-        sourceUrl:   url,   // ← always store original URL
+        sourceUrl:   url,
       };
     }
     throw new Error('no title in result');

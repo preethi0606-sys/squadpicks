@@ -146,3 +146,16 @@ CREATE INDEX IF NOT EXISTS idx_users_telegram       ON users(telegram_id);
 CREATE INDEX IF NOT EXISTS idx_users_google         ON users(google_id);
 
 -- Done! Run this full file on a fresh DB, or just the NEW TABLES section on an existing DB.
+
+-- ─── v2.2 ADDITIONS ──────────────────────────────────────────────────────────
+-- Run these if upgrading from v2.0/v2.1
+
+-- Add invited_by to group_members
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS invited_by UUID REFERENCES users(id);
+
+-- Allow email-only invites (user_id can be null until they sign up)
+ALTER TABLE group_members ALTER COLUMN user_id DROP NOT NULL;
+
+-- Unique on (group_id, email) so we can upsert invites by email
+CREATE UNIQUE INDEX IF NOT EXISTS idx_group_members_group_email
+  ON group_members(group_id, email) WHERE email IS NOT NULL;
