@@ -79,6 +79,9 @@
 
     <div class="or-divider"><span>or sign in with Telegram</span></div>
     <div class="tg-section-label">Telegram</div>
+
+    <!-- Telegram Login Widget -->
+    <!-- data-telegram-login is replaced server-side with BOT_USERNAME env var -->
     <div class="tg-widget-wrap" id="tg-widget">
       <script async src="https://telegram.org/js/telegram-widget.js?22"
         data-telegram-login="squadpicks_bot"
@@ -87,6 +90,14 @@
         data-request-access="write"
         data-userpic="false">
       </script>
+    </div>
+
+    <!-- If phone number is being asked, it means domain/bot is misconfigured -->
+    <div id="tg-setup-tip" style="display:none;background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:12px;font-size:12px;color:#92400E;margin-top:10px;text-align:left;line-height:1.6;">
+      <strong>⚠️ Seeing a phone number prompt?</strong> This means the Telegram widget is not yet configured for this domain.
+      The admin needs to run <code style="background:#FEF3C7;padding:1px 4px;border-radius:3px;">/setdomain</code> in @BotFather and set it to
+      <code id="tg-domain-hint" style="background:#FEF3C7;padding:1px 4px;border-radius:3px;word-break:break-all;"></code>.
+      Use <strong>Google sign-in</strong> above in the meantime.
     </div>
     <div class="loading-spinner" id="spinner"></div>
     <div class="error-msg"   id="error-msg"></div>
@@ -103,15 +114,44 @@
 </div>
 
 <script>
-(function(){var p=new URLSearchParams(window.location.search);var err=p.get('error');var msgs={google_denied:'Google sign-in was cancelled. Please try again.',google_failed:'Google sign-in failed. Please try again or use Telegram.'};if(err&&msgs[err]){var el=document.getElementById('url-error');el.textContent=msgs[err];el.style.display='block';}})();
-function onTelegramAuth(user){
+// Show URL error params
+(function(){
+  var p=new URLSearchParams(window.location.search);
+  var err=p.get('error');
+  var msgs={google_denied:'Google sign-in was cancelled. Please try again.',google_failed:'Google sign-in failed. Please try again or use Telegram.'};
+  if(err&&msgs[err]){var el=document.getElementById('url-error');el.textContent=msgs[err];el.style.display='block';}
+  // Show domain hint for the setup tip
+  document.getElementById('tg-domain-hint').textContent = window.location.hostname;
+})();
+
+// Detect if Telegram widget is showing a phone number prompt (wrong domain)
+// The widget iframe will be visible with a particular height when in phone mode
+window.addEventListener('message', function(e) {
+  if (e.data && typeof e.data === 'string') {
+    try {
+      var msg = JSON.parse(e.data);
+      if (msg.event === 'resize' && msg.height > 100) {
+        // Widget is showing phone input (taller than normal button)
+        document.getElementById('tg-setup-tip').style.display = 'block';
+      }
+    } catch(err) {}
+  }
+});
+
+function onTelegramAuth(user) {
   var spinner=document.getElementById('spinner');
   var errorEl=document.getElementById('error-msg');
   var successEl=document.getElementById('success-msg');
   var squadEl=document.getElementById('squad-info');
   var widgetEl=document.getElementById('tg-widget');
-  widgetEl.style.display='none';spinner.style.display='block';
-  errorEl.style.display='none';successEl.style.display='none';
+  var tipEl=document.getElementById('tg-setup-tip');
+
+  widgetEl.style.display='none';
+  if (tipEl) tipEl.style.display='none';
+  spinner.style.display='block';
+  errorEl.style.display='none';
+  successEl.style.display='none';
+
   fetch('/api/auth/telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(user)})
   .then(function(r){return r.json();})
   .then(function(data){
@@ -119,13 +159,48 @@ function onTelegramAuth(user){
     if(data.ok){
       successEl.textContent='Welcome, '+(user.first_name||'Squad member')+'! Redirecting...';
       successEl.style.display='block';
-      if(data.groups&&data.groups.length){squadEl.innerHTML='<h4>Your squads</h4>'+data.groups.map(function(g){return'<p>&#x2022; '+escHtml(g.title)+'</p>';}).join('');squadEl.style.display='block';}
+      if(data.groups&&data.groups.length){
+        squadEl.innerHTML='<h4>Your squads</h4>'+data.groups.map(function(g){return'<p>&#x2022; '+escHtml(g.title)+'</p>';}).join('');
+        squadEl.style.display='block';
+      }
       setTimeout(function(){window.location.href=data.redirectUrl||'/dashboard';},1500);
-    }else{errorEl.textContent=data.error||'Login failed. Please try again.';errorEl.style.display='block';widgetEl.style.display='flex';}
-  }).catch(function(){spinner.style.display='none';errorEl.textContent='Connection error. Please try again.';errorEl.style.display='block';widgetEl.style.display='flex';});
+    } else {
+      // Show a clear, actionable error
+      var msg = data.error || 'Login failed.';
+      if (msg.indexOf('Invalid Telegram auth') >= 0 || msg.indexOf('BOT_USERNAME') >= 0) {
+        errorEl.innerHTML =
+          '<strong>Bot domain not configured.</strong><br>' +
+          'Open Telegram → @BotFather → /setdomain → paste: <code style="background:#fef2f2;padding:1px 4px;border-radius:3px;">' + escHtml(window.location.hostname) + '</code><br><br>' +
+          'Or use <a href="/auth/google" style="color:#7C3AED;font-weight:600;">Google sign-in</a> instead — it works right now.';
+      } else {
+        errorEl.textContent = msg;
+      }
+      errorEl.style.display='block';
+      widgetEl.style.display='flex';
+    }
+  })
+  .catch(function(){
+    spinner.style.display='none';
+    errorEl.textContent='Connection error. Please try again.';
+    errorEl.style.display='block';
+    widgetEl.style.display='flex';
+  });
 }
+
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-(function checkRedirectAuth(){var hash=window.location.hash.slice(1);if(!hash)return;var params={};hash.split('&').forEach(function(part){var eq=part.indexOf('=');if(eq>0)params[decodeURIComponent(part.slice(0,eq))]=decodeURIComponent(part.slice(eq+1));});if(params.id&&params.hash)onTelegramAuth(params);})();
+
+// Hash redirect auth flow (Telegram sometimes redirects with hash params)
+(function checkRedirectAuth(){
+  var hash=window.location.hash.slice(1);
+  if(!hash)return;
+  var params={};
+  hash.split('&').forEach(function(part){
+    var eq=part.indexOf('=');
+    if(eq>0)params[decodeURIComponent(part.slice(0,eq))]=decodeURIComponent(part.slice(eq+1));
+  });
+  if(params.id&&params.hash)onTelegramAuth(params);
+})();
+
 function toggleMobileNav(){document.getElementById('mobile-nav').classList.toggle('open');}
 </script>
 </body>

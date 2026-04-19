@@ -420,41 +420,71 @@ app.post('/api/auth/telegram', async (req, res) => {
     if (!user || !user.id || !user.hash) {
       return res.status(400).json({ ok: false, error: 'Missing auth data' });
     }
-    // Verify Telegram hash
-    const { id, hash, ...data } = user;
-    const dataCheckStr = Object.keys(data).sort()
-      .map(k => `${k}=${data[k]}`).join('\n');
-    const secret = crypto.createHash('sha256')
-      .update(process.env.TELEGRAM_TOKEN || '').digest();
-    const expected = crypto.createHmac('sha256', secret)
-      .update(dataCheckStr).digest('hex');
+
+    // Build the data-check string exactly as Telegram specifies:
+    // All fields EXCEPT hash, sorted alphabetically, joined with \n
+    const { hash, ...fields } = user;
+
+    // Telegram sends id as a number — convert all values to string for the check
+    const dataCheckStr = Object.keys(fields)
+      .sort()
+      .map(k => `${k}=${fields[k]}`)
+      .join('\n');
+
+    // Secret key = SHA-256 of the bot token (NOT HMAC — plain SHA-256)
+    const secret = crypto
+      .createHash('sha256')
+      .update(process.env.TELEGRAM_TOKEN || '')
+      .digest();
+
+    const expected = crypto
+      .createHmac('sha256', secret)
+      .update(dataCheckStr)
+      .digest('hex');
+
+    console.log('[TG Auth] dataCheckStr:', dataCheckStr);
+    console.log('[TG Auth] expected:', expected);
+    console.log('[TG Auth] received:', hash);
+    console.log('[TG Auth] match:', expected === hash);
 
     if (expected !== hash) {
-      return res.status(401).json({ ok: false, error: 'Invalid Telegram auth' });
+      // Before failing, check if the auth_date is stale (> 1 day old)
+      const authDate = parseInt(fields.auth_date, 10);
+      const now = Math.floor(Date.now() / 1000);
+      if (!authDate || (now - authDate) > 86400) {
+        return res.status(401).json({ ok: false, error: 'Auth data expired — please try logging in again' });
+      }
+      return res.status(401).json({ ok: false, error: 'Invalid Telegram auth — please check BOT_USERNAME matches your bot exactly, and that your domain is registered with BotFather via /setdomain' });
     }
-    // Upsert user
+
+    // Auth passed
     const db = getDb();
-    const dbUser = await db.upsertTelegramUser({ telegram_id: user.id, first_name: user.first_name, username: user.username });
-    // Set session
-    if (dbUser) {
-      req.session.userId     = dbUser.id;
-      req.session.userName   = user.first_name || user.username;
-      req.session.loginType  = 'telegram';
-    }
-    const groups = await db.getAllGroups();
-    res.cookie('tg_user_id', String(user.id), {
-      httpOnly: true, secure: process.env.NODE_ENV === 'production',
-      maxAge: 7 * 24 * 60 * 60 * 1000
+    const dbUser = await db.upsertTelegramUser({
+      telegram_id: user.id,
+      first_name:  user.first_name,
+      username:    user.username
     });
+
+    // Set server session
+    if (dbUser) {
+      req.session.userId    = dbUser.id;
+      req.session.userName  = user.first_name || user.username;
+      req.session.loginType = 'telegram';
+      await new Promise((resolve, reject) =>
+        req.session.save(err => err ? reject(err) : resolve())
+      );
+    }
+
+    const groups = await db.getAllGroups();
     res.json({
-      ok: true,
-      user: { id: user.id, name: user.first_name, username: user.username },
+      ok:          true,
+      user:        { id: user.id, name: user.first_name, username: user.username },
       groups,
       redirectUrl: '/dashboard'
     });
   } catch(e) {
     console.error('[Auth/Telegram]', e.message);
-    res.status(500).json({ ok: false, error: 'Server error' });
+    res.status(500).json({ ok: false, error: 'Server error: ' + e.message });
   }
 });
 
