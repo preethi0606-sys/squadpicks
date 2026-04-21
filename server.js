@@ -314,7 +314,7 @@ app.post('/api/groups/create', requireWebAuth, async (req, res) => {
     if (!name) return res.status(400).json({ error: 'name required' });
     const group  = await db.createWebGroup({ name, ownerId: req.session.userId });
     if (!group)  return res.status(500).json({ error: 'Failed to create group' });
-    await db.addGroupMember({ groupId: group.id, userId: req.session.userId, email: req.session.userEmail });
+    await db.addGroupMemberByEmail({ groupId: group.id, userId: req.session.userId, email: req.session.userEmail });
     res.json({ ok: true, group });
   } catch(e) { console.error('[POST /groups/create]', e.message); res.status(500).json({ error: e.message }); }
 });
@@ -333,12 +333,13 @@ app.post('/api/groups/link-telegram', requireWebAuth, async (req, res) => {
     const { telegramGroupId, name } = req.body;
     if (!telegramGroupId) return res.status(400).json({ error: 'telegramGroupId required' });
     const chatId = parseInt(telegramGroupId, 10);
-    if (isNaN(chatId)) return res.status(400).json({ error: 'Invalid Telegram group ID' });
-    // Ensure the group exists in DB (creates it if not yet registered)
+    if (isNaN(chatId)) return res.status(400).json({ error: 'Invalid Telegram group ID — must be a number like -1001234567890' });
+    if (chatId > 0) return res.status(400).json({ error: 'Invalid group ID — Telegram group IDs start with a minus sign (e.g. -1001234567890)' });
+    // Ensure the group exists in DB
     await db.ensureGroup(chatId, name || 'Telegram Group');
-    // Add the Google user as a member of this Telegram group
-    await db.addGroupMember({ groupId: chatId, userId: req.session.userId, email: req.session.userEmail });
-    res.json({ ok: true, groupId: chatId, name });
+    // Link this user to the group
+    await db.addGroupMemberByEmail({ groupId: chatId, userId: req.session.userId, email: req.session.userEmail });
+    res.json({ ok: true, group: { id: chatId, title: name || 'Telegram Group', is_web_group: false } });
   } catch(e) { console.error('[link-telegram]', e.message); res.status(500).json({ error: e.message }); }
 });
 
@@ -370,8 +371,22 @@ app.get('/api/session', (req, res) => {
   }
 });
 
+// POST /api/auth/logout — used by JS fetch calls
 app.post('/api/auth/logout', (req, res) => {
-  req.session.destroy(() => res.json({ ok: true }));
+  req.session.destroy(() => {
+    res.clearCookie('connect.sid');
+    res.clearCookie('tg_user_id');
+    res.json({ ok: true });
+  });
+});
+
+// GET /logout — direct navigation fallback (e.g. if JS fails)
+app.get('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie('connect.sid');
+    res.clearCookie('tg_user_id');
+    res.redirect('/login');
+  });
 });
 
 // Manual trigger for admins
@@ -507,12 +522,21 @@ app.post('/api/auth/telegram', async (req, res) => {
 });
 
 // ─── PAGE ROUTES ────────────────────────────────────────────
+
+// /app — Telegram Mini App
+// Accessible from inside Telegram (no session, uses initData) AND from browser after Telegram website login.
+// We allow unauthenticated access here — client-side init() checks session and redirects to /login if needed.
 app.get('/app', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'app.html'));
 });
 
 // Login page — inject real bot username from env at serve time
 app.get('/login', (req, res) => {
+  // Already logged in? Send them to the right place
+  if (req.session && req.session.userId) {
+    if (req.session.loginType === 'telegram') return res.redirect('/app');
+    return res.redirect('/dashboard');
+  }
   try {
     let html = fs.readFileSync(path.join(__dirname, 'public', 'login.html'), 'utf8');
     const botUsername = process.env.BOT_USERNAME || 'squadpicks_bot';
@@ -525,7 +549,15 @@ app.get('/login', (req, res) => {
   }
 });
 
+// /dashboard — Web dashboard, Google users only
+// Server-side auth guard: must have a session. Telegram users go to /app.
 app.get('/dashboard', (req, res) => {
+  if (!req.session || !req.session.userId) {
+    return res.redirect('/login');
+  }
+  if (req.session.loginType === 'telegram') {
+    return res.redirect('/app');
+  }
   res.sendFile(path.join(__dirname, 'public', 'dashboard', 'index.html'));
 });
 

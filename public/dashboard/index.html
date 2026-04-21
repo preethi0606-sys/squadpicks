@@ -2,282 +2,394 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Dashboard — SquadPicks</title>
-<link rel="stylesheet" href="/styles.css"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>SquadPicks — Full App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
-body { padding-top: 62px; }
-.dash-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 1.5rem 2rem;
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --navy:#6B21A8;--navy2:#581C87;
+  --blue:#7C3AED;--blue2:#8B5CF6;
+  --beige:#F5F3FF;--beige2:#EDE9FE;--beige3:#DDD6FE;
+  --text:#1E1333;--text2:#3B1F6B;--text3:#7C5AB8;
+  --white:#FFFFFF;--surface:#FFFFFF;--card:#FFFFFF;
+  --border:#DDD6FE;--muted:#7C5AB8;--hint:#A78BCA;
+  --green:#059669;--green-bg:rgba(5,150,105,.1);--green-dk:#047857;
+  --amber:#D97706;--amber-bg:rgba(217,119,6,.1);
+  --red:#DC2626;--red-bg:rgba(220,38,38,.08);
+  --font-d:'Fraunces',Georgia,serif;
+  --font-b:'DM Sans',system-ui,sans-serif;
+  --r:16px;--rsm:10px;
+  --nav-h:62px;--sidebar-w:240px;
 }
-.dash-header-inner {
-  max-width: 1080px; margin: 0 auto;
-  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
-}
-.dash-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text); }
-.group-select {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--rsm); padding: 8px 14px;
-  color: var(--text); font-family: var(--font-body);
-  font-size: 14px; cursor: pointer; outline: none;
-  margin-left: auto;
-}
-.dash-stats {
-  display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1rem;
-}
-.stat {
-  background: var(--card); border-radius: var(--rsm); padding: .75rem 1rem;
-}
-.stat-num { font-size: 22px; font-weight: 700; color: var(--text); }
-.stat-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-height:100vh;overflow-x:hidden}
 
-/* FILTERS */
-.dash-filters {
-  max-width: 1080px; margin: 0 auto;
-  padding: 1rem 2rem;
-  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
-}
-.filter-pill {
-  padding: 5px 14px; border-radius: 20px;
-  font-size: 13px; font-weight: 500;
-  border: 1px solid var(--border);
-  background: var(--surface); color: var(--muted);
-  cursor: pointer; transition: all .15s;
-}
-.filter-pill.on {
-  background: var(--green-bg); color: var(--green);
-  border-color: var(--green-dk);
-}
-.add-pick-btn {
-  margin-left: auto;
-  background: var(--green); color: #0D2218;
-  border: none; border-radius: var(--rsm);
-  padding: 8px 16px; font-size: 13px; font-weight: 600;
-  cursor: pointer; font-family: var(--font-body);
-  display: flex; align-items: center; gap: 6px;
-}
+/* ── TOP NAV ── */
+.topnav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);background:var(--navy);display:flex;align-items:center;padding:0 1rem;z-index:100;gap:10px}
+.topnav-logo{font-family:var(--font-d);font-size:21px;font-weight:700;color:var(--beige);text-decoration:none;white-space:nowrap}
+.topnav-logo span{color:var(--blue2)}
+.topnav-squad{font-size:11px;color:#C4B5FD;margin-left:4px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topnav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.topnav-avatar{width:32px;height:32px;border-radius:50%;background:var(--blue2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;cursor:pointer;border:2px solid rgba(255,255,255,.2)}
+.ham-btn{background:transparent;border:none;cursor:pointer;display:flex;flex-direction:column;gap:5px;padding:6px;flex-shrink:0}
+.ham-line{width:22px;height:2px;background:#fff;border-radius:2px}
 
-/* PICKS GRID */
-.picks-grid {
-  max-width: 1080px; margin: 0 auto;
-  padding: 0 2rem 4rem;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 14px;
-}
-.pick-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--r); overflow: hidden;
-  transition: border-color .15s;
-}
-.pick-card:hover { border-color: rgba(0,168,132,.3); }
-.card-top { padding: 14px 14px 10px; display: flex; gap: 10px; }
-.card-icon {
-  width: 46px; height: 46px; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px; flex-shrink: 0;
-}
-.card-info { flex: 1; min-width: 0; }
-.card-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-.card-badges { display: flex; gap: 5px; flex-wrap: wrap; }
-.badge { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
-.badge-ok { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-dk); }
-.fc-row {
-  margin: 0 14px 10px;
-  background: #0A1A10; border-radius: 6px; padding: 6px 9px;
-  display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted);
-}
-.yt { background: var(--red); color: white; font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 2px; }
-.voters { padding: 0 14px 10px; display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
-.vc { font-size: 10px; padding: 3px 7px; border-radius: 10px; font-weight: 500; }
-.vc-seen { background: #0D2218; color: #66BB6A; }
-.vc-want { background: #1F1900; color: var(--amber); }
-.vc-skip { background: #1F0A0A; color: #EF5350; }
-.vc-none { background: rgba(255,255,255,.05); color: var(--hint); }
-.vote-count { margin-left: auto; font-size: 11px; color: var(--hint); }
-.vote-btns { display: flex; border-top: 1px solid var(--border); }
-.vote-btn {
-  flex: 1; padding: 10px 4px; text-align: center;
-  font-size: 12px; font-weight: 500; color: var(--muted);
-  background: transparent; border: none; cursor: pointer;
-  transition: all .15s; font-family: var(--font-body);
-}
-.vote-btn:not(:last-child) { border-right: 1px solid var(--border); }
-.vote-btn:hover { background: rgba(255,255,255,.04); }
-.vote-btn.on-seen { color: #66BB6A; background: #0D2218; }
-.vote-btn.on-want { color: var(--amber); background: #1F1900; }
-.vote-btn.on-skip { color: #EF5350; background: #1F0A0A; }
+/* ── DRAWER ── */
+.drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110}
+.drawer-overlay.open{display:block}
+.drawer{position:fixed;top:0;left:-260px;bottom:0;width:260px;background:var(--navy);z-index:115;transition:left .25s ease;display:flex;flex-direction:column;box-shadow:4px 0 24px rgba(0,0,0,.35)}
+.drawer.open{left:0}
+.drawer-header{padding:52px 20px 20px;border-bottom:1px solid rgba(255,255,255,.1)}
+.drawer-logo{font-family:var(--font-d);font-size:20px;font-weight:700;color:var(--beige)}
+.drawer-logo span{color:var(--blue2)}
+.drawer-user{font-size:12px;color:#C4B5FD;margin-top:4px}
+.drawer-nav{flex:1;padding:8px 0;overflow-y:auto}
+.drawer-item{display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;border:none;background:transparent;width:100%;text-align:left;font-family:var(--font-b);font-size:14px;font-weight:500;color:#A8C8F0;transition:all .15s;text-decoration:none}
+.drawer-item:hover{background:rgba(255,255,255,.06)}
+.drawer-item.on{background:rgba(124,58,237,.2);color:#fff}
+.drawer-icon{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.drawer-item.on .drawer-icon{background:var(--blue)}
+.drawer-footer{padding:14px 20px 28px;border-top:1px solid rgba(255,255,255,.1)}
+.drawer-signout{display:flex;align-items:center;gap:10px;font-size:13px;color:#f87171;cursor:pointer;background:none;border:none;font-family:var(--font-b);padding:8px 0;width:100%}
 
-/* ADD MODAL */
-.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; align-items: center; justify-content: center; padding: 1.5rem; }
-.overlay.open { display: flex; }
-.modal { background: var(--surface); border-radius: 16px; padding: 2rem; width: 100%; max-width: 440px; border: 1px solid var(--border); }
-.modal h3 { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 1.25rem; }
-.field { margin-bottom: 1rem; }
-.field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
-.field input {
-  width: 100%; background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--rsm); padding: 10px 14px;
-  color: var(--text); font-size: 14px; font-family: var(--font-body); outline: none;
-}
-.field input:focus { border-color: var(--green-dk); }
-.modal-footer { display: flex; gap: 10px; margin-top: 1.25rem; }
-.modal-cancel { flex: 1; padding: 11px; border-radius: var(--rsm); background: var(--card); border: 1px solid var(--border); color: var(--muted); font-family: var(--font-body); font-size: 14px; cursor: pointer; }
-.modal-save { flex: 2; padding: 11px; border-radius: var(--rsm); background: var(--green); border: none; color: #0D2218; font-family: var(--font-body); font-size: 14px; font-weight: 600; cursor: pointer; }
+/* ── LAYOUT ── */
+.main-wrap{padding-top:var(--nav-h)}
+.page-section{display:none;min-height:calc(100vh - var(--nav-h))}
+.page-section.on{display:block}
 
-/* EMPTY STATE */
-.empty { text-align: center; padding: 4rem 1rem; color: var(--muted); grid-column: 1/-1; }
-.empty-icon { font-size: 40px; margin-bottom: 1rem; }
+/* ── PICKS PAGE ── */
+.picks-page{display:flex;flex-direction:column}
+.picks-header{background:var(--white);border-bottom:1px solid var(--border);padding:1rem 1.25rem}
+.picks-header-top{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.squad-title{font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.group-select{background:var(--beige);border:1.5px solid var(--beige3);border-radius:var(--rsm);padding:7px 12px;color:var(--text);font-family:var(--font-b);font-size:13px;cursor:pointer;outline:none;max-width:180px}
+.group-select optgroup{font-weight:700;color:var(--navy)}
+.stats-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:.75rem}
+.stat{background:var(--beige);border:1px solid var(--beige3);border-radius:var(--rsm);padding:.5rem .875rem}
+.stat-num{font-size:18px;font-weight:700;color:var(--text)}
+.stat-lbl{font-size:10px;color:var(--muted);margin-top:1px}
+.filter-bar{display:flex;gap:6px;padding:.75rem 1.25rem;overflow-x:auto;scrollbar-width:none;background:var(--beige2);border-bottom:1px solid var(--beige3);position:sticky;top:var(--nav-h);z-index:30}
+.filter-bar::-webkit-scrollbar{display:none}
+.fpill{flex-shrink:0;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--beige3);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;font-family:var(--font-b)}
+.fpill.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.add-btn{margin-left:auto;flex-shrink:0;background:var(--blue);color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-b)}
 
-/* TOAST */
-.toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 300; }
-.toast.show { opacity: 1; }
+/* ── PICKS GRID ── */
+.picks-grid{padding:1rem 1.25rem 5rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+@media(max-width:640px){.picks-grid{grid-template-columns:1fr}}
 
-/* GROUP PANEL TABS */
-.gp-tab { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; font-family: var(--font-body); transition: all .15s; }
-.gp-tab.on { background: var(--navy, #6B21A8); color: #fff; border-color: var(--navy, #6B21A8); }
+/* ── PICK CARD ── */
+.pick-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 2px 8px rgba(124,58,237,.06);transition:border-color .15s}
+.pick-card:hover{border-color:var(--blue2)}
+.card-thumb{width:100%;height:170px;position:relative;overflow:hidden;background:var(--navy2,#3B0764);display:flex;align-items:center;justify-content:center;font-size:52px}
+.card-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.card-thumb-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(30,19,51,.85))}
+.card-thumb-info{position:absolute;bottom:10px;left:12px;right:12px}
+.card-type-badge{display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;margin-bottom:4px;letter-spacing:.04em}
+.card-thumb-title{font-family:var(--font-d);font-size:16px;font-weight:700;color:#fff;line-height:1.15}
+.card-thumb-emoji{font-size:52px;z-index:1;position:relative}
+.card-body{padding:10px 12px 0}
+.card-desc{font-size:12px;color:var(--text2);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-by{font-size:11px;color:var(--muted);margin-bottom:8px}
+.card-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--blue);border:1px solid var(--beige3);border-radius:20px;padding:3px 9px;text-decoration:none;margin-bottom:8px;transition:background .15s}
+.card-link:hover{background:var(--beige2)}
+.card-ok{font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;background:rgba(5,150,105,.1);color:#059669;border:1px solid rgba(5,150,105,.2);display:inline-block;margin-bottom:8px}
+.voters-row{display:flex;gap:4px;flex-wrap:wrap;align-items:center;padding:0 0 8px}
+.vc{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600}
+.vc-seen{background:rgba(5,150,105,.12);color:#059669;border:1px solid rgba(5,150,105,.2)}
+.vc-want{background:rgba(217,119,6,.1);color:#D97706;border:1px solid rgba(217,119,6,.2)}
+.vc-skip{background:rgba(220,38,38,.08);color:#DC2626;border:1px solid rgba(220,38,38,.15)}
+.vote-count{margin-left:auto;font-size:10px;color:var(--hint)}
+.vote-btns{display:flex;border-top:1px solid var(--border)}
+.vbtn{flex:1;padding:10px 4px;text-align:center;font-size:12px;font-weight:600;color:var(--muted);background:transparent;border:none;cursor:pointer;transition:all .15s;font-family:var(--font-b)}
+.vbtn:not(:last-child){border-right:1px solid var(--border)}
+.vbtn:hover{background:var(--beige)}
+.vbtn.on-seen{color:#059669;background:rgba(5,150,105,.08)}
+.vbtn.on-want{color:#D97706;background:rgba(217,119,6,.08)}
+.vbtn.on-skip{color:#DC2626;background:rgba(220,38,38,.05)}
 
-/* MOBILE NAV */
-.nav-hamburger { display:none; flex-direction:column; gap:5px; background:transparent; border:none; cursor:pointer; padding:6px; margin-left:auto; }
-.nav-hamburger span { display:block; width:22px; height:2px; background:#fff; border-radius:2px; }
-.mobile-nav { display:none; flex-direction:column; background:#6B21A8; padding:1rem 1.5rem; position:fixed; top:62px; left:0; right:0; z-index:55; box-shadow:0 8px 24px rgba(0,0,0,.25); }
-.mobile-nav.open { display:flex; }
-.mobile-nav a { color:#F5F3FF; text-decoration:none; font-size:15px; font-weight:500; padding:12px 0; border-bottom:1px solid rgba(255,255,255,.08); }
-.mobile-nav a:last-child { border-bottom:none; }
-@media(max-width:768px) { .nav-links { display:none; } .nav-hamburger { display:flex; } }
+/* ── TRENDING SECTION (inside Full App) ── */
+.section-wrap{padding:1rem 1.25rem 5rem}
+.section-title{font-family:var(--font-d);font-size:20px;font-weight:700;color:var(--text);margin-bottom:1rem}
+.trend-cat-bar{display:flex;gap:8px;margin-bottom:1rem;overflow-x:auto;scrollbar-width:none}
+.trend-cat-bar::-webkit-scrollbar{display:none}
+.tcb-btn{flex-shrink:0;padding:7px 18px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid var(--beige3);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;font-family:var(--font-b)}
+.tcb-btn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.trend-cat-section{display:none}.trend-cat-section.on{display:block}
+.trend-sec-hdr{font-size:13px;font-weight:700;color:var(--text2);margin:1rem 0 .5rem;display:flex;align-items:center;gap:8px}
+.tsh-tag{font-size:9px;font-weight:800;padding:2px 7px;border-radius:10px;background:var(--navy);color:#fff;letter-spacing:.04em}
+.tsh-live{font-size:9px;font-weight:700;color:#059669}
+.trend-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+.trend-row::-webkit-scrollbar{display:none}
+.tc-poster{flex-shrink:0;width:120px;border-radius:var(--rsm);overflow:hidden;background:var(--navy2,#3B0764);border:1px solid var(--beige3)}
+.tc-poster-img{width:120px;height:175px;display:flex;align-items:center;justify-content:center;font-size:52px;position:relative;overflow:hidden;background:var(--navy2,#3B0764)}
+.tc-score{position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.65);color:#FFD700;font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px}
+.tc-stream-badge{position:absolute;top:6px;left:6px;font-size:8px;font-weight:900;padding:3px 7px;border-radius:5px;color:white;letter-spacing:.04em;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.tc-rank-badge{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.65);color:#FFD700;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px}
+.tc-poster-body{padding:7px 8px;background:var(--white)}
+.tc-poster-title{font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px}
+.tc-poster-meta{font-size:9px;color:var(--muted);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-poster-actions{display:flex;border-top:1px solid var(--border);background:var(--beige)}
+.tc-pa-btn{flex:1;padding:7px 3px;text-align:center;font-size:9px;font-weight:700;border:none;background:transparent;cursor:pointer;font-family:var(--font-b);display:flex;align-items:center;justify-content:center;gap:2px;transition:background .12s;color:var(--blue)}
+.tc-pa-btn:not(:last-child){border-right:1px solid var(--border)}
+.tc-wide{flex-shrink:0;width:190px;border-radius:var(--rsm);overflow:hidden;background:var(--white);border:1px solid var(--border)}
+.tc-wide-img{width:190px;height:110px;display:flex;align-items:center;justify-content:center;font-size:40px;background:var(--navy2,#3B0764);position:relative;overflow:hidden}
+.tc-wide-body{padding:9px 11px}
+.tc-wide-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px}
+.tc-wide-meta{font-size:10px;color:var(--muted);margin-bottom:5px}
+.tc-wide-src{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--muted);font-weight:500}
+.tc-src-dot{width:12px;height:12px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:800;color:white;flex-shrink:0}
+.trend-loading{padding:2rem;text-align:center;color:var(--muted);font-size:13px}
+.trend-spin{display:inline-block;width:18px;height:18px;border:2px solid var(--beige3);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── PLAN SECTION ── */
+.plan-section{display:none}.plan-section.on{display:block}
+.plan-filter-row{display:flex;gap:6px;padding:.75rem 1.25rem;overflow-x:auto;scrollbar-width:none;background:var(--beige2);border-bottom:1px solid var(--beige3)}
+.plan-filter-row::-webkit-scrollbar{display:none}
+.plan-cards{padding:1rem 1.25rem 5rem;display:flex;flex-direction:column;gap:10px}
+.plan-group-title{font-family:var(--font-d);font-size:15px;font-weight:700;color:var(--text);margin:10px 0 6px;display:flex;align-items:center;gap:8px}
+.plan-count{font-family:var(--font-b);font-size:11px;font-weight:600;background:var(--navy);color:var(--beige2);padding:2px 8px;border-radius:10px}
+.pcard{background:var(--white);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;display:flex;box-shadow:0 1px 4px rgba(124,58,237,.06)}
+.pcard-thumb{width:72px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:28px;position:relative;overflow:hidden}
+.pcard-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pcard-thumb-emoji{font-size:28px;z-index:1;position:relative}
+.pcard-body{flex:1;padding:10px 12px;min-width:0}
+.pcard-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcard-title a{color:var(--text);text-decoration:none}
+.pcard-title a:hover{color:var(--blue)}
+.pcard-meta{font-size:10px;color:var(--muted);margin-bottom:5px}
+.pcard-badges{display:flex;gap:4px;flex-wrap:wrap}
+.pb{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px}
+.pb-ok{background:rgba(5,150,105,.1);color:#059669;border:1px solid rgba(5,150,105,.2)}
+.pb-skip{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.15)}
+.pb-wait{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(217,119,6,.2)}
+.pcard-voters{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap}
+.pvc{font-size:9px;padding:2px 5px;border-radius:6px;font-weight:600}
+.pvc-ok{background:rgba(124,58,237,.12);color:var(--blue);border:1px solid rgba(124,58,237,.2)}
+.pvc-want{background:var(--beige2);color:var(--text2);border:1px solid var(--beige3)}
+.pvc-skip{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.15)}
+
+/* ── SETTINGS SECTION ── */
+.settings-wrap{padding:1rem 1.25rem 5rem;max-width:600px}
+.settings-section{background:var(--white);border-radius:var(--r);overflow:hidden;margin-bottom:16px;border:1px solid var(--border)}
+.settings-hdr{padding:10px 14px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.05em;text-transform:uppercase}
+.settings-row{padding:13px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.settings-row:last-child{border-bottom:none}
+.si-icon{font-size:18px;width:36px;text-align:center;flex-shrink:0}
+.si-lbl{flex:1}
+.si-lbl h4{font-size:14px;font-weight:600;color:var(--text);margin-bottom:1px}
+.si-lbl p{font-size:12px;color:var(--muted)}
+.si-arrow{color:var(--muted);font-size:16px}
+.settings-signout{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;width:100%;background:none;border:none;font-family:var(--font-b);text-align:left}
+.settings-signout-lbl h4{font-size:14px;font-weight:600;color:#DC2626}
+.settings-signout-lbl p{font-size:12px;color:#f87171}
+
+/* ── MODALS ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center;padding:1.25rem}
+.overlay.open{display:flex}
+.modal{background:var(--white);border-radius:var(--r);padding:1.75rem;width:100%;max-width:460px;border:1px solid var(--border);max-height:90vh;overflow-y:auto}
+.modal h3{font-family:var(--font-d);font-size:20px;font-weight:700;color:var(--text);margin-bottom:1.25rem}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.field input{width:100%;background:var(--beige);border:1.5px solid var(--beige3);border-radius:var(--rsm);padding:10px 14px;color:var(--text);font-size:14px;font-family:var(--font-b);outline:none}
+.field input:focus{border-color:var(--blue2)}
+.modal-footer{display:flex;gap:10px;margin-top:1.25rem}
+.modal-cancel{flex:1;padding:11px;border-radius:var(--rsm);background:var(--beige);border:1.5px solid var(--beige3);color:var(--muted);font-family:var(--font-b);font-size:14px;cursor:pointer}
+.modal-save{flex:2;padding:11px;border-radius:var(--rsm);background:var(--blue);border:none;color:#fff;font-family:var(--font-b);font-size:14px;font-weight:700;cursor:pointer}
+.modal-save:disabled{background:var(--beige3);color:var(--muted);cursor:not-allowed}
+.gp-tab{padding:6px 13px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--beige3);background:transparent;color:var(--muted);cursor:pointer;font-family:var(--font-b);transition:all .15s}
+.gp-tab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.gp-pane{display:none}.gp-pane.on{display:block}
+
+/* ── EMPTY / TOAST ── */
+.empty{text-align:center;padding:3.5rem 1rem;color:var(--muted);grid-column:1/-1}
+.empty-icon{font-size:40px;margin-bottom:1rem}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:500;opacity:0;transition:opacity .2s;pointer-events:none;z-index:300}
+.toast.show{opacity:1}
+@media(max-width:480px){.picks-grid{padding:.75rem .75rem 5rem}.section-wrap{padding:.75rem .75rem 5rem}.settings-wrap{padding:.75rem .75rem 5rem}.plan-cards{padding:.75rem .75rem 5rem}}
 </style>
 </head>
 <body>
 
-<nav class="nav">
-  <a href="/" class="nav-logo">Squad<span>Picks</span></a>
-  <div class="nav-links">
-    <a href="/dashboard" class="active">Dashboard</a>
-    <a href="#" onclick="openGroupPanel(); return false;">My Squads</a>
-    <a href="/blog">Blog</a>
-    <a href="#" id="logout-link" onclick="logout(); return false;">Sign out</a>
-  </div>
-  <button class="nav-hamburger" id="nav-ham" onclick="document.getElementById('mob-nav').classList.toggle('open')" aria-label="Menu">
-    <span></span><span></span><span></span>
+<!-- TOP NAV -->
+<header class="topnav">
+  <button class="ham-btn" onclick="toggleDrawer()" aria-label="Menu">
+    <div class="ham-line"></div><div class="ham-line"></div><div class="ham-line"></div>
   </button>
+  <a href="/" class="topnav-logo">Squad<span>Picks</span></a>
+  <span class="topnav-squad" id="topnav-squad"></span>
+  <div class="topnav-right">
+    <div class="topnav-avatar" id="topnav-av">?</div>
+  </div>
+</header>
+
+<!-- DRAWER OVERLAY -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+
+<!-- DRAWER -->
+<nav class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-logo">Squad<span>Picks</span></div>
+    <div class="drawer-user" id="drawer-user">Loading...</div>
+  </div>
+  <div class="drawer-nav">
+    <a class="drawer-item on" id="dnav-picks" onclick="goSection('picks',this)">
+      <div class="drawer-icon">✓</div><span>Picks</span>
+    </a>
+    <a class="drawer-item" id="dnav-plan" onclick="goSection('plan',this)">
+      <div class="drawer-icon">📋</div><span>Plan</span>
+    </a>
+    <a class="drawer-item" id="dnav-trending" onclick="goSection('trending',this)">
+      <div class="drawer-icon">🔥</div><span>Trending</span>
+    </a>
+    <a class="drawer-item" id="dnav-settings" onclick="goSection('settings',this)">
+      <div class="drawer-icon">⚙️</div><span>Settings</span>
+    </a>
+    <div style="height:1px;background:rgba(255,255,255,.1);margin:8px 16px"></div>
+    <a class="drawer-item" onclick="openGroupPanel()">
+      <div class="drawer-icon">👥</div><span>My Squads</span>
+    </a>
+  </div>
+  <div class="drawer-footer">
+    <button class="drawer-signout" onclick="doSignOut()">
+      🚪 <span style="font-size:13px;color:#f87171;font-weight:600">Sign out</span>
+    </button>
+  </div>
 </nav>
-<div class="mobile-nav" id="mob-nav">
-  <a href="/dashboard">Dashboard</a>
-  <a href="#" onclick="openGroupPanel();document.getElementById('mob-nav').classList.remove('open');return false;">My Squads</a>
-  <a href="/blog">Blog</a>
-  <a href="#" onclick="logout();return false;">Sign out</a>
-</div>
 
-<!-- GROUP MANAGEMENT PANEL -->
-<div class="overlay" id="group-panel" onclick="if(event.target===this)closeGroupPanel()" style="display:none;align-items:center;justify-content:center;padding:1.5rem;">
-  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
-      <h3 style="margin:0">My Squads</h3>
-      <button onclick="closeGroupPanel()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;">✕</button>
-    </div>
+<!-- MAIN -->
+<div class="main-wrap">
 
-    <!-- Tab switcher -->
-    <div style="display:flex;gap:6px;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:10px;">
-      <button class="gp-tab on" onclick="gpTab('create',this)">+ New squad</button>
-      <button class="gp-tab" onclick="gpTab('telegram',this)">🔗 Link Telegram</button>
-      <button class="gp-tab" onclick="gpTab('invite',this)">✉️ Invite members</button>
-    </div>
-
-    <!-- CREATE WEB SQUAD -->
-    <div id="gp-create" class="gp-pane">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;">Create a squad without Telegram. Invite members by email.</p>
-      <div class="field">
-        <label>Squad name</label>
-        <input id="gp-name" placeholder="e.g. Family Movie Night, Weekend Crew..." />
+  <!-- ── PICKS SECTION ── -->
+  <section class="page-section on" id="sec-picks">
+    <div class="picks-page">
+      <div class="picks-header">
+        <div class="picks-header-top">
+          <div class="squad-title" id="squad-title">Your Squad</div>
+          <select class="group-select" id="group-select" onchange="switchGroup(this.value)">
+            <option value="">Loading...</option>
+          </select>
+        </div>
+        <div class="stats-row" id="stats-row"></div>
       </div>
-      <button class="modal-save" style="width:100%;margin-top:.5rem;" onclick="createSquad()">Create squad</button>
-      <div id="gp-create-msg" style="font-size:13px;margin-top:10px;display:none;"></div>
-    </div>
-
-    <!-- LINK TELEGRAM GROUP -->
-    <div id="gp-telegram" class="gp-pane" style="display:none;">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;">Link your existing Telegram group so you can manage it from here too.</p>
-      <div class="field">
-        <label>Telegram Group ID</label>
-        <input id="gp-tg-id" placeholder="-1001234567890" type="number" />
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Find this by adding @userinfobot to your group. It looks like -100xxxxxxxxxx</div>
+      <div class="filter-bar">
+        <button class="fpill on" onclick="setFilter('all',this)">All</button>
+        <button class="fpill" onclick="setFilter('want',this)">★ Want to</button>
+        <button class="fpill" onclick="setFilter('group',this)">✓ Group ok</button>
+        <button class="fpill" onclick="setFilter('movie',this)">🎬 Movies</button>
+        <button class="fpill" onclick="setFilter('food',this)">🍽 Food</button>
+        <button class="fpill" onclick="setFilter('place',this)">📍 Places</button>
+        <button class="fpill" onclick="setFilter('event',this)">🎭 Events</button>
+        <button class="add-btn" onclick="openAdd()">+ Add pick</button>
       </div>
-      <div class="field">
-        <label>Group name</label>
-        <input id="gp-tg-name" placeholder="e.g. Family Chat" />
-      </div>
-      <button class="modal-save" style="width:100%;margin-top:.5rem;" onclick="linkTelegram()">Link group</button>
-      <div id="gp-tg-msg" style="font-size:13px;margin-top:10px;display:none;"></div>
-      <div style="background:rgba(124,58,237,.08);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:1rem;font-size:12px;color:var(--muted);line-height:1.6;">
-        <strong style="color:var(--text);">Tip:</strong> Make sure you've added the SquadPicks bot to your Telegram group first.
-        Then paste the group ID above to link it to your Google account.
+      <div class="picks-grid" id="picks-grid">
+        <div class="empty"><div class="empty-icon">⏳</div>Loading picks...</div>
       </div>
     </div>
+  </section>
 
-    <!-- INVITE MEMBERS -->
-    <div id="gp-invite" class="gp-pane" style="display:none;">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;">Invite people by Gmail address to join your squad.</p>
-      <div class="field">
-        <label>Select squad</label>
-        <select id="gp-inv-group" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;color:var(--text);font-size:14px;outline:none;">
-          <option value="">Loading...</option>
-        </select>
+  <!-- ── PLAN SECTION ── -->
+  <section class="page-section" id="sec-plan">
+    <div class="filter-bar">
+      <button class="fpill on" onclick="setPlanFilter('all',this)">All</button>
+      <button class="fpill" onclick="setPlanFilter('ok',this)">✓ Group ok</button>
+      <button class="fpill" onclick="setPlanFilter('skip',this)">✕ Has skip</button>
+      <button class="fpill" onclick="setPlanFilter('pending',this)">⏳ Pending</button>
+      <button class="fpill" onclick="setPlanFilter('movie',this)">🎬</button>
+      <button class="fpill" onclick="setPlanFilter('food',this)">🍽</button>
+      <button class="fpill" onclick="setPlanFilter('place',this)">📍</button>
+      <button class="fpill" onclick="setPlanFilter('event',this)">🎭</button>
+    </div>
+    <div class="plan-cards" id="plan-cards">
+      <div class="empty"><div class="empty-icon">⏳</div>Loading plan...</div>
+    </div>
+  </section>
+
+  <!-- ── TRENDING SECTION ── -->
+  <section class="page-section" id="sec-trending">
+    <div class="section-wrap">
+      <div class="section-title">Trending</div>
+      <div class="trend-cat-bar">
+        <button class="tcb-btn on" onclick="setTrendCat('movies',this)">🎬 Movies</button>
+        <button class="tcb-btn" onclick="setTrendCat('events',this)">🎭 Events</button>
+        <button class="tcb-btn" onclick="setTrendCat('places',this)">📍 Places</button>
       </div>
-      <div class="field">
-        <label>Gmail address</label>
-        <input id="gp-inv-email" placeholder="friend@gmail.com" type="email" />
+      <div class="trend-cat-section on" id="tcat-movies">
+        <div class="trend-sec-hdr">Netflix Top 10 <span class="tsh-tag" style="background:#E50914">N</span><span class="tsh-live" id="nf-live" style="display:none"> ● LIVE</span></div>
+        <div id="tr-netflix"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
+        <div class="trend-sec-hdr" style="margin-top:1rem">Prime Video Top 10 <span class="tsh-tag" style="background:#00A8E0">P</span><span class="tsh-live" id="pv-live" style="display:none"> ● LIVE</span></div>
+        <div id="tr-prime"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
+        <div class="trend-sec-hdr" style="margin-top:1rem">IMDb Top Picks <span class="tsh-tag" style="background:#F5C518;color:#000;font-weight:900">IMDb</span><span class="tsh-live" id="imdb-live" style="display:none"> ● LIVE</span></div>
+        <div id="tr-imdb"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
       </div>
-      <button class="modal-save" style="width:100%;margin-top:.5rem;" onclick="inviteMember()">Send invite</button>
-      <div id="gp-inv-msg" style="font-size:13px;margin-top:10px;display:none;"></div>
-      <div style="font-size:11px;color:var(--muted);margin-top:.75rem;line-height:1.6;">
-        Members invited by email can sign in with Google and see the squad's picks.
+      <div class="trend-cat-section" id="tcat-events">
+        <div class="trend-sec-hdr">Top Events <span class="tsh-tag" style="background:#F05537">Eventbrite</span></div>
+        <div class="trend-row" id="tr-events"></div>
+      </div>
+      <div class="trend-cat-section" id="tcat-places">
+        <div class="trend-sec-hdr">Top Restaurants <span class="tsh-tag" style="background:#E23744">Zomato</span></div>
+        <div class="trend-row" id="tr-food"></div>
       </div>
     </div>
-  </div>
-</div>
+  </section>
 
-<div class="dash-header">
-  <div class="dash-header-inner">
-    <div>
-      <div class="dash-title" id="group-title">Loading...</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:3px" id="user-greeting">Welcome back</div>
+  <!-- ── SETTINGS SECTION ── -->
+  <section class="page-section" id="sec-settings">
+    <div class="settings-wrap">
+      <div class="settings-section" id="identity-card" style="display:none">
+        <div class="settings-hdr">Signed in as</div>
+        <div class="settings-row" style="cursor:default">
+          <div class="si-icon" id="si-av" style="width:36px;height:36px;border-radius:50%;background:var(--beige2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--navy)">?</div>
+          <div class="si-lbl"><h4 id="si-name">Member</h4><p id="si-type">Google account</p></div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-hdr">Squad</div>
+        <div class="settings-row" onclick="openGroupPanel()" style="cursor:pointer">
+          <div class="si-icon">👥</div>
+          <div class="si-lbl"><h4>My Squads</h4><p>Create, link and manage squads</p></div>
+          <span class="si-arrow">›</span>
+        </div>
+        <div class="settings-row" style="cursor:default">
+          <div class="si-icon">🔔</div>
+          <div class="si-lbl"><h4>Notifications</h4><p>Weekly digest · Friday picks</p></div>
+          <span class="si-arrow">›</span>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-hdr">Account</div>
+        <div class="settings-row" style="cursor:default">
+          <div class="si-icon">✨</div>
+          <div class="si-lbl"><h4>Squad+ Plan</h4><p>Free · Upgrade for more</p></div>
+          <span class="si-arrow">›</span>
+        </div>
+        <div class="settings-row" style="cursor:default">
+          <div class="si-icon">❓</div>
+          <div class="si-lbl"><h4>Help</h4><p>How to use SquadPicks</p></div>
+          <span class="si-arrow">›</span>
+        </div>
+        <button class="settings-signout" onclick="doSignOut()">
+          <div class="si-icon">🚪</div>
+          <div class="settings-signout-lbl"><h4>Sign out</h4><p>Return to login page</p></div>
+        </button>
+      </div>
     </div>
-    <select class="group-select" id="group-select" onchange="switchGroup(this.value)">
-      <option value="">Loading groups...</option>
-    </select>
-  </div>
-  <div class="dash-header-inner" style="margin-top:.75rem">
-    <div class="dash-stats" id="stats"></div>
-  </div>
-</div>
+  </section>
 
-<div class="dash-filters">
-  <div class="filter-pill on" onclick="setFilter('all',this)">All picks</div>
-  <div class="filter-pill" onclick="setFilter('want',this)">I want to</div>
-  <div class="filter-pill" onclick="setFilter('group',this)">Group ok</div>
-  <div class="filter-pill" onclick="setFilter('movie',this)">🎬 Movies</div>
-  <div class="filter-pill" onclick="setFilter('food',this)">🍽 Food</div>
-  <div class="filter-pill" onclick="setFilter('place',this)">📍 Places</div>
-  <div class="filter-pill" onclick="setFilter('event',this)">🎭 Events</div>
-  <button class="add-pick-btn" onclick="openAdd()">+ Add pick</button>
-</div>
+</div><!-- end main-wrap -->
 
-<div class="picks-grid" id="picks-grid">
-  <div class="empty"><div class="empty-icon">⏳</div>Loading your picks...</div>
-</div>
-
-<!-- ADD MODAL -->
-<div class="overlay" id="add-modal" onclick="overlayClick(event)">
+<!-- ADD PICK MODAL -->
+<div class="overlay" id="add-modal" onclick="if(event.target===this)closeAdd()">
   <div class="modal">
     <h3>Add a pick</h3>
     <div class="field">
       <label>Link</label>
-      <input id="add-url" placeholder="Paste any URL — IMDB, Maps, Yelp, Zomato..." />
+      <input id="add-url" placeholder="Paste any URL — IMDB, Maps, Yelp, Zomato..."/>
     </div>
-    <div style="font-size:12px;color:var(--muted)">The bot will automatically read the title, type and details from the link.</div>
+    <p style="font-size:12px;color:var(--muted)">We'll automatically read the title, image and type from the link.</p>
     <div class="modal-footer">
       <button class="modal-cancel" onclick="closeAdd()">Cancel</button>
       <button class="modal-save" id="add-save" onclick="saveAdd()">Add to SquadPicks</button>
@@ -285,203 +397,286 @@ body { padding-top: 62px; }
   </div>
 </div>
 
+<!-- MY SQUADS MODAL -->
+<div class="overlay" id="group-panel" onclick="if(event.target===this)closeGroupPanel()">
+  <div class="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+      <h3 style="margin:0">My Squads</h3>
+      <button onclick="closeGroupPanel()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px">✕</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:10px;flex-wrap:wrap">
+      <button class="gp-tab on" onclick="gpTab('create',this)">+ New squad</button>
+      <button class="gp-tab" onclick="gpTab('telegram',this)">🔗 Link Telegram</button>
+      <button class="gp-tab" onclick="gpTab('invite',this)">✉️ Invite members</button>
+    </div>
+    <!-- Create -->
+    <div id="gp-create" class="gp-pane on">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Create a squad without Telegram. Invite members by Gmail.</p>
+      <div class="field"><label>Squad name</label><input id="gp-name" placeholder="e.g. Family Movie Night"/></div>
+      <button class="modal-save" style="width:100%" onclick="createSquad()">Create squad</button>
+      <div id="gp-create-msg" style="display:none;margin-top:10px"></div>
+    </div>
+    <!-- Link Telegram -->
+    <div id="gp-telegram" class="gp-pane">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Link a Telegram group where the SquadPicks bot is added.</p>
+      <div class="field">
+        <label>Telegram Group ID</label>
+        <input id="gp-tg-id" placeholder="-1001234567890" type="number"/>
+        <p style="font-size:11px;color:var(--muted);margin-top:4px">Add @userinfobot to your group to find the ID (starts with -100)</p>
+      </div>
+      <div class="field"><label>Group name</label><input id="gp-tg-name" placeholder="e.g. Family Chat"/></div>
+      <button class="modal-save" style="width:100%" onclick="linkTelegram()">Link group</button>
+      <div id="gp-tg-msg" style="display:none;margin-top:10px"></div>
+    </div>
+    <!-- Invite -->
+    <div id="gp-invite" class="gp-pane">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Invite someone by Gmail to join your squad.</p>
+      <div class="field">
+        <label>Select squad</label>
+        <select id="gp-inv-group" style="width:100%;background:var(--beige);border:1.5px solid var(--beige3);border-radius:var(--rsm);padding:10px 14px;color:var(--text);font-size:14px;outline:none"><option value="">Loading...</option></select>
+      </div>
+      <div class="field"><label>Gmail address</label><input id="gp-inv-email" placeholder="friend@gmail.com" type="email"/></div>
+      <button class="modal-save" style="width:100%" onclick="inviteMember()">Send invite</button>
+      <div id="gp-inv-msg" style="display:none;margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
+// ── STATE ──────────────────────────────────────────────────
 const BASE = window.location.origin;
+let currentUser  = null;
 let currentGroupId = null;
-let allPicks = [];
-let myVotes = {};
-let filter = 'all';
-let currentUser = null;
+let allPicks     = [];
+let myVotes      = {};
+let planFilter   = 'all';
+let picksFilter  = 'all';
 
-const TYPE_CFG = {
-  movie: { icon:'🎬', iconBg:'#1a0f2e', badgeBg:'#2d1b5e', badgeTx:'#c8a8f9', lbl:'Movie' },
-  food:  { icon:'🍽', iconBg:'#1f1400', badgeBg:'#2d1f00', badgeTx:'#ffb74d', lbl:'Restaurant' },
-  place: { icon:'📍', iconBg:'#0d2218', badgeBg:'#0d3320', badgeTx:'#69d47e', lbl:'Place' },
-  event: { icon:'🎭', iconBg:'#1a0a1a', badgeBg:'#2d0d2d', badgeTx:'#f48fb1', lbl:'Event' },
-  show:  { icon:'📺', iconBg:'#0d1020', badgeBg:'#0d1f3d', badgeTx:'#90caf9', lbl:'Show' },
-  link:  { icon:'🔗', iconBg:'#1a1a2e', badgeBg:'#1a1a2e', badgeTx:'#8696a0', lbl:'Link' },
+const TC = {
+  movie: {emoji:'🎬', grad:'#2d1b5e', tb:'rgba(139,92,246,.9)', tt:'#fff', lbl:'Movie'},
+  show:  {emoji:'📺', grad:'#0d1f3d', tb:'rgba(96,165,250,.9)', tt:'#fff', lbl:'Show'},
+  food:  {emoji:'🍽', grad:'#2d1f00', tb:'rgba(251,191,36,.9)', tt:'#000', lbl:'Restaurant'},
+  place: {emoji:'📍', grad:'#0d2218', tb:'rgba(52,211,153,.9)', tt:'#000', lbl:'Place'},
+  event: {emoji:'🎭', grad:'#2d0d2d', tb:'rgba(244,114,182,.9)', tt:'#fff', lbl:'Event'},
+  link:  {emoji:'🔗', grad:'#1a1a2e', tb:'rgba(134,148,160,.9)', tt:'#fff', lbl:'Link'},
 };
 
-// ── INIT — check server session first ──
+const VOTE_LABELS = {
+  movie:{seen:'Watched',want:'Want to watch',skip:'Not for me'},
+  show: {seen:'Watched',want:'Want to watch',skip:'Not for me'},
+  food: {seen:'Tried it',want:'Want to try',skip:'Skip it'},
+  place:{seen:'Been there',want:'Want to go',skip:'Not for me'},
+  event:{seen:'Attended',want:'Want to go',skip:'Not going'},
+  link: {seen:'Seen',want:'Interested',skip:'Not for me'},
+};
+
+// ── INIT ──────────────────────────────────────────────────
 (async function init() {
-  const params = new URLSearchParams(window.location.search);
-  currentGroupId = params.get('groupId') || '';
-
-  // Always check server-side session first (works for Google AND Telegram login)
+  // Always check server session first
   try {
-    const sesRes = await fetch(BASE + '/api/session');
-    const ses    = await sesRes.json();
-    if (ses.ok && ses.user) {
-      currentUser = ses.user;
-      document.getElementById('user-greeting').textContent =
-        `Welcome back, ${ses.user.name || 'there'}!`;
-      // Show avatar if Google user
-      if (ses.user.avatar) {
-        const nav = document.querySelector('.nav-links');
-        if (nav) nav.insertAdjacentHTML('afterbegin',
-          `<img src="${ses.user.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid var(--border)" onerror="this.remove()">`);
-      }
-      await loadGroups();
-      if (currentGroupId) await loadPicks();
-      return;
-    }
-  } catch(e) { /* fall through to localStorage check */ }
+    const r   = await fetch(BASE + '/api/session');
+    const ses = await r.json();
+    if (!ses.ok || !ses.user) { window.location.href = '/login'; return; }
+    currentUser = ses.user;
+  } catch(e) { window.location.href = '/login'; return; }
 
-  // Fallback: Telegram users stored in localStorage (legacy)
-  const stored = localStorage.getItem('tg_user');
-  if (stored) {
-    try {
-      const user = JSON.parse(stored);
-      if (user && user.id) {
-        currentUser = { id: user.id, name: user.first_name, loginType: 'telegram' };
-        document.getElementById('user-greeting').textContent =
-          `Welcome back, ${user.first_name || 'there'}!`;
-        await loadGroups();
-        if (currentGroupId) await loadPicks();
-        return;
-      }
-    } catch(e) {}
+  // Populate UI identity
+  const name   = currentUser.name || 'Member';
+  const initLetter = name.charAt(0).toUpperCase();
+  document.getElementById('topnav-av').textContent = initLetter;
+  document.getElementById('drawer-user').textContent = name + ' · Google';
+  const idCard = document.getElementById('identity-card');
+  if (idCard) {
+    idCard.style.display = 'block';
+    document.getElementById('si-av').textContent   = initLetter;
+    document.getElementById('si-name').textContent = name;
+    document.getElementById('si-type').textContent = currentUser.email || 'Google account';
   }
 
-  // Not authenticated — redirect to login
-  window.location.href = '/login';
+  // Load groups and picks
+  const params = new URLSearchParams(location.search);
+  currentGroupId = params.get('groupId') || null;
+  await loadGroups();
+
+  // Load trending data
+  loadTrending();
 })();
 
+// ── SECTION NAV ───────────────────────────────────────────
+function goSection(name, btn) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.drawer-item').forEach(b => b.classList.remove('on'));
+  document.getElementById('sec-' + name).classList.add('on');
+  const dnav = document.getElementById('dnav-' + name);
+  if (dnav) dnav.classList.add('on');
+  closeDrawer();
+  if (name === 'plan') renderPlan();
+}
+
+// ── DRAWER ────────────────────────────────────────────────
+function toggleDrawer() {
+  document.getElementById('drawer').classList.toggle('open');
+  document.getElementById('drawer-overlay').classList.toggle('open');
+}
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+// ── GROUPS ────────────────────────────────────────────────
 async function loadGroups() {
   try {
-    // Try web groups endpoint first (works for Google session users)
-    let groups = [];
-    const webRes = await fetch(BASE + '/api/groups/mine');
-    if (webRes.ok) {
-      const webData = await webRes.json();
-      if (webData.ok) groups = webData.groups || [];
-    }
+    // Google users ONLY see groups from /api/groups/mine (explicit membership)
+    const r    = await fetch(BASE + '/api/groups/mine');
+    const data = await r.json();
+    const groups = (data.groups || []);
 
-    // Also load Telegram groups (available to all users)
-    const tgRes = await fetch(BASE + '/api/groups', {
-      headers: { 'x-telegram-init-data': 'test', 'x-user-id': currentUser?.id || '123456789' }
-    });
-    if (tgRes.ok) {
-      const tgData = await tgRes.json();
-      const tgGroups = (tgData.groups || []).map(g => ({ ...g, source: 'telegram' }));
-      // Merge — avoid duplicates by id
-      const ids = new Set(groups.map(g => String(g.id)));
-      tgGroups.forEach(g => { if (!ids.has(String(g.id))) groups.push(g); });
-    }
-
-    const sel = document.getElementById('group-select');
+    const sel  = document.getElementById('group-select');
     if (groups.length) {
-      sel.innerHTML = groups.map(g =>
-        `<option value="${g.id}" ${String(g.id) === String(currentGroupId) ? 'selected' : ''}>
-          ${g.is_web_group ? '🌐 ' : '💬 '}${esc(g.title)}
-        </option>`
-      ).join('');
-      if (!currentGroupId) { currentGroupId = String(groups[0].id); await loadPicks(); }
-      document.getElementById('group-title').textContent =
-        groups.find(g => String(g.id) === String(currentGroupId))?.title || 'Your Squad';
+      // Separate into Google-created and Telegram-linked
+      const webGroups = groups.filter(g =>  g.is_web_group);
+      const tgGroups  = groups.filter(g => !g.is_web_group);
+      let html = '';
+      if (webGroups.length) {
+        html += `<optgroup label="🌐 Google Squads">`;
+        webGroups.forEach(g => {
+          html += `<option value="${g.id}" ${String(g.id)===String(currentGroupId)?'selected':''}>🌐 ${esc(g.title)}</option>`;
+        });
+        html += '</optgroup>';
+      }
+      if (tgGroups.length) {
+        html += `<optgroup label="💬 Telegram Groups">`;
+        tgGroups.forEach(g => {
+          html += `<option value="${g.id}" ${String(g.id)===String(currentGroupId)?'selected':''}>💬 ${esc(g.title)}</option>`;
+        });
+        html += '</optgroup>';
+      }
+      sel.innerHTML = html;
+      if (!currentGroupId) currentGroupId = String(groups[0].id);
+      const active = groups.find(g => String(g.id) === String(currentGroupId));
+      document.getElementById('squad-title').textContent   = active?.title || 'Your Squad';
+      document.getElementById('topnav-squad').textContent  = active?.title || '';
+      await loadPicks();
     } else {
-      sel.innerHTML = '<option value="">No groups yet — create one below</option>';
-      document.getElementById('group-title').textContent = 'Your Squad';
+      sel.innerHTML = '<option value="">No squads yet</option>';
+      document.getElementById('squad-title').textContent  = 'No squads yet';
       document.getElementById('picks-grid').innerHTML = `
         <div class="empty">
           <div class="empty-icon">👥</div>
-          <div style="font-size:15px;font-weight:600;margin-bottom:8px">No squads yet</div>
-          <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Create a group or link your Telegram group to get started</div>
-          <button onclick="openGroupPanel()" style="background:var(--navy);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer">+ Create a squad</button>
+          <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px">No squads yet</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Create a squad or link your Telegram group</div>
+          <button onclick="openGroupPanel()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font-b)">+ Create a squad</button>
         </div>`;
     }
-  } catch(e) {
-    console.error('[loadGroups]', e);
-    document.getElementById('group-title').textContent = 'Your Squad';
-  }
+  } catch(e) { console.error('[loadGroups]', e); }
 }
 
+function switchGroup(id) {
+  currentGroupId = id;
+  const sel = document.getElementById('group-select');
+  const opt = sel.options[sel.selectedIndex];
+  const title = (opt?.text || '').replace(/^[🌐💬]\s*/u, '');
+  document.getElementById('squad-title').textContent  = title;
+  document.getElementById('topnav-squad').textContent = title;
+  history.pushState({}, '', `/dashboard?groupId=${id}`);
+  loadPicks();
+}
+
+// ── PICKS ─────────────────────────────────────────────────
 async function loadPicks() {
+  if (!currentGroupId) return;
+  document.getElementById('picks-grid').innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Loading picks...</div>';
   try {
-    const qs = currentGroupId ? `?groupId=${currentGroupId}` : '';
-    const res = await fetch(BASE + '/api/picks' + qs, {
-      headers: {
-        'x-telegram-init-data': 'test',
-        'x-chat-id':   currentGroupId || '',
-        'x-user-id':   String(currentUser?.id || '123456789'),
-        'x-user-name': currentUser?.name || 'User'
-      }
+    const r    = await fetch(`${BASE}/api/picks?groupId=${encodeURIComponent(currentGroupId)}`, {
+      headers: { 'x-telegram-init-data':'test', 'x-user-id': String(currentUser?.id||'0'), 'x-user-name': currentUser?.name||'User' }
     });
-    const data = await res.json();
-    allPicks = data.picks || [];
+    const data = await r.json();
+    allPicks   = data.picks || [];
     allPicks.forEach(p => { myVotes[p.id] = p.my_vote || ''; });
     renderStats();
     renderPicks();
+    renderPlan();
   } catch(e) {
-    document.getElementById('picks-grid').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>Could not load picks. <button onclick="loadPicks()" style="color:var(--green);background:none;border:none;cursor:pointer;font-size:14px">Retry</button></div>`;
+    document.getElementById('picks-grid').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Could not load picks. <button onclick="loadPicks()" style="color:var(--blue);background:none;border:none;cursor:pointer">Retry</button></div>';
   }
 }
 
 function renderStats() {
-  const groupOk = allPicks.filter(p => p.group_ok).length;
-  const pending = allPicks.filter(p => !p.my_vote).length;
-  const fc = allPicks.filter(p => p.reviewer_name).length;
-  document.getElementById('stats').innerHTML = `
-    <div class="stat"><div class="stat-num">${allPicks.length}</div><div class="stat-lbl">Total picks</div></div>
-    <div class="stat"><div class="stat-num" style="color:var(--green)">${groupOk}</div><div class="stat-lbl">Group ok</div></div>
-    <div class="stat"><div class="stat-num" style="color:var(--amber)">${pending}</div><div class="stat-lbl">Need my vote</div></div>
-    <div class="stat"><div class="stat-num" style="color:#EF9A9A">${fc}</div><div class="stat-lbl">From Filmi Craft</div></div>
-  `;
+  const ok = allPicks.filter(p=>p.group_ok).length;
+  const nd = allPicks.filter(p=>!myVotes[p.id]).length;
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat"><div class="stat-num">${allPicks.length}</div><div class="stat-lbl">Total</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--green)">${ok}</div><div class="stat-lbl">Group ok</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--amber)">${nd}</div><div class="stat-lbl">Need vote</div></div>`;
+}
+
+function setFilter(f, btn) {
+  picksFilter = f;
+  document.querySelectorAll('.filter-bar .fpill').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderPicks();
 }
 
 function renderPicks() {
   const grid = document.getElementById('picks-grid');
-  const userId = (() => { try { return JSON.parse(localStorage.getItem('tg_user'))?.id; } catch(e) {} return 123456789; })();
-
-  let filtered = allPicks.filter(p => {
-    if (filter === 'want')  return myVotes[p.id] === 'want';
-    if (filter === 'group') return p.group_ok;
-    if (filter === 'movie') return p.type === 'movie';
-    if (filter === 'food')  return p.type === 'food';
-    if (filter === 'place') return p.type === 'place';
-    if (filter === 'event') return p.type === 'event';
+  let list = allPicks.filter(p => {
+    if (picksFilter==='want')  return myVotes[p.id]==='want';
+    if (picksFilter==='group') return p.group_ok;
+    if (picksFilter==='movie') return p.type==='movie';
+    if (picksFilter==='food')  return p.type==='food';
+    if (picksFilter==='place') return p.type==='place';
+    if (picksFilter==='event') return p.type==='event';
     return true;
   });
-
-  if (!filtered.length) {
-    grid.innerHTML = `<div class="empty"><div class="empty-icon">🍿</div>No picks here yet!<br><span style="font-size:13px;margin-top:6px;display:block">Click "Add pick" or paste a link in your Telegram group</span></div>`;
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty"><div class="empty-icon">🍿</div>No picks here yet!</div>';
     return;
   }
+  grid.innerHTML = list.map(p => {
+    const tc     = TC[p.type] || TC.link;
+    const labels = VOTE_LABELS[p.type] || VOTE_LABELS.link;
+    const seen   = (p.votes||[]).filter(v=>v.status==='seen');
+    const want   = (p.votes||[]).filter(v=>v.status==='want');
+    const skip   = (p.votes||[]).filter(v=>v.status==='skip');
+    const mv     = myVotes[p.id] || '';
+    const chips  = [
+      ...seen.map(v=>`<span class="vc vc-seen">✓ ${sn(v.first_name||'?')}</span>`),
+      ...want.map(v=>`<span class="vc vc-want">★ ${sn(v.first_name||'?')}</span>`),
+      ...skip.map(v=>`<span class="vc vc-skip">✕ ${sn(v.first_name||'?')}</span>`),
+    ].join('') || '<span style="font-size:11px;color:var(--hint);font-style:italic">No votes yet</span>';
 
-  grid.innerHTML = filtered.map(p => {
-    const tc = TYPE_CFG[p.type] || TYPE_CFG.link;
-    const seen = (p.votes||[]).filter(v=>v.status==='seen');
-    const want = (p.votes||[]).filter(v=>v.status==='want');
-    const skip = (p.votes||[]).filter(v=>v.status==='skip');
-    const mv = myVotes[p.id] || '';
-    const chips = [
-      ...seen.map(v=>`<span class="vc vc-seen">✓ ${esc(v.first_name||'?')}</span>`),
-      ...want.map(v=>`<span class="vc vc-want">★ ${esc(v.first_name||'?')}</span>`),
-      ...skip.map(v=>`<span class="vc vc-skip">✕ ${esc(v.first_name||'?')}</span>`),
-    ].join('') || `<span style="font-size:11px;color:var(--hint);font-style:italic">No votes yet</span>`;
-    const fcHtml = p.reviewer_name ? `<div class="fc-row"><span class="yt">YT</span><span>${esc(p.reviewer_name)}</span>${p.reviewer_score?`<span style="color:var(--amber);font-weight:600;margin-left:auto">⭐ ${esc(p.reviewer_score)}</span>`:''}</div>` : '';
-    const okBadge = p.group_ok ? `<span class="badge badge-ok">✓ Group ok</span>` : '';
+    // Thumbnail — real image or emoji
+    const thumbContent = p.image_url
+      ? `<img src="${esc(p.image_url)}" alt="" onerror="this.style.display='none'">`
+        + `<span class="card-thumb-emoji" style="display:none">${tc.emoji}</span>`
+      : `<span class="card-thumb-emoji">${tc.emoji}</span>`;
+
+    const linkBtn = p.url
+      ? `<a href="${esc(p.url)}" target="_blank" class="card-link">🔗 Open link ↗</a>`
+      : '';
+    const okBadge = p.group_ok ? `<div class="card-ok">✓ Group ok</div>` : '';
 
     return `<div class="pick-card" id="pc-${p.id}">
-      <div class="card-top">
-        <div class="card-icon" style="background:${tc.iconBg}">${tc.icon}</div>
-        <div class="card-info">
-          <div class="card-title">${esc(p.title)}</div>
-          <div class="card-meta">${esc(p.description||'')} · by ${esc(p.added_by_name||'someone')}</div>
-          <div class="card-badges">
-            <span class="badge" style="background:${tc.badgeBg};color:${tc.badgeTx}">${tc.lbl}</span>
-            ${okBadge}
-          </div>
+      <div class="card-thumb" style="background:${tc.grad}">
+        ${thumbContent}
+        <div class="card-thumb-overlay"></div>
+        <div class="card-thumb-info">
+          <div class="card-type-badge" style="background:${tc.tb};color:${tc.tt}">${tc.lbl}</div>
+          <div class="card-thumb-title">${esc(p.title)}</div>
         </div>
       </div>
-      ${fcHtml}
-      <div class="voters">${chips}<span class="vote-count">${seen.length+want.length+skip.length} voted</span></div>
+      <div class="card-body">
+        <div class="card-desc">${esc(p.description||'')}</div>
+        <div class="card-by">Added by ${esc(p.added_by_name||'someone')}</div>
+        ${linkBtn}${okBadge}
+        <div class="voters-row">${chips}<span class="vote-count">${seen.length+want.length+skip.length} voted</span></div>
+      </div>
       <div class="vote-btns">
-        <button class="vote-btn ${mv==='seen'?'on-seen':''}" onclick="castVote(${p.id},'seen')">✓ Seen</button>
-        <button class="vote-btn ${mv==='want'?'on-want':''}" onclick="castVote(${p.id},'want')">★ Want</button>
-        <button class="vote-btn ${mv==='skip'?'on-skip':''}" onclick="castVote(${p.id},'skip')">✕ Skip</button>
+        <button class="vbtn ${mv==='seen'?'on-seen':''}" onclick="castVote(${p.id},'seen')">✓ ${esc(labels.seen)}</button>
+        <button class="vbtn ${mv==='want'?'on-want':''}" onclick="castVote(${p.id},'want')">★ ${esc(labels.want)}</button>
+        <button class="vbtn ${mv==='skip'?'on-skip':''}" onclick="castVote(${p.id},'skip')">✕ ${esc(labels.skip)}</button>
       </div>
     </div>`;
   }).join('');
@@ -489,190 +684,335 @@ function renderPicks() {
 
 async function castVote(pickId, status) {
   try {
-    const res = await fetch(BASE + '/api/vote', {
-      method: 'POST',
-      headers: {
-        'Content-Type':'application/json',
-        'x-telegram-init-data':'test',
-        'x-user-id':   String(currentUser?.id || '123456789'),
-        'x-user-name': currentUser?.name || 'User'
-      },
-      body: JSON.stringify({ pickId, status })
+    const r    = await fetch(BASE+'/api/vote', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-telegram-init-data':'test','x-user-id':String(currentUser?.id||'0'),'x-user-name':currentUser?.name||'User'},
+      body: JSON.stringify({pickId, status})
     });
-    const data = await res.json();
-    const idx = allPicks.findIndex(p => p.id === pickId);
-    if (idx >= 0) { allPicks[idx].votes = data.votes; allPicks[idx].my_vote = data.my_vote; allPicks[idx].group_ok = data.group_ok; }
-    myVotes[pickId] = data.my_vote || '';
-    renderStats(); renderPicks();
-    const lbl = { seen:'Seen ✓', want:'Want to ★', skip:'Not for me ✕' };
-    showToast(data.my_vote ? `Voted: ${lbl[data.my_vote]}` : 'Vote removed');
-    if (data.group_ok) setTimeout(() => showToast('✅ Group ok!'), 600);
+    const data = await r.json();
+    const idx  = allPicks.findIndex(p=>p.id===pickId);
+    if (idx>=0) { allPicks[idx].votes=data.votes; allPicks[idx].my_vote=data.my_vote; allPicks[idx].group_ok=data.group_ok; }
+    myVotes[pickId] = data.my_vote||'';
+    renderStats(); renderPicks(); renderPlan();
+    showToast(data.my_vote ? 'Vote saved ✓' : 'Vote removed');
+    if (data.group_ok) setTimeout(()=>showToast('✅ Group ok!'),600);
   } catch(e) { showToast('Vote failed — please retry'); }
 }
 
-function setFilter(f, el) {
-  filter = f;
-  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('on'));
-  el.classList.add('on');
-  renderPicks();
+// ── PLAN ──────────────────────────────────────────────────
+function setPlanFilter(f, btn) {
+  planFilter = f;
+  document.querySelectorAll('#sec-plan .fpill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderPlan();
 }
 
-function switchGroup(id) {
-  currentGroupId = id;
-  const sel = document.getElementById('group-select');
-  const opt = sel.options[sel.selectedIndex];
-  document.getElementById('group-title').textContent = opt?.text?.trim() || 'Your Squad';
-  history.pushState({}, '', `/dashboard?groupId=${id}`);
-  loadPicks();
+function renderPlan() {
+  const el = document.getElementById('plan-cards');
+  const types = ['movie','show','food','place','event','link'];
+  let filtered = allPicks.filter(p => {
+    if (planFilter==='ok')      return p.group_ok && !(p.votes||[]).some(v=>v.status==='skip');
+    if (planFilter==='skip')    return (p.votes||[]).some(v=>v.status==='skip');
+    if (planFilter==='pending') return !(p.votes||[]).length;
+    if (types.includes(planFilter)) return p.type===planFilter;
+    return true;
+  });
+  if (!filtered.length) { el.innerHTML='<div class="empty"><div class="empty-icon">📋</div>Nothing here yet</div>'; return; }
+  const groups = {}; types.forEach(t=>groups[t]=[]);
+  filtered.forEach(p=>(groups[p.type]||groups.link).push(p));
+  const tn={movie:'Movies',show:'Shows',food:'Restaurants',place:'Places',event:'Events',link:'Links'};
+  let html='';
+  types.forEach(t=>{
+    if (!groups[t].length) return;
+    const tc=TC[t]||TC.link;
+    html+=`<div class="plan-group-title">${tc.emoji} ${tn[t]}<span class="plan-count">${groups[t].length}</span></div>`;
+    groups[t].forEach(p=>{
+      const v1=(p.votes||[]).filter(v=>v.status==='seen');
+      const v2=(p.votes||[]).filter(v=>v.status==='want');
+      const v3=(p.votes||[]).filter(v=>v.status==='skip');
+      const badge = p.group_ok ? '<span class="pb pb-ok">✓ Group ok</span>'
+        : v3.length ? `<span class="pb pb-skip">✕ ${v3.length} skip</span>`
+        : !p.votes?.length ? '<span class="pb pb-wait">⏳ no votes</span>' : '';
+      const chips = [
+        ...v1.map(v=>`<span class="pvc pvc-ok">✓ ${sn(v.first_name)}</span>`),
+        ...v2.map(v=>`<span class="pvc pvc-want">★ ${sn(v.first_name)}</span>`),
+        ...v3.map(v=>`<span class="pvc pvc-skip">✕ ${sn(v.first_name)}</span>`),
+      ].join('');
+      const titleEl = p.url
+        ? `<a href="${esc(p.url)}" target="_blank">${esc(p.title||'Untitled')}</a>`
+        : esc(p.title||'Untitled');
+      const thumbContent = p.image_url
+        ? `<img src="${esc(p.image_url)}" alt="" onerror="this.style.display='none'"><span class="pcard-thumb-emoji" style="display:none">${tc.emoji}</span>`
+        : `<span class="pcard-thumb-emoji">${tc.emoji}</span>`;
+      html+=`<div class="pcard">
+        <div class="pcard-thumb" style="background:${tc.grad}">${thumbContent}</div>
+        <div class="pcard-body">
+          <div class="pcard-title">${titleEl}</div>
+          <div class="pcard-meta">${esc(p.description||'')} · by ${esc(p.added_by_name||'someone')}</div>
+          <div class="pcard-badges">${badge}</div>
+          <div class="pcard-voters">${chips}</div>
+        </div></div>`;
+    });
+  });
+  el.innerHTML = html;
 }
 
-function openAdd() { document.getElementById('add-modal').classList.add('open'); document.getElementById('add-url').focus(); }
+// ── ADD PICK ──────────────────────────────────────────────
+function openAdd()  { document.getElementById('add-modal').classList.add('open'); document.getElementById('add-url').focus(); }
 function closeAdd() { document.getElementById('add-modal').classList.remove('open'); }
-function overlayClick(e) { if (e.target === document.getElementById('add-modal')) closeAdd(); }
 
 async function saveAdd() {
   const url = document.getElementById('add-url').value.trim();
   if (!url) { showToast('Paste a link first'); return; }
   const btn = document.getElementById('add-save');
-  btn.disabled = true; btn.textContent = 'Adding...';
+  btn.disabled=true; btn.textContent='Adding...';
   try {
-    const res = await fetch(BASE + '/api/picks', {
-      method: 'POST',
-      headers: {
-        'Content-Type':'application/json',
-        'x-telegram-init-data':'test',
-        'x-user-id':   String(currentUser?.id || '123456789'),
-        'x-user-name': currentUser?.name || 'User',
-        'x-chat-id':   currentGroupId || ''
-      },
-      body: JSON.stringify({ url, groupId: currentGroupId })
+    const r    = await fetch(BASE+'/api/picks', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-telegram-init-data':'test','x-user-id':String(currentUser?.id||'0'),'x-user-name':currentUser?.name||'User','x-chat-id':currentGroupId||''},
+      body: JSON.stringify({url, groupId:currentGroupId})
     });
-    const data = await res.json();
-    if (data.pick) {
-      allPicks.unshift({ ...data.pick, votes:[], my_vote:'', group_ok:false });
-    }
+    const data = await r.json();
+    if (data.pick) { allPicks.unshift({...data.pick,votes:[],my_vote:'',group_ok:false}); }
     closeAdd();
-    document.getElementById('add-url').value = '';
-    filter = 'all';
-    document.querySelectorAll('.filter-pill').forEach((p,i) => p.classList.toggle('on', i===0));
-    renderStats(); renderPicks();
+    document.getElementById('add-url').value='';
+    picksFilter='all';
+    document.querySelectorAll('.filter-bar .fpill').forEach((b,i)=>b.classList.toggle('on',i===0));
+    renderStats(); renderPicks(); renderPlan();
     showToast('Pick added! 🎉');
   } catch(e) { showToast('Could not add pick'); }
-  finally { btn.disabled = false; btn.textContent = 'Add to SquadPicks'; }
+  finally { btn.disabled=false; btn.textContent='Add to SquadPicks'; }
 }
 
-async function logout() {
-  try { await fetch(BASE + '/api/auth/logout', { method: 'POST' }); } catch(e) {}
-  localStorage.removeItem('tg_user');
-  window.location.href = '/';
-}
-
-// ── GROUP PANEL ──────────────────────────────────────────────
+// ── GROUP PANEL ───────────────────────────────────────────
 function openGroupPanel() {
-  document.getElementById('group-panel').style.display = 'flex';
+  closeDrawer();
+  document.getElementById('group-panel').classList.add('open');
   loadInviteGroups();
 }
-function closeGroupPanel() {
-  document.getElementById('group-panel').style.display = 'none';
-}
+function closeGroupPanel() { document.getElementById('group-panel').classList.remove('open'); }
 function gpTab(tab, btn) {
-  document.querySelectorAll('.gp-tab').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.gp-tab').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
-  document.querySelectorAll('.gp-pane').forEach(p => p.style.display = 'none');
-  document.getElementById('gp-' + tab).style.display = 'block';
+  document.querySelectorAll('.gp-pane').forEach(p=>{ p.classList.remove('on'); p.style.display='none'; });
+  const pane = document.getElementById('gp-'+tab);
+  pane.classList.add('on'); pane.style.display='block';
 }
 async function loadInviteGroups() {
   try {
-    const res  = await fetch(BASE + '/api/groups/mine');
-    const data = await res.json();
-    const sel  = document.getElementById('gp-inv-group');
-    if (!sel) return;
-    const groups = data.groups || [];
-    sel.innerHTML = groups.length
-      ? groups.map(g => `<option value="${g.id}">${esc(g.title)}</option>`).join('')
-      : '<option value="">No web squads yet — create one first</option>';
+    const r = await fetch(BASE+'/api/groups/mine');
+    const d = await r.json();
+    const sel = document.getElementById('gp-inv-group');
+    sel.innerHTML = (d.groups||[]).length
+      ? (d.groups||[]).map(g=>`<option value="${g.id}">${esc(g.title)}</option>`).join('')
+      : '<option value="">No squads yet</option>';
   } catch(e) {}
 }
 async function createSquad() {
   const name = document.getElementById('gp-name').value.trim();
   const msg  = document.getElementById('gp-create-msg');
-  if (!name) { showMsg(msg, 'Please enter a squad name', 'error'); return; }
+  if (!name) { showMsg(msg,'Please enter a squad name','error'); return; }
   try {
-    const res  = await fetch(BASE + '/api/groups/create', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      showMsg(msg, `Squad "${name}" created! 🎉`, 'ok');
-      document.getElementById('gp-name').value = '';
-      await loadGroups();
-      loadInviteGroups();
-    } else {
-      showMsg(msg, data.error || 'Failed to create squad', 'error');
-    }
-  } catch(e) { showMsg(msg, 'Error creating squad', 'error'); }
+    const r = await fetch(BASE+'/api/groups/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    const d = await r.json();
+    if (d.ok) {
+      showMsg(msg,`Squad "${name}" created! 🎉`,'ok');
+      document.getElementById('gp-name').value='';
+      await loadGroups(); loadInviteGroups();
+    } else { showMsg(msg,d.error||'Failed to create','error'); }
+  } catch(e) { showMsg(msg,'Error creating squad','error'); }
 }
 async function linkTelegram() {
   const tgId   = document.getElementById('gp-tg-id').value.trim();
   const tgName = document.getElementById('gp-tg-name').value.trim() || 'Telegram Group';
   const msg    = document.getElementById('gp-tg-msg');
-  if (!tgId) { showMsg(msg, 'Please enter a Telegram Group ID', 'error'); return; }
+  if (!tgId) { showMsg(msg,'Please enter the Telegram Group ID','error'); return; }
   try {
-    const res  = await fetch(BASE + '/api/groups/link-telegram', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telegramGroupId: tgId, name: tgName, userId: currentUser?.id })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      showMsg(msg, `Group "${tgName}" linked! ✅`, 'ok');
-      document.getElementById('gp-tg-id').value = '';
-      document.getElementById('gp-tg-name').value = '';
+    const r = await fetch(BASE+'/api/groups/link-telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegramGroupId:tgId,name:tgName})});
+    const d = await r.json();
+    if (d.ok) {
+      showMsg(msg,`Group "${tgName}" linked! ✅`,'ok');
+      document.getElementById('gp-tg-id').value='';
+      document.getElementById('gp-tg-name').value='';
       await loadGroups();
-    } else {
-      showMsg(msg, data.error || 'Failed to link group', 'error');
-    }
-  } catch(e) { showMsg(msg, 'Error linking group', 'error'); }
+    } else { showMsg(msg,d.error||'Failed to link group','error'); }
+  } catch(e) { showMsg(msg,'Error linking group','error'); }
 }
 async function inviteMember() {
   const groupId = document.getElementById('gp-inv-group').value;
   const email   = document.getElementById('gp-inv-email').value.trim();
   const msg     = document.getElementById('gp-inv-msg');
-  if (!groupId) { showMsg(msg, 'Please create a squad first', 'error'); return; }
-  if (!email || !/\S+@\S+\.\S+/.test(email)) { showMsg(msg, 'Please enter a valid email', 'error'); return; }
+  if (!groupId) { showMsg(msg,'Select a squad first','error'); return; }
+  if (!email||!/\S+@\S+\.\S+/.test(email)) { showMsg(msg,'Enter a valid email','error'); return; }
   try {
-    const res  = await fetch(BASE + '/api/groups/invite', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ groupId, email })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      showMsg(msg, `${email} added to squad ✅`, 'ok');
-      document.getElementById('gp-inv-email').value = '';
-    } else {
-      showMsg(msg, data.error || 'Could not invite member', 'error');
-    }
-  } catch(e) { showMsg(msg, 'Error sending invite', 'error'); }
+    const r = await fetch(BASE+'/api/groups/invite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({groupId,email})});
+    const d = await r.json();
+    if (d.ok) { showMsg(msg,`${email} added ✅`,'ok'); document.getElementById('gp-inv-email').value=''; }
+    else { showMsg(msg,d.error||'Could not invite','error'); }
+  } catch(e) { showMsg(msg,'Error sending invite','error'); }
 }
-function showMsg(el, text, type) {
-  el.textContent = text;
-  el.style.cssText = `display:block;font-size:13px;padding:8px 12px;border-radius:8px;margin-top:10px;
-    color:${type==='ok'?'#166534':'#DC2626'};
-    background:${type==='ok'?'#F0FDF4':'#FEF2F2'};
+function showMsg(el,text,type){
+  el.textContent=text; el.style.display='block';
+  el.style.cssText=`display:block;font-size:13px;padding:8px 12px;border-radius:8px;margin-top:10px;
+    color:${type==='ok'?'#166534':'#DC2626'};background:${type==='ok'?'#F0FDF4':'#FEF2F2'};
     border:1px solid ${type==='ok'?'#BBF7D0':'#FECACA'}`;
-  setTimeout(() => { el.style.display = 'none'; }, 4000);
+  setTimeout(()=>{el.style.display='none';},4000);
 }
 
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// ── TRENDING ──────────────────────────────────────────────
+var IMDB_FB = [
+  {title:'The Shawshank Redemption',year:'1994',rating:'9.3',genre:'Drama',imdb_url:'https://www.imdb.com/title/tt0111161/'},
+  {title:'The Dark Knight',year:'2008',rating:'9.0',genre:'Action',imdb_url:'https://www.imdb.com/title/tt0468569/'},
+  {title:'Inception',year:'2010',rating:'8.8',genre:'Sci-fi',imdb_url:'https://www.imdb.com/title/tt1375666/'},
+  {title:'Interstellar',year:'2014',rating:'8.7',genre:'Sci-fi',imdb_url:'https://www.imdb.com/title/tt0816692/'},
+  {title:'Parasite',year:'2019',rating:'8.5',genre:'Thriller',imdb_url:'https://www.imdb.com/title/tt6751668/'},
+];
+var STREAM_FB = {
+  netflix:[
+    {title:'Adolescence',score:'4.8',genre:'British Drama',badge:'N',badgeColor:'#E50914',url:'https://www.netflix.com/search?q=Adolescence'},
+    {title:'Stranger Things S5',score:'4.9',genre:'Sci-fi Horror',badge:'N',badgeColor:'#E50914',url:'https://www.netflix.com/search?q=Stranger+Things'},
+    {title:'Squid Game S3',score:'4.6',genre:'Korean Thriller',badge:'N',badgeColor:'#E50914',url:'https://www.netflix.com/search?q=Squid+Game'},
+    {title:'Kota Factory S3',score:'4.7',genre:'Hindi Drama',badge:'N',badgeColor:'#E50914',url:'https://www.netflix.com/search?q=Kota+Factory'},
+  ],
+  prime:[
+    {title:'Panchayat S4',score:'4.9',genre:'Hindi Comedy',badge:'P',badgeColor:'#00A8E0',url:'https://www.primevideo.com/search?phrase=Panchayat'},
+    {title:'The Boys S5',score:'4.7',genre:'Superhero Dark',badge:'P',badgeColor:'#00A8E0',url:'https://www.primevideo.com/search?phrase=The+Boys'},
+    {title:'Fallout S2',score:'4.8',genre:'Post-apocalyptic',badge:'P',badgeColor:'#00A8E0',url:'https://www.primevideo.com/search?phrase=Fallout'},
+    {title:'Reacher S3',score:'4.5',genre:'Action Thriller',badge:'P',badgeColor:'#00A8E0',url:'https://www.primevideo.com/search?phrase=Reacher'},
+  ]
+};
+var FOOD_DATA = [
+  {title:"Vij's Restaurant",emoji:'🍛',desc:'Indian · West Broadway · $$$',score:'4.8'},
+  {title:'Ask for Luigi',emoji:'🍝',desc:'Italian · Coal Harbour · $$$',score:'4.7'},
+  {title:'Phnom Penh',emoji:'🍜',desc:'Cambodian · Downtown · $$',score:'4.6'},
+  {title:'Miku Restaurant',emoji:'🍣',desc:'Aburi Sushi · Downtown · $$$$',score:'4.5'},
+  {title:'Savio Volpe',emoji:'🍕',desc:'Italian · Fraserhood · $$$',score:'4.5'},
+];
+var EVENT_DATA = [
+  {title:'Vancouver Diwali Festival',emoji:'🪔',desc:'Oct 25 · Surrey Central · Free'},
+  {title:'AR Rahman Live',emoji:'🎵',desc:'Rogers Arena · Nov 2 · From $85'},
+  {title:'YVR Food Fest',emoji:'🍲',desc:'Nov 8-10 · PNE Forum · $15'},
+  {title:'Night Market Surrey',emoji:'🏮',desc:'Oct 18-20 · Surrey Pavilion · Free'},
+  {title:'Bhangra Showdown',emoji:'💃',desc:'Oct 26 · Westcoast Ballroom'},
+];
 
-let tt;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2200);
+function setTrendCat(cat,btn) {
+  document.querySelectorAll('.tcb-btn').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
+  document.querySelectorAll('.trend-cat-section').forEach(s=>s.classList.toggle('on',s.id==='tcat-'+cat));
 }
 
-document.getElementById('add-url').addEventListener('keydown', e => { if (e.key === 'Enter') saveAdd(); });
+function loadTrending() {
+  // Netflix + Prime
+  fetch(BASE+'/api/trending/streaming')
+    .then(r=>r.json())
+    .then(data=>{
+      const nf = (data.netflix&&data.netflix.length)?data.netflix:STREAM_FB.netflix;
+      const pv = (data.prime&&data.prime.length)?data.prime:STREAM_FB.prime;
+      renderStreamRow('tr-netflix', nf, 'nf-live');
+      renderStreamRow('tr-prime',   pv, 'pv-live');
+      if (data.source==='db') {
+        if (nf.length) document.getElementById('nf-live').style.display='inline';
+        if (pv.length) document.getElementById('pv-live').style.display='inline';
+      }
+    }).catch(()=>{ renderStreamRow('tr-netflix',STREAM_FB.netflix,'nf-live'); renderStreamRow('tr-prime',STREAM_FB.prime,'pv-live'); });
+  // IMDb
+  fetch(BASE+'/api/trending/imdb?category=top_movies')
+    .then(r=>r.json())
+    .then(data=>{
+      const items=(data.data&&data.data.length)?data.data:IMDB_FB;
+      renderImdbRow('tr-imdb', items);
+      if (data.data&&data.data.length) document.getElementById('imdb-live').style.display='inline';
+    }).catch(()=>renderImdbRow('tr-imdb',IMDB_FB));
+  // Static food & events
+  renderWideRow('tr-food',   FOOD_DATA);
+  renderWideRow('tr-events', EVENT_DATA);
+}
+
+function renderStreamRow(elId, items, liveId) {
+  var el = document.getElementById(elId); if(!el)return;
+  var html = '<div class="trend-row">';
+  items.slice(0,10).forEach(function(it,i){
+    var bc = it.badgeColor||'#888';
+    var imgContent = it.image_url
+      ? `<img src="${esc(it.image_url)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`
+      : '📺';
+    html += `<div class="tc-poster"><div class="tc-poster-img" style="background:#1a0a2e">${imgContent}
+      <div class="tc-stream-badge" style="background:${bc}">${esc(it.badge||'')}</div>
+      <div class="tc-rank-badge">#${i+1}</div>
+      ${it.score?`<div class="tc-score">⭐ ${esc(it.score)}</div>`:''}
+    </div><div class="tc-poster-body">
+      <div class="tc-poster-title">${esc(it.title)}</div>
+      <div class="tc-poster-meta">${esc(it.genre||'')}</div>
+    </div><div class="tc-poster-actions">
+      <button class="tc-pa-btn" onclick="addTrendPick('${esc(it.title)}','show')" style="color:var(--blue)">+ Add</button>
+      ${it.url?`<button class="tc-pa-btn" onclick="window.open('${esc(it.url)}','_blank')" style="color:${bc}">▶ Watch</button>`:''}
+    </div></div>`;
+  });
+  el.innerHTML = html + '</div>';
+}
+
+function renderImdbRow(elId, items) {
+  var el = document.getElementById(elId); if(!el)return;
+  var html = '<div class="trend-row">';
+  items.slice(0,10).forEach(function(it,i){
+    var imgContent = it.image_url
+      ? `<img src="${esc(it.image_url)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`
+      : '🎬';
+    html += `<div class="tc-poster"><div class="tc-poster-img" style="background:#1a0a2e">${imgContent}
+      <div class="tc-stream-badge" style="background:#F5C518;color:#000;font-weight:900;font-size:7px">IMDb</div>
+      <div class="tc-rank-badge">#${i+1}</div>
+      ${it.rating?`<div class="tc-score">⭐ ${esc(it.rating)}</div>`:''}
+    </div><div class="tc-poster-body">
+      <div class="tc-poster-title">${esc(it.title)}</div>
+      <div class="tc-poster-meta">${esc(it.genre||it.year||'')}</div>
+    </div><div class="tc-poster-actions">
+      <button class="tc-pa-btn" onclick="addTrendPick('${esc(it.title)}','movie')" style="color:var(--blue)">+ Add</button>
+      ${it.imdb_url?`<button class="tc-pa-btn" onclick="window.open('${esc(it.imdb_url)}','_blank')" style="color:#b7950b">IMDb</button>`:''}
+    </div></div>`;
+  });
+  el.innerHTML = html + '</div>';
+}
+
+function renderWideRow(elId, items) {
+  var el = document.getElementById(elId); if(!el)return;
+  el.innerHTML = items.slice(0,10).map(function(it,i){
+    return `<div class="tc-wide">
+      <div class="tc-wide-img">${it.emoji||'🎭'}</div>
+      <div class="tc-wide-body">
+        <div class="tc-wide-title">${esc(it.title)}</div>
+        <div class="tc-wide-meta">${esc(it.desc||it.description||'')}</div>
+        ${it.score?`<div style="font-size:9px;color:var(--amber);font-weight:700">⭐ ${esc(it.score)}</div>`:''}
+      </div>
+      <div class="tc-poster-actions">
+        <button class="tc-pa-btn" onclick="addTrendPick('${esc(it.title)}','${elId.includes('food')?'food':'event'}')" style="color:var(--blue)">+ Add</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addTrendPick(title, type) {
+  if (!currentGroupId) { showToast('Select a squad first'); return; }
+  document.getElementById('add-url').value = title;
+  openAdd();
+  showToast(`"${title}" ready to add`);
+}
+
+// ── SIGN OUT ──────────────────────────────────────────────
+async function doSignOut() {
+  try { await fetch(BASE+'/api/auth/logout',{method:'POST'}); } catch(e){}
+  localStorage.removeItem('tg_user');
+  window.location.href = '/login';
+}
+
+// ── UTILS ─────────────────────────────────────────────────
+function sn(n){ return String(n||'?').trim().slice(0,4); }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+let _tt;
+function showToast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(()=>t.classList.remove('show'),2300);
+}
+document.getElementById('add-url').addEventListener('keydown',e=>{ if(e.key==='Enter') saveAdd(); });
 </script>
 </body>
 </html>

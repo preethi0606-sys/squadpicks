@@ -15,10 +15,29 @@ async function ensureGroup(chatId, title) {
   if (error) console.error('ensureGroup error:', error.message);
 }
 
+// Returns only real Telegram groups (negative IDs) — excludes private/DM chats (positive IDs)
+// Telegram group IDs are always negative; private chat IDs are positive.
 async function getAllGroups() {
-  const { data, error } = await supabase.from('groups').select('id, title');
+  const { data, error } = await supabase
+    .from('groups')
+    .select('id, title, is_web_group')
+    .lt('id', 0);   // negative IDs = real groups/supergroups only
   if (error) { console.error('getAllGroups error:', error.message); return []; }
   return data || [];
+}
+
+// Returns groups for a specific user — used by Google-login dashboard
+async function getUserGroups(userId) {
+  const { data, error } = await supabase
+    .from('group_members')
+    .select('group_id, groups(id, title, is_web_group)')
+    .eq('user_id', userId)
+    .eq('status', 'active');
+  if (error) { console.error('getUserGroups error:', error.message); return []; }
+  // Only return actual groups (negative IDs for Telegram, any ID for web groups)
+  return (data || [])
+    .map(r => r.groups)
+    .filter(g => g && (g.is_web_group || g.id < 0));
 }
 
 // ─── PICKS ─────────────────────────────────────────────────
@@ -122,13 +141,32 @@ async function addGroupMember({ groupId, userId, email }) {
   return data;
 }
 
-async function getUserGroups(userId) {
-  const { data, error } = await supabase
+// Used when linking a Telegram group — handles both user_id and email conflict paths
+async function addGroupMemberByEmail({ groupId, userId, email }) {
+  // First try to update any existing row for this email
+  const { data: existing } = await supabase
     .from('group_members')
-    .select('group_id, groups(id, title, is_web_group)')
-    .eq('user_id', userId);
-  if (error) { console.error('getUserGroups error:', error.message); return []; }
-  return (data || []).map(r => r.groups).filter(Boolean);
+    .select('id')
+    .eq('group_id', groupId)
+    .eq('email', email)
+    .single();
+
+  if (existing) {
+    // Update the existing invite row with the user_id
+    const { error } = await supabase
+      .from('group_members')
+      .update({ user_id: userId, status: 'active' })
+      .eq('id', existing.id);
+    if (error) console.error('addGroupMemberByEmail update error:', error.message);
+    return;
+  }
+
+  // No existing row — insert fresh
+  const { error } = await supabase
+    .from('group_members')
+    .upsert({ group_id: groupId, user_id: userId, email, status: 'active' },
+             { onConflict: 'group_id,user_id' });
+  if (error) console.error('addGroupMemberByEmail insert error:', error.message);
 }
 
 async function updatePickMessageId(pickId, messageId) {
@@ -236,14 +274,14 @@ async function markVideoPosted(videoId, channelId, title) {
 }
 
 module.exports = {
-  ensureGroup, getAllGroups,
+  ensureGroup, getAllGroups, getUserGroups,
   savePick, updatePickMessageId, getPick, getGroupPicks,
   getRecentFilmiCraftPicks,
   upsertVote, deleteVote, getVote, getVotesForPick,
   getVotesForPicks, getUserPendingPicks,
   wasVideoPosted, markVideoPosted,
   upsertGoogleUser, upsertTelegramUser, getUserById, getUserByEmail,
-  createWebGroup, addGroupMember, getUserGroups,
+  createWebGroup, addGroupMember, addGroupMemberByEmail, getUserGroups,
   addPendingInvite, applyPendingInvites
 };
 

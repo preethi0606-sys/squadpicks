@@ -390,6 +390,18 @@ body{font-family:var(--font-b);background:var(--cream);color:var(--text);min-hei
 <!-- SETTINGS PAGE -->
 <div class="page" id="page-settings">
   <div class="settings-wrap">
+    <!-- Account identity row — populated by JS -->
+    <div class="settings-section" id="settings-identity" style="display:none">
+      <div class="settings-hdr">Signed in as</div>
+      <div class="settings-row" style="cursor:default">
+        <div class="si-icon" id="settings-avatar" style="font-size:20px;background:var(--sky-bg);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">?</div>
+        <div class="si-lbl">
+          <h4 id="settings-name">Member</h4>
+          <p id="settings-login-type" style="color:var(--text3)">Telegram</p>
+        </div>
+      </div>
+    </div>
+
     <div class="settings-section">
       <div class="settings-hdr">Squad</div>
       <div class="settings-row"><div class="si-icon">&#x1F465;</div><div class="si-lbl"><h4>Members</h4><p>4 members in this squad</p></div><span class="si-arrow">&#x203A;</span></div>
@@ -423,6 +435,11 @@ body{font-family:var(--font-b);background:var(--cream);color:var(--text);min-hei
       <div class="settings-hdr">Account</div>
       <div class="settings-row"><div class="si-icon">&#x2728;</div><div class="si-lbl"><h4>Squad+ Plan</h4><p>Free &#xB7; Upgrade for more features</p></div><span class="si-arrow">&#x203A;</span></div>
       <div class="settings-row"><div class="si-icon">&#x2753;</div><div class="si-lbl"><h4>Help &amp; Commands</h4><p>/summary /pending /suggest</p></div><span class="si-arrow">&#x203A;</span></div>
+      <div class="settings-row" onclick="signOutApp()" style="cursor:pointer">
+        <div class="si-icon" style="font-size:18px">&#x1F6AA;</div>
+        <div class="si-lbl" style="color:var(--red)"><h4 style="color:var(--red)">Sign out</h4><p>Return to login page</p></div>
+        <span class="si-arrow" style="color:var(--red)">&#x203A;</span>
+      </div>
     </div>
   </div>
 </div>
@@ -593,6 +610,8 @@ function esc(s) {
 
 /* ─── INIT ─────────────────────────────────────────────────── */
 (async function init() {
+  var isInsideTelegram = !!(tg && tg.initData && tg.initData.length > 0);
+
   // 1. Try Telegram Mini App context (running inside Telegram)
   if (tg) {
     tg.ready();
@@ -607,33 +626,49 @@ function esc(s) {
   if (!groupId) groupId = new URLSearchParams(location.search).get('groupId') ||
                           new URLSearchParams(location.search).get('startapp') || null;
 
-  // 3. If no Telegram user yet, check server session (web-Telegram login via website)
-  if (!tgUser || tgUser.id === 123456789) {
+  // 3. If not inside Telegram, check server session (web-Telegram login via website)
+  if (!isInsideTelegram) {
     try {
       var sesRes = await fetch('/api/session');
       var ses    = await sesRes.json();
       if (ses.ok && ses.user) {
         tgUser = { id: ses.user.id, first_name: ses.user.name || 'Member', username: '' };
-        // If no groupId yet and this is a Telegram user, load their groups
-        if (!groupId && ses.user.loginType === 'telegram') {
+        // If no groupId yet, resolve from user's groups
+        if (!groupId) {
           try {
-            var grpRes  = await fetch('/api/groups', { headers: { 'x-telegram-init-data': 'test', 'x-user-id': String(ses.user.id) } });
+            var grpRes  = await fetch('/api/groups');
             var grpData = await grpRes.json();
             if (grpData.groups && grpData.groups.length) {
               groupId = String(grpData.groups[0].id);
             }
           } catch(e) {}
         }
+      } else {
+        // Not authenticated via browser session and not inside Telegram → go to login
+        window.location.href = '/login';
+        return;
       }
-    } catch(e) {}
+    } catch(e) {
+      window.location.href = '/login';
+      return;
+    }
   }
 
-  // 4. Final fallback — show demo data
-  if (!tgUser) { tgUser = {id: 123456789, first_name: 'Priya', username: 'priya_test'}; }
+  // 4. Final fallback — should only reach here if inside Telegram with no user data
+  if (!tgUser) { tgUser = {id: 123456789, first_name: 'Guest', username: ''}; }
 
   // Update UI with user identity
   document.getElementById('user-av').textContent = sn(tgUser.first_name).charAt(0).toUpperCase();
   document.getElementById('drawer-user-name').textContent = tgUser.first_name || 'Member';
+
+  // Populate Settings identity card
+  var idCard = document.getElementById('settings-identity');
+  if (idCard && tgUser.first_name !== 'Priya') { // don't show for demo user
+    idCard.style.display = 'block';
+    document.getElementById('settings-name').textContent = tgUser.first_name || 'Member';
+    document.getElementById('settings-avatar').textContent = (tgUser.first_name || '?').charAt(0).toUpperCase();
+    document.getElementById('settings-login-type').textContent = 'Signed in via Telegram';
+  }
 
   loadActiveChannels();
 
@@ -1321,6 +1356,16 @@ function confirmAdd() {
     showToast('Added! (demo mode)');
     fetching = false; btn.disabled = false; btn.textContent = 'Add to SquadPicks';
   }
+}
+
+/* ─── SIGN OUT ───────────────────────────────────────────────── */
+async function signOutApp() {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' });
+  } catch(e) {}
+  localStorage.removeItem('tg_user');
+  // Redirect to login page
+  window.location.href = '/login';
 }
 
 /* ─── TOAST ─────────────────────────────────────────────────── */

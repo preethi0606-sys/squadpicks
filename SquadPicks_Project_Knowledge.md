@@ -1,6 +1,6 @@
 # SquadPicks — Project Knowledge Base
 
-*Last updated: April 2026 — v2.1. Update this doc whenever a feature is confirmed built or a design decision is locked in.*
+*Last updated: April 2026 — v2.3. Update this doc whenever a feature is confirmed built or a design decision is locked in.*
 
 ---
 
@@ -14,16 +14,18 @@
 1. Someone pastes any link (IMDB, Google Maps, Zomato, Yelp, Eventbrite, etc.) into a Telegram group
 2. The bot auto-detects the type (movie / food / place / event / show) and creates a vote card
 3. Squad members vote — labels are context-aware per content type
-4. When nobody has vetoed, the card gets a **"Group ok"** badge — the squad has consensus
-5. The **"🚀 Open in SquadPicks"** button is always present in every Telegram card, linking to the Mini App
+4. When nobody has vetoed, the card gets a **"Group ok"** badge
+5. The **"🚀 Open in SquadPicks"** button opens the Mini App with the group pre-loaded
 
 **How it works (Google / Web path):**
 1. User signs in with Google at `/login` → "Continue with Google" button
 2. Creates a web group (no Telegram needed) and adds members by Gmail address
-3. Adds picks and votes via the website dashboard — same experience as Telegram users
-4. Full Plan / Picks / Trending views available on web
+3. Adds picks and votes via the web dashboard — full Plan / Picks / Trending experience
+4. Can also link their Telegram group to their Google account via "My Squads" panel
 
-**Primary platform:** Telegram (free Bot API) + Web (Google OAuth). Mini App lives inside Telegram via the Web App feature. Marketing website served from the same Railway deployment.
+**Two completely separate post-login experiences:**
+- **Telegram login** → redirects to `/app?groupId=xxx` (the Mini App — Plan/Picks/Trending/Me tabs)
+- **Google login** → redirects to `/dashboard` (the web dashboard — picks grid, group management)
 
 ---
 
@@ -42,127 +44,114 @@
 - **Card updates** — bot edits the original Telegram message when anyone votes
 - **"🚀 Open in SquadPicks" button** — always shown in every Telegram card as row 2 of the inline keyboard. Built into `buildVoteKeyboard(pickId, groupId)` in `links.js`
 
-### URL & Image Retention (v2 fix — CONFIRMED BUILT)
-- `fetchMeta()` in `links.js` now always returns `sourceUrl` (the original pasted URL) alongside `imageUrl`
-- `savePick()` in `db.js` stores the original URL in the `url` column
-- **Plan tab:** pick titles are now clickable `<a>` links (↗ icon) that open the source URL in a new tab
-- **Picks tab:** pick cards show real thumbnail image from `image_url` DB column (165px); emoji fallback if no image
-- **Picks tab:** "🔗 Open link ↗" button shown below card title linking to source URL
-- `onerror` fallback on all `<img>` tags — broken images silently hide and show emoji instead
+### IMDB Metadata Fix (v2.2 — CONFIRMED BUILT)
+- `open-graph-scraper` is blocked by IMDB's bot protection — returns empty or generic "Movie on IMDB" titles
+- `links.js` now has `fetchImdbMeta()` — a dedicated scraper using `node-fetch` + `cheerio` with browser headers
+- Extraction uses 3-layer fallback:
+  1. `<script type="application/ld+json">` JSON-LD structured data — gives title, image, year, rating in one go
+  2. `<meta property="og:*">` tags — strips "- IMDb" suffix from title automatically
+  3. DOM selectors — `[data-testid="hero__pageTitle"]`, `img.ipc-image`, etc.
+- `fetchMeta()` now routes all `imdb.com/title/` URLs to `fetchImdbMeta()` first before trying ogs
+- Movie name, poster image, year, and rating are all now captured and stored in the pick record
 
-### Telegram Login (website) — Bot Domain Fix (v2 fix — CONFIRMED BUILT)
-- `data-telegram-login` attribute in `login.html` is now **injected server-side at request time** from `process.env.BOT_USERNAME` — never hardcoded in the HTML file
-- Fix for "Bot domain invalid" error: two things required:
-  1. `BOT_USERNAME` env var must be set in Railway (server injects it)
-  2. Domain must be registered with BotFather: `/setdomain` → paste Railway domain (no https://)
+### URL & Image Retention (v2 — CONFIRMED BUILT)
+- `fetchMeta()` always returns `sourceUrl` (the original pasted URL)
+- `savePick()` stores the original URL in the `url` column
+- **Plan tab:** pick titles are clickable links (↗ icon) that open the source URL in a new tab
+- **Picks tab:** real thumbnail image (165px) from `image_url` DB column; emoji fallback
+- **Picks tab:** "🔗 Open link ↗" button below card title
+
+### Telegram Login — Website (CONFIRMED BUILT)
+- `data-telegram-login` attribute in `login.html` is injected server-side from `process.env.BOT_USERNAME`
+- Hash verification uses SHA-256 of `TELEGRAM_TOKEN` as key for HMAC — all fields except `hash`, sorted, joined with `\n`
+- `req.session.save()` is explicitly awaited before responding to ensure the session is written
+- After successful auth: server finds user's first group and redirects to `/app?groupId=xxx`
+- Success message shows clickable "🚀 Squad Name" links per group, each going to `/app?groupId=xxx`
+- If hash mismatch: error message shows the exact `/setdomain` command with the user's domain pre-filled
+
+**Fix for "Invalid Telegram auth" error — two required steps:**
+1. In @BotFather: `/setdomain` → select your bot → paste `YOUR-APP.up.railway.app` (no https://)
+2. In Railway vars: `BOT_USERNAME` must exactly match your bot username without `@`
+
+**Fix for phone number prompt instead of button:**
+- Means the domain is not registered with BotFather yet — run `/setdomain` above
+- Login page now shows a yellow tip box automatically if the widget appears to be in phone-entry mode
+- Google sign-in works as an alternative while BotFather setup is pending
 
 ### Google OAuth Login (v2 — CONFIRMED BUILT)
-- "Continue with Google" button on `/login` page — primary login method, shown above Telegram widget
-- OAuth flow: `/auth/google` → Google consent screen → `/auth/google/callback` → session → `/dashboard`
-- **No Passport.js** — implemented with native `fetch()` to exchange code and fetch Google profile
+- "Continue with Google" button on `/login` page — primary login method
+- OAuth flow: `/auth/google` → Google consent → `/auth/google/callback` → session → `/dashboard`
+- No Passport.js — native `fetch()` to exchange code and fetch Google profile
+- `applyPendingInvites()` called on every Google login — auto-joins any squads the user was invited to
 - Requires env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, `SESSION_SECRET`
-- Sessions managed via `express-session` (server-side, cookie sent to browser)
-- Users stored in `users` Supabase table with `google_id`, `email`, `name`, `avatar`
-- Error states handled: `/login?error=google_denied` and `/login?error=google_failed` show user-friendly messages
 
-#### Google Cloud Console setup (required for Google login to work)
-1. Go to `https://console.cloud.google.com`
-2. Create project named `SquadPicks`
-3. APIs & Services → Library → enable **Google People API**
-4. APIs & Services → OAuth consent screen → External → fill App name, emails
-5. Add scopes: `openid`, `email`, `profile`
-6. **Add your Gmail as a test user** (required until app is published — omitting this causes "Access Denied")
-7. APIs & Services → Credentials → Create OAuth 2.0 Client ID → Web application
-8. Authorised redirect URI: `https://YOUR-APP.up.railway.app/auth/google/callback`
-9. Copy Client ID and Client Secret → paste into Railway env vars
-10. To allow all users (not just test users): OAuth consent screen → Publish App
+**Fix for "Access Denied" on Google login:**
+1. Google Cloud Console → OAuth consent screen → add your Gmail as a **Test User**
+2. Until the app is Published, only test users can sign in
 
-### Web Groups (v2 — CONFIRMED BUILT)
-- Google-login users can create groups via `POST /api/groups/create`
-- Web groups stored in `groups` table with `is_web_group = true` flag
-- Web group IDs are large negative integers (no clash with real Telegram chat IDs)
-- `group_members` table tracks membership
-- `GET /api/groups/mine` returns all groups for logged-in user
+### Session / Cookie Fix (v2.2 — CONFIRMED BUILT)
+- `app.set('trust proxy', 1)` added — required for Railway's reverse proxy to pass cookies correctly
+- Session cookie: `secure: true` (prod), `sameSite: 'none'` (prod) / `'lax'` (dev)
+- `sameSite: 'none'` is required for cross-origin cookie to work on Railway's HTTPS domain
 
-### Trending Page — Redesign (v2 — CONFIRMED BUILT)
-- **Category filter tabs** at the top of the Trending page: 🎬 Movies · 🎭 Events · 📍 Places
-  - One section visible at a time; toggled via `.on` class on `.trend-cat-section` divs
-- **Movies section** contains all movie-related rows:
-  - YouTube Top 10 (from subscribed channels)
-  - **Netflix Top 10** — separate labelled row, red N badge, ● LIVE indicator
-  - **Prime Video Top 10** — separate labelled row, blue P badge, ● LIVE indicator
-  - IMDb Top Picks — from DB scraper
-- **Events section** — Eventbrite top 10 (static curated Vancouver data)
-- **Places section** — Zomato top 10 restaurants (static curated Vancouver data)
-- Netflix and Prime are **split into separate rows** (previously mixed into one "N & P" row)
+### Two-Path Post-Login Routing (v2.3 — CONFIRMED BUILT)
+- **Telegram login** → `/api/auth/telegram` looks up user's first group → `redirectUrl: '/app?groupId=xxx'` → Mini App
+- **Google login** → `/auth/google/callback` → `res.redirect('/dashboard')` → Web Dashboard
+- These are now completely separate flows — Telegram users never see the web dashboard
+- `app.html` init is now `async` — checks `GET /api/session` if no Telegram `initData` found, so web-Telegram users (who logged in via the website) get their identity and group loaded correctly
+- New `GET /api/groups` public endpoint — `app.html` calls this to resolve the user's group when loaded via browser
 
-### Trending Poster Images (v2.1 — CONFIRMED BUILT)
-- **All three poster render functions** now use real `image_url` from DB when available:
-  - `renderImdbRow()` — shows IMDb poster image; falls back to 🎬 emoji
-  - `renderStreamRow()` — shows Netflix / Prime poster image; falls back to 📺 emoji
-  - `renderYTRow()` — shows YouTube / Filmi Craft thumbnail; falls back to 🎬 emoji
-- Images use `position:absolute; inset:0; width:100%; height:100%; object-fit:cover` so they fill the full 120×175px poster area
-- Badges (platform, rank, score) still float on top of the real image via `position:absolute`
-- `onerror` handler on every `<img>` hides the image silently if it fails to load
-- The `tc-poster-img` CSS has `background:var(--navy2)` as the base — visible if image is missing
+### Web Groups & My Squads Panel (v2.2 — CONFIRMED BUILT)
+- Dashboard nav has **"My Squads"** link (desktop + mobile hamburger)
+- Three-tab panel:
+  - **+ New squad** — create a web group by name (no Telegram needed)
+  - **🔗 Link Telegram** — paste a Telegram group ID to link it to your Google account. Find the ID by adding @userinfobot to your group.
+  - **✉️ Invite members** — invite by Gmail. Existing users added immediately; new users auto-join on first Google sign-in
+- New endpoints: `POST /api/groups/link-telegram`, `POST /api/groups/invite`, `GET /api/groups`
+- New DB functions: `getUserByEmail()`, `addPendingInvite()`, `applyPendingInvites()`
 
-### `/api/trending/streaming` — Response Shape Changed (v2 breaking change)
-- **v1 shape:** `{ data: { all: [...mixed array] }, source }`
-- **v2 shape:** `{ netflix: [...], prime: [...], source }` — split into separate arrays
-- `app.html` `loadLiveStreamingData()` updated to read `data.netflix` and `data.prime` separately
-- Fallback splits `STREAM_FALLBACK` array by `badge === 'N'` vs `badge === 'P'`
-
-### Website — Responsive / Adaptive Layout (v2 — CONFIRMED BUILT)
-- All pages fully responsive: desktop / tablet / mobile
-- `styles.css` breakpoints at **900px**, **768px**, **480px**
-- Mobile hamburger nav (`nav-hamburger` button + `mobile-nav` dropdown) on `index.html` and `login.html`
-- Fluid typography via CSS `clamp()` for hero title and headings (`--text-hero`, `--text-h2`)
-- Touch targets minimum 44px on all interactive elements
-- `overflow-x: hidden` on `html, body` — no horizontal scroll
-- `viewport-fit=cover` on all pages for notched device support
+### Trending Page (v2 — CONFIRMED BUILT)
+- **Category filter tabs:** 🎬 Movies · 🎭 Events · 📍 Places
+- **Movies section:** YouTube Top 10 + Netflix Top 10 (separate row) + Prime Video Top 10 (separate row) + IMDb Top Picks
+- **Events section:** Eventbrite top 10 (static curated Vancouver)
+- **Places section:** Zomato top 10 restaurants (static curated Vancouver)
+- All poster cards show real `image_url` from DB — `renderImdbRow`, `renderStreamRow`, `renderYTRow` all updated
+- `/api/trending/streaming` returns `{ netflix: [...], prime: [...], source }` — split in v2 (breaking change from v1)
+- Region fallback: tries `['canada','ca','us']` for Netflix, `['ca','canada']` for Prime until data found
 
 ### Telegram Mini App (app.html)
-Accessible at: `t.me/[BOT_USERNAME]/Squadpicks`
-
-**Live API — not static HTML:**
-- Reads `groupId` from Telegram `start_param` or `?startapp=` / `?groupId=` URL params
-- If `groupId` present → calls `GET /api/picks?groupId=` to load real group picks from DB
-- If no `groupId` → shows demo data (for browser preview / testing)
-- Voting calls `POST /api/vote` to sync to DB and update Telegram card
-- Adding a pick calls `POST /api/picks` which also notifies the Telegram group chat
-- Trending rows call `/api/trending/streaming` and `/api/trending/imdb` on page load
+Accessible at: `t.me/[BOT_USERNAME]/Squadpicks` AND at `/app?groupId=xxx` via browser after website Telegram login
 
 **4 pages:**
 
 | Page | Description |
 |------|-------------|
-| **Plan** | Squad's picks from DB, grouped by type. Filter chips: All · ✓ Group ok · ✕ Has skip · ⏳ Pending · by type. Compact card layout. **Titles are clickable links** to source URL (↗). **Thumbnails show real image** if `image_url` present. |
-| **Picks** | Full pick cards with 165px thumbnail (**real image** or emoji fallback), **"🔗 Open link ↗" button**, real vote buttons synced to API, voter chips (4-char names). Add bar calls real `/api/picks` endpoint. |
-| **Trending** | Category filter tabs (Movies / Events / Places). Movies: YouTube top 10 + **Netflix Top 10** (separate row) + **Prime Top 10** (separate row) + IMDb top picks. All poster cards show **real images** from DB. Events: Eventbrite. Places: Zomato. Green ● LIVE badge when data is from DB. |
-| **Settings (Me)** | Squad members, notifications, YouTube channel management (Admin only), Bot settings (Admin only), Squad+ plan, Help. |
+| **Plan** | Squad picks grouped by type. Titles are clickable links (↗) to source URL. Thumbnails show real image if available. |
+| **Picks** | Full pick cards with 165px thumbnail (real image or emoji), "🔗 Open link ↗" button, vote buttons synced to API. |
+| **Trending** | Category tabs: Movies / Events / Places. All poster cards show real images from DB. ● LIVE badge when data is from DB. |
+| **Settings (Me)** | Squad members, notifications, YouTube channels (Admin), Bot settings (Admin), Squad+ plan, Help. |
 
-**Navigation:**
-- **Bottom nav (LinkedIn-style):** Plan · Picks · ➕ · Trending · Me — purple top-border on active
-- **Me tab** → goes directly to Settings page
-- **Hamburger drawer** → Plan, Picks, Trending, Settings
+### Web Dashboard (`/dashboard`)
+For Google-login users only. Features:
+- Picks grid with filter pills (All / I want to / Group ok / Movies / Food / Places / Events)
+- Group selector showing 🌐 web groups and 💬 Telegram groups
+- Stats row (Total picks / Group ok / Need my vote / From Filmi Craft)
+- Add pick modal — paste any URL, server fetches metadata
+- My Squads panel — create squads, link Telegram groups, invite by Gmail
+- Mobile responsive with hamburger nav
+- All API calls use `currentUser` from server session — no `localStorage` dependency
 
 ### Website
-| Route | Page |
-|-------|------|
-| `/` | Landing/marketing page (responsive, mobile hamburger nav) |
-| `/login` | Login: Google OAuth button (primary) + Telegram Widget (secondary). Bot username injected server-side. |
+| Route | Description |
+|-------|-------------|
+| `/` | Landing page (responsive, mobile hamburger nav) |
+| `/login` | Google OAuth button (primary) + Telegram Widget (bot username injected server-side) |
 | `/auth/google` | Starts Google OAuth flow |
-| `/auth/google/callback` | Google OAuth callback handler |
-| `/dashboard` | Squad picks dashboard |
+| `/auth/google/callback` | Google OAuth callback → `/dashboard` |
+| `/api/auth/telegram` | Verifies Telegram widget hash → `/app?groupId=xxx` |
+| `/app` | Telegram Mini App — for Telegram users (both in-app and via browser) |
+| `/dashboard` | Web dashboard — for Google users |
 | `/blog` | Blog |
-| `/app` | Telegram Mini App |
-
-### Pricing Tiers (defined, not yet enforced in code)
-| Plan | Price | Limits |
-|------|-------|--------|
-| Free | $0 | Groups ≤ 6 members, 1 reviewer channel |
-| Squad+ | $2.99/mo | Groups ≤ 20 members, 5 channels |
-| Community | $9.99/mo | Unlimited |
 
 ---
 
@@ -175,13 +164,13 @@ Accessible at: `t.me/[BOT_USERNAME]/Squadpicks`
 | **Web server** | Express v5 |
 | **Database** | Supabase (PostgreSQL) via @supabase/supabase-js |
 | **Deployment** | Railway (auto-deploy from GitHub) |
-| **Web scraping** | node-fetch + cheerio |
+| **Web scraping** | node-fetch + cheerio (scraper.js + fetchImdbMeta in links.js) |
 | **Cron jobs** | node-cron v4 |
 | **YouTube API** | googleapis v171 |
-| **Link metadata** | open-graph-scraper v6 |
+| **Link metadata** | open-graph-scraper v6 (+ dedicated IMDB scraper in links.js) |
 | **Sessions** | express-session v1.18 |
 | **Google OAuth** | Native fetch — no Passport.js |
-| **Mini App** | Vanilla HTML/CSS/JS (single file: `public/app.html`) |
+| **Mini App** | Vanilla HTML/CSS/JS (`public/app.html`) |
 | **Website** | Vanilla HTML + shared `styles.css` |
 | **Fonts** | Fraunces (serif, headings) + DM Sans (body) via Google Fonts |
 
@@ -193,27 +182,24 @@ Accessible at: `t.me/[BOT_USERNAME]/Squadpicks`
 squadpicks-bot/
 │
 ├── index.js          — Bot entry point: starts bot, wires all crons, starts server
-├── server.js         — Express API + static files + Telegram auth + Google OAuth routes
-├── db.js             — All Supabase queries (picks, votes, groups, users, trending)
-├── links.js          — Link detection, metadata fetch (now returns sourceUrl), card formatting
+├── server.js         — Express API + Telegram auth + Google OAuth + group endpoints
+├── db.js             — All Supabase queries (picks, votes, groups, users, trending, invites)
+├── links.js          — Link detection, fetchMeta (with dedicated fetchImdbMeta), card formatting
 ├── youtube.js        — YouTube channel monitor (Friday cron)
 ├── digest.js         — Sunday weekly digest cron
 ├── scraper.js        — Thursday cron: scrapes Netflix/Prime/IMDb, stores to DB
-├── streaming.js      — RapidAPI fallback for streaming data (optional)
+├── streaming.js      — RapidAPI fallback + static curated data for streaming
 │
-├── database.sql      — Supabase schema — run once in SQL Editor (9 tables)
+├── database.sql      — Full Supabase schema (9 tables + v2.2 migrations)
 ├── package.json      — includes express-session, node-fetch
-├── Procfile          — web: node index.js
-├── railway.toml      — Railway config with healthcheck /api/health
-├── .node-version     — 20
-├── .env.example      — template including GOOGLE_CLIENT_ID, SESSION_SECRET, APP_URL
+├── .env.example      — all env vars including GOOGLE_CLIENT_ID, SESSION_SECRET, APP_URL
 │
 └── public/
-    ├── app.html          — Telegram Mini App (~1300 lines, live API-connected)
-    ├── index.html        — Marketing landing page (responsive, mobile hamburger nav)
-    ├── login.html        — Google OAuth button + Telegram Widget (bot username injected server-side)
-    ├── styles.css        — Shared website styles + responsive breakpoints (900/768/480px)
-    ├── dashboard/index.html
+    ├── app.html          — Telegram Mini App (async init, checks /api/session for web users)
+    ├── index.html        — Landing page (responsive, mobile hamburger nav)
+    ├── login.html        — Google button + Telegram Widget + setup tips + actionable errors
+    ├── styles.css        — Shared styles + responsive breakpoints (900/768/480px)
+    ├── dashboard/index.html  — Web dashboard for Google users
     └── blog/index.html
 ```
 
@@ -221,37 +207,40 @@ squadpicks-bot/
 
 | Table | Purpose |
 |-------|---------|
-| `groups` | Telegram + web groups (`is_web_group`, `owner_id` columns added in v2) |
-| `picks` | All squad picks — `url` column stores source URL reliably (v2 fix) |
+| `groups` | Telegram + web groups (`is_web_group`, `owner_id` added in v2) |
+| `picks` | All picks — `url` column stores source URL; `image_url` stores poster/thumbnail |
 | `votes` | Per-person votes on each pick |
-| `posted_videos` | Tracks which YouTube videos have been posted (dedup) |
+| `posted_videos` | Tracks YouTube videos already posted (dedup) |
 | `trending_netflix` | Scraped Netflix top 10 by region + week (includes `image_url`) |
 | `trending_prime` | Scraped Prime Video top 10 by region + week (includes `image_url`) |
 | `trending_imdb` | Scraped IMDb top picks by category + week (includes `image_url`) |
 | `users` | Google + Telegram website users (`google_id`, `telegram_id`, `email`, `name`, `avatar`) |
-| `group_members` | Membership for web groups (`group_id`, `user_id`, `email`, `status`) |
+| `group_members` | Squad membership — `user_id` (nullable for pending invites), `email`, `status`, `invited_by` |
 
 ### API Endpoints
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/api/health` | Health check (Railway uses this) |
-| GET | `/api/picks?groupId=` | Get group picks with votes |
-| POST | `/api/picks` | Add pick + notify Telegram group |
-| POST | `/api/vote` | Cast/toggle vote + update Telegram card |
-| GET | `/api/summary?groupId=` | Group ok/skip/pending summary |
-| GET | `/api/fcpicks` | Latest Filmi Craft reviewed picks |
-| POST | `/api/picks/notify` | Post/update card in Telegram group |
-| GET | `/api/trending/streaming?region=canada` | Returns `{ netflix:[...], prime:[...], source }` — split in v2 |
-| GET | `/api/trending/imdb?category=top_movies` | IMDb top picks from DB |
-| GET | `/api/session` | Current logged-in user info |
-| POST | `/api/auth/telegram` | Verify Telegram OAuth hash for website login |
-| POST | `/api/auth/logout` | Destroy session |
-| GET | `/auth/google` | Start Google OAuth flow |
-| GET | `/auth/google/callback` | Google OAuth callback — exchanges code, upserts user, sets session |
-| POST | `/api/groups/create` | Create web group (requires web session auth) |
-| GET | `/api/groups/mine` | List user's groups (requires web session auth) |
-| POST | `/api/admin/scrape` | Manual scrape trigger (requires `x-admin-secret` header) |
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | `/api/health` | — | Health check |
+| GET | `/api/session` | — | Current session user info |
+| POST | `/api/auth/logout` | — | Destroy session |
+| GET | `/auth/google` | — | Start Google OAuth |
+| GET | `/auth/google/callback` | — | Google OAuth callback → `/dashboard` |
+| POST | `/api/auth/telegram` | — | Verify Telegram widget hash → `/app?groupId=xxx` |
+| GET | `/api/groups` | — | All groups (used by app.html) |
+| GET | `/api/groups/mine` | session | Groups for logged-in web user |
+| POST | `/api/groups/create` | session | Create web group |
+| POST | `/api/groups/link-telegram` | session | Link Telegram group to Google account |
+| POST | `/api/groups/invite` | session | Invite member by email |
+| GET | `/api/picks?groupId=` | tg | Get group picks with votes |
+| POST | `/api/picks` | tg | Add pick + notify Telegram group |
+| POST | `/api/vote` | tg | Cast/toggle vote + update Telegram card |
+| GET | `/api/summary?groupId=` | tg | Group ok/skip/pending summary |
+| GET | `/api/fcpicks` | tg | Latest Filmi Craft reviewed picks |
+| POST | `/api/picks/notify` | tg | Post/update card in Telegram group |
+| GET | `/api/trending/streaming?region=canada` | — | `{ netflix:[...], prime:[...], source }` |
+| GET | `/api/trending/imdb?category=top_movies` | — | IMDb top picks from DB |
+| POST | `/api/admin/scrape` | secret header | Manual scrape trigger |
 
 ---
 
@@ -279,20 +268,19 @@ Applies to both Mini App (`app.html`) and website (`styles.css`) — shared vari
 - **Body / UI:** DM Sans (sans-serif, weights 400–600)
 
 ### Component Rules
-- **Pick cards (Picks tab)** — 165px thumbnail: real `image_url` fills card if present, emoji fallback. `onerror` silently hides broken images. "🔗 Open link ↗" button below title. Voter chips + vote buttons unchanged.
-- **Plan cards** — title is clickable `<a>` link with ↗ icon opening `url` in new tab. Thumbnail: real image (78px wide) if `image_url` present, emoji fallback.
-- **Trending poster cards** — 120×175px portrait. All three row types (`renderImdbRow`, `renderStreamRow`, `renderYTRow`) now use real `image_url` from DB. Rank badge top-right, score bottom-right, platform badge top-left. Images use `position:absolute;inset:0;object-fit:cover` to fill the poster area.
-- **Voter chips** — max 4 characters from first name. vc-1 (done) = purple tint, vc-2 (want) = sky tint, vc-3 (skip) = red tint.
-- **Trending filter bar** — `trend-cat-bar` with `tcb-btn` pills. Active = navy fill. Filters `.trend-cat-section` divs by toggling `.on` class. Default active = Movies.
+- **Pick cards (Picks tab)** — 165px thumbnail: real `image_url` fills card; emoji fallback. "🔗 Open link ↗" button below title.
+- **Plan cards** — title is clickable `<a>` with ↗ icon. Thumbnail: real image (78px) or emoji fallback.
+- **Trending poster cards** — 120×175px. All three render functions use real `image_url`. Badges float on top via `position:absolute`.
+- **Trending filter bar** — `trend-cat-bar` with `tcb-btn` pills. Active = navy fill. Default = Movies section.
 - **Netflix / Prime rows** — separate rows each with own platform badge and ● LIVE indicator.
-- **Google login button** — white bg, 1.5px border-beige3, Google G SVG icon, hover border-blue2.
+- **Google login button** — white bg, 1.5px border, Google G SVG icon, hover border-blue2.
 - **Mobile nav** — `nav-hamburger` (3 lines) + `mobile-nav` dropdown (fixed, navy bg, `.open` toggle).
 - **"Open in SquadPicks" button** — Telegram bot cards ONLY. Never shown inside Mini App UI.
-- **"● LIVE" badge** — green, appears on Trending rows when data is from database.
-- **Website nav** — fixed purple nav bar matching Mini App header colour.
+- **"● LIVE" badge** — green, on Trending rows when data is from DB.
 
 ### UX Rules
-- Trending page → default view is Movies section (filter tab pre-selected on load)
+- **Telegram login** → always goes to Mini App (`/app`) — never to web dashboard
+- **Google login** → always goes to web dashboard (`/dashboard`) — never to Mini App
 - Group ok badge = all 4+ squad members voted with no skips
 - Vote labels are content-type specific throughout
 - Website fully responsive — hamburger nav on mobile, fluid type, 44px touch targets
@@ -301,30 +289,28 @@ Applies to both Mini App (`app.html`) and website (`styles.css`) — shared vari
 
 ## 6. Environment Variables
 
-Set all of these in Railway → Variables:
-
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `TELEGRAM_TOKEN` | ✅ | From @BotFather /newbot |
 | `SUPABASE_URL` | ✅ | Supabase project URL |
 | `SUPABASE_KEY` | ✅ | Supabase anon/public key |
 | `YOUTUBE_API_KEY` | ✅ | Google Cloud Console → YouTube Data API v3 |
-| `BOT_USERNAME` | ✅ | Bot username without @ (e.g. `squadpicks_bot`) — injected into login.html at serve time |
+| `BOT_USERNAME` | ✅ | Bot username without @ — must match BotFather exactly |
 | `BOT_NAME` | ✅ | Display name (e.g. `SquadPicks`) |
 | `MINI_APP_URL` | ✅ | `https://YOUR-APP.up.railway.app` |
 | `MINI_APP_SHORT_NAME` | ✅ | BotFather short name e.g. `Squadpicks` — case-sensitive |
 | `RAILWAY_PUBLIC_DOMAIN` | ✅ | `YOUR-APP.up.railway.app` (no https://) |
-| `APP_URL` | ✅ | `https://YOUR-APP.up.railway.app` (with https://) — used by Google OAuth redirect |
+| `APP_URL` | ✅ | `https://YOUR-APP.up.railway.app` — used by Google OAuth |
 | `GOOGLE_CLIENT_ID` | ✅ | From Google Cloud Console OAuth 2.0 credentials |
 | `GOOGLE_CLIENT_SECRET` | ✅ | From Google Cloud Console OAuth 2.0 credentials |
 | `SESSION_SECRET` | ✅ | Any random 32+ char string for express-session |
 | `FILMICRAFT_CHANNEL_ID` | ✅ | `UClF9UTljviumfJf7t-VR5tg` |
 | `FILMICRAFT_CHANNEL_NAME` | ✅ | `Filmi Craft` |
 | `ADMIN_SECRET` | ✅ | Any string — protects `/api/admin/scrape` |
-| `RAPIDAPI_KEY` | ⚪ Optional | RapidAPI streaming fallback (100 free req/day) |
+| `RAPIDAPI_KEY` | ⚪ Optional | RapidAPI streaming fallback |
 | `NODE_ENV` | ⚪ Optional | `production` |
 
-### Quick-copy template for Railway Raw Editor
+### Quick-copy for Railway Raw Editor
 ```
 TELEGRAM_TOKEN=
 SUPABASE_URL=
@@ -350,51 +336,43 @@ NODE_ENV=production
 ## 7. Deployment
 
 - **Platform:** Railway (railway.app)
-- **Live URL:** `https://squadpicks-production.up.railway.app` (or your custom domain)
 - **Deploy method:** Push to GitHub → Railway auto-redeploys (~60 seconds)
 - **Health check:** `GET /api/health`
 - **Mini App URL:** `t.me/squadpicks_bot/Squadpicks`
-- **Node version:** 20+ (`.node-version` + `package.json engines`)
-- **Start command:** `node index.js` (via Procfile)
+- **Node version:** 20+
 
-### First deploy checklist
-1. Run `database.sql` in Supabase SQL Editor (includes `users` and `group_members` tables)
-2. Set all env vars in Railway (including `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `APP_URL`)
+### Deploy checklist (first time)
+1. Run `database.sql` in Supabase SQL Editor
+2. Set all env vars in Railway
 3. Register Mini App with BotFather: `/newapp` → Web App URL: `https://YOUR-APP.up.railway.app/app` → Short name: `Squadpicks`
-4. **Register domain with BotFather for Telegram Login Widget:** `/setdomain` → paste `YOUR-APP.up.railway.app` (no https://) — fixes "Bot domain invalid"
-5. Set up Google OAuth in Google Cloud Console (see Section 2 → Google OAuth Login for full steps)
-6. Add bot to your Telegram group
-7. Paste any link in the group to test the full flow
+4. **Register domain with BotFather for Telegram Login Widget:** `/setdomain` → `YOUR-APP.up.railway.app` (no https://) — fixes "Bot domain invalid" and phone-number prompt
+5. Set up Google OAuth: Google Cloud Console → Credentials → OAuth 2.0 Client → add redirect URI `https://YOUR-APP.up.railway.app/auth/google/callback`
+6. Add yourself as a Test User in OAuth consent screen (until app is Published)
+7. Add bot to your Telegram group and paste a link to test
 
-### Updating an existing deployment (v1 → v2)
-Run in Supabase SQL Editor to add new columns/tables without losing data:
+### Upgrading existing deployment (v2.2 migrations)
+Run in Supabase SQL Editor:
 ```sql
 ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_web_group BOOLEAN DEFAULT FALSE;
 ALTER TABLE groups ADD COLUMN IF NOT EXISTS owner_id UUID;
-
 CREATE TABLE IF NOT EXISTS users (
-  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  telegram_id BIGINT  UNIQUE,
-  google_id   TEXT    UNIQUE,
-  email       TEXT,
-  name        TEXT,
-  avatar      TEXT,
-  updated_at  TIMESTAMPTZ DEFAULT NOW(),
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  telegram_id BIGINT UNIQUE, google_id TEXT UNIQUE,
+  email TEXT, name TEXT, avatar TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW(), created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE TABLE IF NOT EXISTS group_members (
-  id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  group_id   BIGINT NOT NULL,
-  user_id    UUID REFERENCES users(id),
-  email      TEXT,
-  status     TEXT DEFAULT 'active',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(group_id, user_id)
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  group_id BIGINT NOT NULL, user_id UUID REFERENCES users(id),
+  email TEXT, status TEXT DEFAULT 'active', invited_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(group_id, user_id)
 );
+ALTER TABLE group_members ALTER COLUMN user_id DROP NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_group_members_group_email
+  ON group_members(group_id, email) WHERE email IS NOT NULL;
 ```
 
-### Manual scrape trigger (anytime)
+### Manual scrape trigger
 ```bash
 curl -X POST https://YOUR-APP.up.railway.app/api/admin/scrape \
   -H "x-admin-secret: YOUR_ADMIN_SECRET"
@@ -408,29 +386,32 @@ curl -X POST https://YOUR-APP.up.railway.app/api/admin/scrape \
 
 ---
 
-## 9. Known / Planned Future Features
+## 9. Known Caveats & Technical Decisions
 
-### Discussed but not yet built
-- **WhatsApp integration** — Phase 2 after Telegram launch
-- **iOS app** — longer-term expansion
-- **Enforce pricing tiers in code** — Free/Squad+/Community limits defined but not yet enforced
-- **Per-group YouTube channels in DB** — currently stored in browser localStorage; should move to `group_channels` Supabase table so preferences persist across devices
-- **Real Zomato/Eventbrite API integration** — Places and Events rows are currently static curated Vancouver lists; intended to become live API data
-- **Email invites for web groups** — `group_members` table has `email` and `status` columns ready; email sending (Nodemailer/Resend) not yet implemented
-- **Dedicated web dashboard for Google users** — `/dashboard` currently serves the Telegram Mini App shell; a proper web dashboard showing web group picks for Google-login users is planned
+- **Telegram login vs Google login routing** — intentionally different destinations. Telegram → `/app` (Mini App). Google → `/dashboard` (web). Never swap these.
+- **`web_app` vs `url` button in Telegram group cards** — Telegram restricts `web_app` to private chats. Group cards use `url`. Intentional.
+- **`/api/trending/streaming` response shape** — v1 was `{ data: { all: [...] } }`. v2+ is `{ netflix: [...], prime: [...] }`. Any client consuming this must use the new shape.
+- **Bot domain invalid / phone number prompt** — run `/setdomain` in BotFather. `BOT_USERNAME` env var must match exactly. Both required for the one-click Telegram Login Widget to work.
+- **Google "Access Denied"** — add your Gmail as a Test User in Google Cloud Console → OAuth consent screen. Required until app is Published.
+- **Session on Railway** — `app.set('trust proxy', 1)` and `sameSite: 'none'` are both required for Railway's HTTPS proxy to pass the session cookie correctly.
+- **express-session memory store** — sessions reset on each Railway deploy. For production persistence use `connect-redis` or Supabase session storage.
+- **IMDB scraper** — `fetchImdbMeta()` in `links.js` uses browser headers + cheerio. Works as of April 2026. IMDB occasionally changes its DOM; if it breaks, the JSON-LD layer (layer 1) is the most resilient.
+- **Trending images require scraper run** — `image_url` in trending tables only populated after the Thursday cron runs. Trigger manually with `POST /api/admin/scrape` on fresh deploy.
+- **Netflix `tudum/top10`** — official Netflix top 10 source. Not the main netflix.com.
+- **Prime Video Canada only** — `primevideo.com/collection/SVODTop10` (Canada). India Prime removed by design.
+- **First-deploy auto-scrape** — scraper runs automatically 12 seconds after startup on a fresh empty DB.
 
-### Known caveats & technical decisions
-- **`web_app` vs `url` button in Telegram group cards** — Telegram restricts `web_app` button type to private chats only. Group cards use `url` type. Intentional, not a bug.
-- **`/api/trending/streaming` response shape changed in v2** — v1 returned `{ data: { all: [...] } }`. v2 returns `{ netflix: [...], prime: [...] }`. The `app.html` loader is updated. Any other clients consuming this endpoint must be updated.
-- **Bot domain invalid error** — two causes: (a) `BOT_USERNAME` env var not set — server now injects it into `login.html` at request time; (b) domain not registered with BotFather via `/setdomain`. Both must be fixed.
-- **Google "Access Denied" error** — caused by not adding your Gmail as a test user in the OAuth consent screen. Until the app is Published in Google Cloud Console, only listed test users can sign in.
-- **Google OAuth requires HTTPS** — Google will not allow `http://` redirect URIs in production. Use Railway's domain. For local dev, add `http://localhost:3000/auth/google/callback` as an allowed redirect URI in your OAuth client.
-- **express-session in Railway** — sessions stored in memory by default. On Railway, sessions reset on each deploy. For production persistence, add a Redis store (`connect-redis`) or use Supabase for session storage. For low-traffic use, in-memory is fine.
-- **Trending images require scraper to have run** — `image_url` in `trending_netflix`, `trending_prime`, `trending_imdb` tables is only populated after the Thursday scraper cron runs. On a fresh deploy, trigger manually: `POST /api/admin/scrape`.
-- **Scraper resilience** — Netflix, Prime, and IMDb use heavy client-side rendering. Scraper uses 4-layer fallback (JSON-LD → embedded state JSON → HTML selectors → link parsing) and never crashes the bot. If 0 titles are scraped, existing DB data is preserved.
-- **Netflix `tudum/top10` is the official source** — this URL publishes Netflix's own official weekly top 10 rankings, not the main netflix.com.
-- **Prime Video Canada only** — only `primevideo.com/collection/SVODTop10` (Canada) is scraped. India Prime removed by design.
-- **First-deploy auto-scrape** — on a fresh deploy with an empty database, the scraper runs automatically 12 seconds after startup so the Trending page has data immediately.
+---
+
+## 10. Planned / Future Features
+
+- **WhatsApp integration** — Phase 2
+- **iOS app** — longer-term
+- **Enforce pricing tiers in code** — Free/Squad+/Community limits defined, not yet enforced
+- **Per-group YouTube channels in DB** — currently browser localStorage; should move to `group_channels` Supabase table
+- **Real Zomato/Eventbrite API** — Places and Events rows are static curated Vancouver lists; intended to become live data
+- **Email sending for invites** — `group_members` table ready; Nodemailer/Resend not yet wired up
+- **Redis session store** — replace in-memory express-session for persistence across deploys
 
 ---
 
@@ -438,50 +419,76 @@ curl -X POST https://YOUR-APP.up.railway.app/api/admin/scrape \
 
 ---
 
-## 10. v2.2 Bug Fixes & Features (April 2026)
+## 11. v2.4 Bug Fixes (April 2026)
 
-### Bug Fix: Google login redirects back to login page
-- **Root cause:** Two issues combined:
-  1. `express-session` cookie was not persisting on Railway because `sameSite` was not set — Railway uses a reverse proxy and the cookie was being dropped
-  2. Dashboard was checking `localStorage` for Telegram user instead of the server session
-- **Fix in `server.js`:** Added `app.set('trust proxy', 1)` and `sameSite: 'none'` (prod) / `'lax'` (dev) to the session cookie config
-- **Fix in `dashboard/index.html`:** Init now calls `GET /api/session` first. If server session exists (Google or Telegram), it uses that. Falls back to `localStorage` for legacy Telegram users. Redirects to `/login` (not `/login.html`) only if neither exists.
+### Fix 1 & 2: Sign out not working / no sign out in Mini App
+- **Root cause:** The web dashboard sign-out was only clearing `localStorage` without properly destroying the server session cookie. The Mini App (`app.html`) had no sign-out option at all.
+- **Fix in `server.js`:** `POST /api/auth/logout` now explicitly calls `res.clearCookie('connect.sid')` and `res.clearCookie('tg_user_id')` in addition to `req.session.destroy()`. Added `GET /logout` route as a direct-navigation fallback.
+- **Fix in `public/app.html` Settings tab:** Added an "Account" section row: **Sign out** (🚪 icon, red text). Tapping it calls `signOutApp()` which calls `POST /api/auth/logout`, clears `localStorage`, then redirects to `/login`.
+- **Fix in `public/app.html` Settings tab:** Added identity card at the top of Settings showing the user's name and "Signed in via Telegram".
 
-### Bug Fix: Netflix/Prime/IMDb data not showing / images missing
-- **Root cause:** DB region key mismatch — Netflix data scraped as `'canada'` but Prime as `'ca'`; no fallback tried other variants
-- **Fix in `server.js`:** `/api/trending/streaming` now tries multiple region variants in sequence (`['canada','ca','us']` for Netflix, `['ca','canada']` for Prime) until it finds data
-- **IMDb images:** Already fixed in v2.1 — `renderImdbRow`, `renderStreamRow`, `renderYTRow` all use `image_url` from DB. Images only appear after the Thursday scraper cron runs. Trigger manually: `POST /api/admin/scrape`
+### Fix 3: Unauthenticated users can visit protected pages
+- **Fix in `server.js` — `/dashboard` route:** Now has a server-side session guard. If no session → redirect to `/login`. If session exists but `loginType === 'telegram'` → redirect to `/app` (Telegram users should never see the web dashboard).
+- **Fix in `server.js` — `/login` route:** If user already has a valid session, skip the login page and redirect directly to the right destination (`/app` for Telegram, `/dashboard` for Google).
+- **Fix in `public/app.html` — init function:** Detects whether the app is running inside Telegram (`tg.initData` non-empty) or in a browser. If in browser with no session → redirects to `/login`. If in browser with session → loads user identity and groups. Removes the demo "Priya" fallback user for browser context.
 
-### Bug Fix: IMDB URL not capturing movie name/image correctly
-- **Root cause:** `open-graph-scraper` is blocked by IMDB's bot protection — returns empty or generic titles
-- **Fix in `links.js`:** Added `fetchImdbMeta()` — a dedicated IMDB scraper using `node-fetch` + `cheerio` that fetches the page directly with browser headers. Extraction uses 3-layer fallback:
-  1. `<script type="application/ld+json">` JSON-LD structured data (most reliable — includes title, image, year, rating)
-  2. `<meta property="og:*">` tags (strips "- IMDb" suffix from title)
-  3. DOM selectors (`[data-testid="hero__pageTitle"]`, `img.ipc-image`, etc.)
-- `fetchMeta()` now routes IMDB URLs to `fetchImdbMeta()` first before trying ogs
-- Scraped `title`, `image_url`, `year`, `rating` are all stored in the pick record
+### Fix 4: Google users seeing all groups including DM chats
+- **Root cause:** `getAllGroups()` in `db.js` returned every row in the `groups` table — including private/DM chat IDs (positive integers) that the bot was added to for testing. Telegram group IDs are always **negative integers**; private chat IDs are **positive integers**.
+- **Fix in `db.js` — `getAllGroups()`:** Added `.lt('id', 0)` filter — returns only groups with negative IDs (real Telegram groups/supergroups). DM/private chats are silently excluded.
+- **Fix in `db.js` — `getUserGroups()`:** Added `.eq('status', 'active')` filter and post-filters to only return groups that are either `is_web_group = true` or have a negative ID. Pending-invite members (`status = 'invited'`) are excluded until they confirm.
+- **Fix in `dashboard/index.html` — `loadGroups()`:** Google users (`loginType === 'google'`) now only call `/api/groups/mine` — they never see `getAllGroups()` results. Only groups they are explicitly an active member of are shown.
 
-### New Feature: My Squads panel (Google users)
-- Dashboard nav now has a **"My Squads"** link (desktop + mobile hamburger)
-- Opens a panel with three tabs:
-  - **+ New squad** — create a web group by name (no Telegram needed)
-  - **🔗 Link Telegram** — paste a Telegram group ID to link it to your Google account. Group must already have the SquadPicks bot. Find ID by adding @userinfobot to your group.
-  - **✉️ Invite members** — add people to a squad by Gmail address. If they already have an account they are added immediately. If not, their invite is saved and they auto-join when they sign in with Google.
-- New server endpoints: `POST /api/groups/link-telegram`, `POST /api/groups/invite`
-- New DB functions: `getUserByEmail()`, `addPendingInvite()`, `applyPendingInvites()`
-- `applyPendingInvites()` is called in the Google OAuth callback — invited users auto-join all pending squads on first login
+### How group IDs work
+| ID range | Meaning |
+|----------|---------|
+| Positive (e.g. `123456789`) | Telegram private/DM chat — should NOT appear in group selectors |
+| Negative (e.g. `-1001234567890`) | Real Telegram group or supergroup — correct, shows in selector |
+| Large negative (e.g. `-5678901234`) | Web-created group (assigned by `createWebGroup()`) — shows in selector |
 
-### New DB migrations (v2.2 — run in Supabase SQL Editor)
-```sql
-ALTER TABLE group_members ADD COLUMN IF NOT EXISTS invited_by UUID REFERENCES users(id);
-ALTER TABLE group_members ALTER COLUMN user_id DROP NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_group_members_group_email
-  ON group_members(group_id, email) WHERE email IS NOT NULL;
-```
+---
 
-### Dashboard improvements
-- Shows 🌐 prefix for web groups, 💬 prefix for Telegram groups in the group selector
-- Empty state now shows "Create a squad" button when user has no groups
-- `loadGroups()` merges both web groups (`/api/groups/mine`) and Telegram groups (`/api/groups`) into one unified list
-- Mobile hamburger nav added to dashboard
-- All API calls use `currentUser` from session — no more `localStorage` dependency for Google users
+## 12. v2.5 — Full App Redesign & Fixes (April 2026)
+
+### Terminology change
+The Google-login experience is now called the **Full App** (was: "dashboard"). The URL `/dashboard` and file `public/dashboard/index.html` remain the same — only the UI title and conceptual name changed.
+
+### Fix 1: Groups dropdown shows all Telegram groups for Google users
+- **Root cause:** `loadGroups()` was falling back to `GET /api/groups` (which returns ALL groups) when `/api/groups/mine` returned nothing. Google users who haven't linked anything saw every Telegram group the bot had ever joined.
+- **Fix:** Google users now exclusively call `/api/groups/mine`. No fallback to `getAllGroups()`. If `groups/mine` returns nothing, the user sees an empty state with a "Create a squad" prompt.
+
+### Fix 2: Linked Telegram group not saving / not appearing in dropdown
+- **Root cause:** `addGroupMember` used `onConflict: 'group_id,user_id'` but when linking a Telegram group by email, the `user_id` may not be in `group_members` yet — only email. The upsert silently failed.
+- **Fix in `db.js`:** Added `addGroupMemberByEmail()` — checks for existing row by `(group_id, email)` first, updates it if found, inserts fresh otherwise. Used by link-telegram, create-squad, and Google OAuth group creation.
+- **Fix in `server.js` link-telegram endpoint:** Now validates that group ID is negative (Telegram groups must be negative integers), returns full group object so UI can update immediately without a second API call.
+
+### Fix 3: Groups dropdown differentiation
+- **Google Squads** (created via "New squad") shown in `<optgroup label="🌐 Google Squads">`
+- **Telegram Groups** (linked via "Link Telegram") shown in `<optgroup label="💬 Telegram Groups">`
+- Uses HTML `<optgroup>` for clean visual separation in native dropdowns
+
+### Fix 4: Google login experience renamed to "Full App"
+- `public/dashboard/index.html` page title: "SquadPicks — Full App"
+- Conceptual name throughout: "Full App" (not "dashboard", not "web dashboard", not "Mini App")
+
+### Fix 5: Full App — hamburger menu with Trending, Plan, Settings
+- Left-side drawer (same style as Mini App) with: ✓ Picks · 📋 Plan · 🔥 Trending · ⚙️ Settings · 👥 My Squads
+- Sign out button at the bottom of the drawer
+- **Picks section** — main view, filter bar, picks grid
+- **Plan section** — compact card list grouped by type, filter bar, image thumbnails
+- **Trending section** — category tabs (Movies/Events/Places), Netflix/Prime/IMDb carousels with real poster images, Zomato/Eventbrite static lists
+- **Settings section** — identity card (name + email), My Squads link, Sign out button
+
+### Fix 6: Full App — images on pick cards
+- Pick cards now have a 170px `card-thumb` section showing the real `image_url` as a full-cover photo
+- Title and type badge float over the image with a gradient overlay (same style as Mini App's Picks tab)
+- Emoji fallback when `image_url` is missing or fails to load (`onerror` hides broken image)
+- Plan section pcard also shows `image_url` in the 72px side thumbnail
+- Trending poster cards all show real `image_url` from DB using `position:absolute; object-fit:cover`
+
+### Full App architecture
+- Single-page app at `/dashboard`
+- Sections: `#sec-picks`, `#sec-plan`, `#sec-trending`, `#sec-settings`
+- `goSection(name)` shows/hides sections and updates drawer active state
+- Auth: checked via `GET /api/session` on load — redirects to `/login` if no session
+- Groups: loaded from `GET /api/groups/mine` only — never falls back to all-groups
+- Vote labels are context-aware by content type (same as Mini App)
