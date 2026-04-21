@@ -26,7 +26,7 @@ async function getAllGroups() {
   return data || [];
 }
 
-// Returns groups for a specific user — used by Google-login dashboard
+// Returns groups for a specific user — used by Google-login Full App
 async function getUserGroups(userId) {
   const { data, error } = await supabase
     .from('group_members')
@@ -34,10 +34,23 @@ async function getUserGroups(userId) {
     .eq('user_id', userId)
     .eq('status', 'active');
   if (error) { console.error('getUserGroups error:', error.message); return []; }
-  // Only return actual groups (negative IDs for Telegram, any ID for web groups)
-  return (data || [])
-    .map(r => r.groups)
-    .filter(g => g && (g.is_web_group || g.id < 0));
+
+  const rows = data || [];
+
+  // Some rows may have a null groups join (race condition or missing FK) — fetch those directly
+  const resolved   = rows.filter(r => r.groups).map(r => r.groups);
+  const missingIds = rows.filter(r => !r.groups).map(r => r.group_id);
+
+  if (missingIds.length) {
+    const { data: direct } = await supabase
+      .from('groups')
+      .select('id, title, is_web_group')
+      .in('id', missingIds);
+    (direct || []).forEach(g => resolved.push(g));
+  }
+
+  // Filter: keep web groups (any ID) + real Telegram groups (negative IDs only)
+  return resolved.filter(g => g && (g.is_web_group || g.id < 0));
 }
 
 // ─── PICKS ─────────────────────────────────────────────────
@@ -141,15 +154,15 @@ async function addGroupMember({ groupId, userId, email }) {
   return data;
 }
 
-// Used when linking a Telegram group — handles both user_id and email conflict paths
+// Used when linking a Telegram group or creating a squad — handles both user_id and email conflict paths
 async function addGroupMemberByEmail({ groupId, userId, email }) {
-  // First try to update any existing row for this email
+  // Check for existing row by email (maybeSingle returns null instead of throwing when no row)
   const { data: existing } = await supabase
     .from('group_members')
     .select('id')
     .eq('group_id', groupId)
     .eq('email', email)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     // Update the existing invite row with the user_id
@@ -161,11 +174,24 @@ async function addGroupMemberByEmail({ groupId, userId, email }) {
     return;
   }
 
+  // Check for existing row by user_id (prevent duplicate key error)
+  const { data: existingByUser } = await supabase
+    .from('group_members')
+    .select('id')
+    .eq('group_id', groupId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existingByUser) {
+    // Already a member — just make sure status is active
+    await supabase.from('group_members').update({ status: 'active', email }).eq('id', existingByUser.id);
+    return;
+  }
+
   // No existing row — insert fresh
   const { error } = await supabase
     .from('group_members')
-    .upsert({ group_id: groupId, user_id: userId, email, status: 'active' },
-             { onConflict: 'group_id,user_id' });
+    .insert({ group_id: groupId, user_id: userId, email, status: 'active' });
   if (error) console.error('addGroupMemberByEmail insert error:', error.message);
 }
 

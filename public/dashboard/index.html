@@ -495,10 +495,12 @@ const VOTE_LABELS = {
     document.getElementById('si-type').textContent = currentUser.email || 'Google account';
   }
 
-  // Load groups and picks
+  // Restore groupId from URL if present
   const params = new URLSearchParams(location.search);
   currentGroupId = params.get('groupId') || null;
-  await loadGroups();
+
+  // Load groups — show picker if multiple, auto-select if only one
+  await loadGroups(false);
 
   // Load trending data
   loadTrending();
@@ -526,19 +528,18 @@ function closeDrawer() {
 }
 
 // ── GROUPS ────────────────────────────────────────────────
-async function loadGroups() {
+async function loadGroups(autoSelectFirst) {
   try {
-    // Google users ONLY see groups from /api/groups/mine (explicit membership)
     const r    = await fetch(BASE + '/api/groups/mine');
     const data = await r.json();
     const groups = (data.groups || []);
 
-    const sel  = document.getElementById('group-select');
+    const sel = document.getElementById('group-select');
     if (groups.length) {
       // Separate into Google-created and Telegram-linked
       const webGroups = groups.filter(g =>  g.is_web_group);
       const tgGroups  = groups.filter(g => !g.is_web_group);
-      let html = '';
+      let html = '<option value="" disabled>— Select a squad —</option>';
       if (webGroups.length) {
         html += `<optgroup label="🌐 Google Squads">`;
         webGroups.forEach(g => {
@@ -554,11 +555,29 @@ async function loadGroups() {
         html += '</optgroup>';
       }
       sel.innerHTML = html;
-      if (!currentGroupId) currentGroupId = String(groups[0].id);
-      const active = groups.find(g => String(g.id) === String(currentGroupId));
-      document.getElementById('squad-title').textContent   = active?.title || 'Your Squad';
-      document.getElementById('topnav-squad').textContent  = active?.title || '';
-      await loadPicks();
+
+      if (currentGroupId && groups.find(g => String(g.id) === String(currentGroupId))) {
+        // URL already has a valid groupId — load it directly
+        const active = groups.find(g => String(g.id) === String(currentGroupId));
+        document.getElementById('squad-title').textContent  = active.title;
+        document.getElementById('topnav-squad').textContent = active.title;
+        sel.value = String(currentGroupId);
+        await loadPicks();
+      } else if (groups.length === 1 || autoSelectFirst) {
+        // Only one group — auto-select it
+        currentGroupId = String(groups[0].id);
+        const active = groups[0];
+        document.getElementById('squad-title').textContent  = active.title;
+        document.getElementById('topnav-squad').textContent = active.title;
+        sel.value = currentGroupId;
+        history.replaceState({}, '', `/dashboard?groupId=${currentGroupId}`);
+        await loadPicks();
+      } else {
+        // Multiple groups, none selected — prompt user to pick one
+        document.getElementById('squad-title').textContent  = 'Select a squad';
+        document.getElementById('topnav-squad').textContent = '';
+        showGroupPrompt(groups);
+      }
     } else {
       sel.innerHTML = '<option value="">No squads yet</option>';
       document.getElementById('squad-title').textContent  = 'No squads yet';
@@ -566,22 +585,124 @@ async function loadGroups() {
         <div class="empty">
           <div class="empty-icon">👥</div>
           <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px">No squads yet</div>
-          <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Create a squad or link your Telegram group</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Create a squad or link your Telegram group to get started</div>
           <button onclick="openGroupPanel()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font-b)">+ Create a squad</button>
         </div>`;
     }
   } catch(e) { console.error('[loadGroups]', e); }
 }
 
+// Show a prominent group-picker when user has multiple groups but none selected
+function showGroupPrompt(groups) {
+  const grid = document.getElementById('picks-grid');
+  const webGroups = groups.filter(g =>  g.is_web_group);
+  const tgGroups  = groups.filter(g => !g.is_web_group);
+
+  let html = `
+    <div class="empty" style="padding:2.5rem 1rem">
+      <div class="empty-icon">👥</div>
+      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">Choose your squad</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">Select which squad's picks to view</div>
+      <div style="display:flex;flex-direction:column;gap:10px;max-width:360px;margin:0 auto;text-align:left">`;
+
+  if (webGroups.length) {
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">🌐 Google Squads</div>`;
+    webGroups.forEach(g => {
+      html += `<button onclick="switchGroup('${g.id}')" style="display:flex;align-items:center;gap:12px;background:var(--white);border:1.5px solid var(--beige3);border-radius:12px;padding:12px 16px;cursor:pointer;font-family:var(--font-b);width:100%;transition:border-color .15s" onmouseover="this.style.borderColor='#7C3AED'" onmouseout="this.style.borderColor='var(--beige3)'">
+        <span style="font-size:22px">🌐</span>
+        <span style="font-size:14px;font-weight:600;color:var(--text)">${esc(g.title)}</span>
+        <span style="margin-left:auto;color:var(--muted);font-size:18px">›</span>
+      </button>`;
+    });
+  }
+  if (tgGroups.length) {
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:${webGroups.length?'12px':0} 0 2px">💬 Telegram Groups</div>`;
+    tgGroups.forEach(g => {
+      html += `<button onclick="switchGroup('${g.id}')" style="display:flex;align-items:center;gap:12px;background:var(--white);border:1.5px solid var(--beige3);border-radius:12px;padding:12px 16px;cursor:pointer;font-family:var(--font-b);width:100%;transition:border-color .15s" onmouseover="this.style.borderColor='#7C3AED'" onmouseout="this.style.borderColor='var(--beige3)'">
+        <span style="font-size:22px">💬</span>
+        <span style="font-size:14px;font-weight:600;color:var(--text)">${esc(g.title)}</span>
+        <span style="margin-left:auto;color:var(--muted);font-size:18px">›</span>
+      </button>`;
+    });
+  }
+  html += `</div>
+      <div style="margin-top:1.5rem">
+        <button onclick="openGroupPanel()" style="background:transparent;border:1.5px solid var(--beige3);border-radius:10px;padding:8px 18px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--font-b)">+ Add new squad</button>
+      </div>
+    </div>`;
+  grid.innerHTML = html;
+}
+
 function switchGroup(id) {
-  currentGroupId = id;
+  currentGroupId = String(id);
   const sel = document.getElementById('group-select');
-  const opt = sel.options[sel.selectedIndex];
-  const title = (opt?.text || '').replace(/^[🌐💬]\s*/u, '');
-  document.getElementById('squad-title').textContent  = title;
-  document.getElementById('topnav-squad').textContent = title;
-  history.pushState({}, '', `/dashboard?groupId=${id}`);
+  sel.value = currentGroupId;
+  // Find group title from select options
+  const opt = Array.from(sel.options).find(o => o.value === currentGroupId);
+  const title = (opt?.text || '').replace(/^[🌐💬]\s*/u, '').trim();
+  document.getElementById('squad-title').textContent  = title || 'Your Squad';
+  document.getElementById('topnav-squad').textContent = title || '';
+  history.pushState({}, '', `/dashboard?groupId=${currentGroupId}`);
   loadPicks();
+}
+
+async function createSquad() {
+  const name = document.getElementById('gp-name').value.trim();
+  const msg  = document.getElementById('gp-create-msg');
+  if (!name) { showMsg(msg, 'Please enter a squad name', 'error'); return; }
+  const btn  = document.querySelector('#gp-create .modal-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
+  try {
+    const r = await fetch(BASE+'/api/groups/create', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name})
+    });
+    const d = await r.json();
+    if (d.ok && d.group) {
+      showMsg(msg, `Squad "${name}" created! 🎉`, 'ok');
+      document.getElementById('gp-name').value = '';
+      // Switch to the new group immediately
+      currentGroupId = String(d.group.id);
+      history.pushState({}, '', `/dashboard?groupId=${currentGroupId}`);
+      closeGroupPanel();
+      await loadGroups(false);   // reload dropdown, already has currentGroupId set
+      loadInviteGroups();
+      showToast(`Squad "${name}" created! Now showing its picks.`);
+    } else {
+      showMsg(msg, d.error || 'Failed to create', 'error');
+    }
+  } catch(e) { showMsg(msg, 'Error creating squad', 'error'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = 'Create squad'; } }
+}
+
+async function linkTelegram() {
+  const tgId   = document.getElementById('gp-tg-id').value.trim();
+  const tgName = document.getElementById('gp-tg-name').value.trim() || 'Telegram Group';
+  const msg    = document.getElementById('gp-tg-msg');
+  if (!tgId) { showMsg(msg, 'Please enter the Telegram Group ID', 'error'); return; }
+  const btn = document.querySelector('#gp-telegram .modal-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'Linking...'; }
+  try {
+    const r = await fetch(BASE+'/api/groups/link-telegram', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({telegramGroupId: tgId, name: tgName})
+    });
+    const d = await r.json();
+    if (d.ok && d.group) {
+      showMsg(msg, `Group "${tgName}" linked! ✅`, 'ok');
+      document.getElementById('gp-tg-id').value   = '';
+      document.getElementById('gp-tg-name').value = '';
+      // Switch to the newly linked group immediately
+      currentGroupId = String(d.group.id);
+      history.pushState({}, '', `/dashboard?groupId=${currentGroupId}`);
+      closeGroupPanel();
+      await loadGroups(false);
+      showToast(`"${tgName}" linked! Now showing its picks.`);
+    } else {
+      showMsg(msg, d.error || 'Failed to link group', 'error');
+    }
+  } catch(e) { showMsg(msg, 'Error linking group', 'error'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = 'Link group'; } }
 }
 
 // ── PICKS ─────────────────────────────────────────────────
@@ -807,36 +928,6 @@ async function loadInviteGroups() {
       ? (d.groups||[]).map(g=>`<option value="${g.id}">${esc(g.title)}</option>`).join('')
       : '<option value="">No squads yet</option>';
   } catch(e) {}
-}
-async function createSquad() {
-  const name = document.getElementById('gp-name').value.trim();
-  const msg  = document.getElementById('gp-create-msg');
-  if (!name) { showMsg(msg,'Please enter a squad name','error'); return; }
-  try {
-    const r = await fetch(BASE+'/api/groups/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
-    const d = await r.json();
-    if (d.ok) {
-      showMsg(msg,`Squad "${name}" created! 🎉`,'ok');
-      document.getElementById('gp-name').value='';
-      await loadGroups(); loadInviteGroups();
-    } else { showMsg(msg,d.error||'Failed to create','error'); }
-  } catch(e) { showMsg(msg,'Error creating squad','error'); }
-}
-async function linkTelegram() {
-  const tgId   = document.getElementById('gp-tg-id').value.trim();
-  const tgName = document.getElementById('gp-tg-name').value.trim() || 'Telegram Group';
-  const msg    = document.getElementById('gp-tg-msg');
-  if (!tgId) { showMsg(msg,'Please enter the Telegram Group ID','error'); return; }
-  try {
-    const r = await fetch(BASE+'/api/groups/link-telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegramGroupId:tgId,name:tgName})});
-    const d = await r.json();
-    if (d.ok) {
-      showMsg(msg,`Group "${tgName}" linked! ✅`,'ok');
-      document.getElementById('gp-tg-id').value='';
-      document.getElementById('gp-tg-name').value='';
-      await loadGroups();
-    } else { showMsg(msg,d.error||'Failed to link group','error'); }
-  } catch(e) { showMsg(msg,'Error linking group','error'); }
 }
 async function inviteMember() {
   const groupId = document.getElementById('gp-inv-group').value;

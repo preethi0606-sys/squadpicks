@@ -492,3 +492,34 @@ The Google-login experience is now called the **Full App** (was: "dashboard"). T
 - Auth: checked via `GET /api/session` on load — redirects to `/login` if no session
 - Groups: loaded from `GET /api/groups/mine` only — never falls back to all-groups
 - Vote labels are context-aware by content type (same as Mini App)
+
+---
+
+## 13. v2.6 — Full App Group Fixes (April 2026)
+
+### Fix 1 & 3: Multiple squads / multiple Telegram groups
+- Users can now create as many Google squads as they want — no limit enforced in the UI
+- Users can link as many Telegram groups as they want — each link call creates a new `group_members` row
+- `createSquad()` and `linkTelegram()` both close the panel immediately after success and switch the active group to the newly created/linked one
+- Both functions show a loading state on the button while the request is in flight
+
+### Fix 2: Saving a squad does not appear in dropdown
+- **Root cause:** `addGroupMemberByEmail()` called `.single()` on a Supabase query for a row that may not exist yet — this throws an error (`"JSON object requested, multiple (or no) rows returned"`) which crashes the function before the insert path runs. The group was created in `groups` but the membership row was never written to `group_members`, so `getUserGroups()` returned nothing.
+- **Fix in `db.js`:** Changed `.single()` to `.maybeSingle()` — returns `null` instead of throwing when no row exists
+- **Fix in `db.js`:** Added a second `maybeSingle()` check by `user_id` to prevent duplicate key errors on re-linking
+- **Fix in `db.js` `getUserGroups()`:** Added fallback — if the `groups` join returns null for some rows (race condition on FK resolution), fetches those groups directly by ID using `supabase.from('groups').select().in('id', missingIds)`
+- **Fix in `createSquad()`:** After API returns `ok: true`, immediately sets `currentGroupId` to the new group's ID and calls `loadGroups(false)` — the dropdown reloads with the new group pre-selected
+
+### Fix 4: App should depend on group selection first
+- `loadGroups(autoSelectFirst)` now has smarter selection logic:
+  - URL has a valid `groupId` → load that group's picks directly (no prompt)
+  - Exactly 1 group exists → auto-select it silently
+  - Multiple groups, no URL param → call `showGroupPrompt(groups)` which renders a full-page squad picker in the picks grid area
+- `showGroupPrompt()` renders big clickable squad buttons (Google Squads and Telegram Groups in separate labelled sections) with an "+ Add new squad" button at the bottom
+- Clicking any squad button calls `switchGroup(id)` which updates URL, dropdown, title, and loads picks
+- The group selector dropdown at the top still works for switching after initial selection
+- `<select>` now has a disabled placeholder option "— Select a squad —" so the user sees something meaningful when no group is selected
+
+### `loadGroups(autoSelectFirst)` parameter
+- `false` (default on init and after create/link): respects multi-group picker
+- `true`: auto-selects the first group regardless (used when you just want to force a refresh)
