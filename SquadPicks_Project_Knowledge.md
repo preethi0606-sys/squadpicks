@@ -523,3 +523,63 @@ The Google-login experience is now called the **Full App** (was: "dashboard"). T
 ### `loadGroups(autoSelectFirst)` parameter
 - `false` (default on init and after create/link): respects multi-group picker
 - `true`: auto-selects the first group regardless (used when you just want to force a refresh)
+
+---
+
+## 14. v2.7 — Full App Squad Management & Add Pick (April 2026)
+
+### Feature 1: Manage Squads (Settings → My Squads)
+The Settings page now has three separate rows: **My Squads** (manage), **New Google Squad** (create), **Link Telegram Group** (link). Each opens the My Squads panel to the correct tab.
+
+**My Squads panel — 3 tabs:**
+- **📋 My Squads** — lists all your Google squads and Telegram groups. Each has a "Manage" / "View" button.
+- **🌐 New Google Squad** — create a web squad (no Telegram needed)
+- **💬 Link Telegram** — link one or more Telegram groups. Shows already-linked groups below the form.
+
+**Squad detail view (opened from Manage):**
+- Editable name field with a **Rename** button (Google squads only)
+- **Invite member** by Gmail (Google squads only) — instantly adds if user exists, records as pending invite otherwise
+- **Members list** — shows name, email, pending status; owner can remove any member
+- **Delete squad** button with confirmation (Google squads only, irreversible, cascades to picks)
+
+**New API endpoints:**
+| Method | Path | Purpose |
+|--------|------|---------|
+| PATCH | `/api/groups/:id/rename` | Rename a web squad (owner only) |
+| DELETE | `/api/groups/:id` | Delete a web squad (owner only) |
+| GET | `/api/groups/:id/members` | List members of a group |
+| DELETE | `/api/groups/:id/members/:memberId` | Remove a member (owner only) |
+
+**New DB functions:** `renameGroup`, `deleteGroup`, `getGroupMembers`, `removeGroupMember`
+
+### Feature 2 & 3: Squad types — Google vs Telegram
+- **Google Squad** = created via "New Google Squad" tab. `is_web_group = true`. Managed fully in the app. Invite by Gmail.
+- **Telegram Squad** = linked via "Link Telegram" tab. `is_web_group = false`. The SquadPicks bot must be in the Telegram group. Multiple groups can be linked — each becomes a separate squad in the dropdown.
+- Linked Telegram groups are shown in a read-only list at the bottom of the Link Telegram tab after linking.
+- Settings page has dedicated rows for each squad type so it's clear what each action does.
+
+### Feature 4: Add Pick with category selection
+**Add Pick modal now has:**
+- **Category buttons** — 🎬 Movie · 📺 Show · 🍽 Restaurant · 📍 Place · 🎭 Event · 🔗 Other. Pre-selected. Overrides auto-detection.
+- **Link field** (optional) — paste any URL for auto title + image fetch. Debounced 700ms, calls `GET /api/meta?url=`.
+- **Title field** — auto-filled from the URL fetch. Can be typed manually if no URL.
+- **Preview strip** — shows thumbnail + title + description after URL fetch.
+- **Auto-detect category from URL** — `detectTypeFromUrl()` maps IMDB→movie, Yelp/Zomato→food, Maps→place, Eventbrite→event etc. Updates category buttons automatically.
+- `POST /api/picks` now accepts `manualType` and `manualTitle` fields — Full App sends these to override auto-detection.
+
+**New API endpoint:**
+- `GET /api/meta?url=` — fetches title, description, imageUrl, sourceUrl from any URL. Used by the Add Pick modal preview. No auth required.
+
+### Supabase migration needed
+Run this in Supabase SQL Editor to support the delete-group cascade:
+```sql
+-- Make picks cascade-delete when their group is deleted (for deleteGroup to work cleanly)
+ALTER TABLE picks DROP CONSTRAINT IF EXISTS picks_group_id_fkey;
+ALTER TABLE picks ADD CONSTRAINT picks_group_id_fkey
+  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE;
+
+-- Same for group_members
+ALTER TABLE group_members DROP CONSTRAINT IF EXISTS fk_group_members_groups;
+ALTER TABLE group_members ADD CONSTRAINT fk_group_members_groups
+  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE;
+```

@@ -168,15 +168,18 @@ app.get('/api/picks', telegramAuth, async (req, res) => {
 app.post('/api/picks', telegramAuth, async (req, res) => {
   try {
     const db = getDb(), links = getLinks();
-    const { url, groupId, groupTitle } = req.body;
+    const { url, groupId, groupTitle, manualType, manualTitle } = req.body;
     const chatId = groupId || req.tgUser.chatId;
     if (!url || !chatId) return res.status(400).json({ error: 'url and groupId required' });
     await db.ensureGroup(chatId, groupTitle || 'SquadPicks Group');
     const meta = await links.fetchMeta(url);
-    const type = links.detectType(url, meta);
+    // manualType overrides auto-detection (from Full App category picker)
+    // manualTitle overrides fetched title (from Full App manual entry)
+    const type  = manualType  || links.detectType(url, meta);
+    const title = manualTitle || meta.title;
     const pick = await db.savePick({
       groupId: chatId, type,
-      title:        meta.title,
+      title:        title,
       description:  meta.description,
       url:          url,
       sourceUrl:    meta.sourceUrl || url,
@@ -299,7 +302,7 @@ app.get('/api/trending/imdb', async (req, res) => {
 
 // ─── API: WEB GROUPS ───────────────────────────────────────
 
-// GET /api/groups — returns all groups (used by app.html for Telegram web users)
+// GET /api/groups — returns all real groups (public, used by app.html)
 app.get('/api/groups', async (req, res) => {
   try {
     const groups = await getDb().getAllGroups();
@@ -307,6 +310,15 @@ app.get('/api/groups', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/groups/mine — user's own groups
+app.get('/api/groups/mine', requireWebAuth, async (req, res) => {
+  try {
+    const groups = await getDb().getUserGroups(req.session.userId);
+    res.json({ ok: true, groups });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/groups/create — create a web (Google) squad
 app.post('/api/groups/create', requireWebAuth, async (req, res) => {
   try {
     const db    = getDb();
@@ -319,14 +331,44 @@ app.post('/api/groups/create', requireWebAuth, async (req, res) => {
   } catch(e) { console.error('[POST /groups/create]', e.message); res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/groups/mine', requireWebAuth, async (req, res) => {
+// PATCH /api/groups/:id/rename — rename a squad (owner only)
+app.patch('/api/groups/:id/rename', requireWebAuth, async (req, res) => {
   try {
-    const groups = await getDb().getUserGroups(req.session.userId);
-    res.json({ ok: true, groups });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    const { name } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'name required' });
+    const group = await getDb().renameGroup(req.params.id, name.trim(), req.session.userId);
+    if (!group) return res.status(403).json({ error: 'Not authorised or group not found' });
+    res.json({ ok: true, group });
+  } catch(e) { console.error('[PATCH /groups/rename]', e.message); res.status(500).json({ error: e.message }); }
 });
 
-// Link an existing Telegram group to a web/Google user account
+// DELETE /api/groups/:id — delete a web squad (owner only)
+app.delete('/api/groups/:id', requireWebAuth, async (req, res) => {
+  try {
+    const ok = await getDb().deleteGroup(req.params.id, req.session.userId);
+    if (!ok) return res.status(403).json({ error: 'Not authorised or group not found' });
+    res.json({ ok: true });
+  } catch(e) { console.error('[DELETE /groups]', e.message); res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/groups/:id/members — list members of a group
+app.get('/api/groups/:id/members', requireWebAuth, async (req, res) => {
+  try {
+    const members = await getDb().getGroupMembers(req.params.id);
+    res.json({ ok: true, members });
+  } catch(e) { console.error('[GET /groups/members]', e.message); res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/groups/:id/members/:memberId — remove a member (owner only)
+app.delete('/api/groups/:id/members/:memberId', requireWebAuth, async (req, res) => {
+  try {
+    const ok = await getDb().removeGroupMember(req.params.memberId, req.params.id, req.session.userId);
+    if (!ok) return res.status(403).json({ error: 'Not authorised' });
+    res.json({ ok: true });
+  } catch(e) { console.error('[DELETE /groups/member]', e.message); res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/groups/link-telegram — link Telegram group (supports multiple)
 app.post('/api/groups/link-telegram', requireWebAuth, async (req, res) => {
   try {
     const db = getDb();
@@ -334,35 +376,38 @@ app.post('/api/groups/link-telegram', requireWebAuth, async (req, res) => {
     if (!telegramGroupId) return res.status(400).json({ error: 'telegramGroupId required' });
     const chatId = parseInt(telegramGroupId, 10);
     if (isNaN(chatId)) return res.status(400).json({ error: 'Invalid Telegram group ID — must be a number like -1001234567890' });
-    if (chatId > 0) return res.status(400).json({ error: 'Invalid group ID — Telegram group IDs start with a minus sign (e.g. -1001234567890)' });
-    // Ensure the group exists in DB
+    if (chatId > 0) return res.status(400).json({ error: 'Telegram group IDs start with a minus sign (e.g. -1001234567890). Positive numbers are private chats.' });
     await db.ensureGroup(chatId, name || 'Telegram Group');
-    // Link this user to the group
     await db.addGroupMemberByEmail({ groupId: chatId, userId: req.session.userId, email: req.session.userEmail });
     res.json({ ok: true, group: { id: chatId, title: name || 'Telegram Group', is_web_group: false } });
   } catch(e) { console.error('[link-telegram]', e.message); res.status(500).json({ error: e.message }); }
 });
 
-// Invite a member by email to a web group
+// POST /api/groups/invite — invite member by email
 app.post('/api/groups/invite', requireWebAuth, async (req, res) => {
   try {
     const db = getDb();
     const { groupId, email } = req.body;
     if (!groupId || !email) return res.status(400).json({ error: 'groupId and email required' });
-    // Check if user already exists in DB by email
     const existing = await db.getUserByEmail(email);
     if (existing) {
-      // User exists — add them as an active member right away
       await db.addGroupMember({ groupId, userId: existing.id, email });
       return res.json({ ok: true, status: 'added', message: `${email} added to squad` });
     }
-    // User doesn't exist yet — record as invited (they join when they sign up)
     await db.addPendingInvite({ groupId, email, invitedBy: req.session.userId });
     res.json({ ok: true, status: 'invited', message: `Invite recorded for ${email}` });
   } catch(e) { console.error('[invite]', e.message); res.status(500).json({ error: e.message }); }
 });
 
-// ─── API: SESSION INFO ─────────────────────────────────────
+// ─── API: METADATA PREVIEW (for Add Pick modal) ────────────
+app.get('/api/meta', async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).json({ error: 'url required' });
+  try {
+    const meta = await getLinks().fetchMeta(url);
+    res.json({ title: meta.title, description: meta.description, imageUrl: meta.imageUrl, sourceUrl: meta.sourceUrl });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/session', (req, res) => {
   if (req.session && req.session.userId) {
     res.json({ ok: true, user: { id: req.session.userId, name: req.session.userName, email: req.session.userEmail, avatar: req.session.userAvatar, loginType: req.session.loginType } });

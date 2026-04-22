@@ -26,31 +26,30 @@ async function getAllGroups() {
   return data || [];
 }
 
-// Returns groups for a specific user — used by Google-login Full App
+// Returns groups for a specific user — two plain queries, no FK join required
 async function getUserGroups(userId) {
-  const { data, error } = await supabase
+  // Step 1: get the group_ids this user belongs to
+  const { data: memberRows, error: memberErr } = await supabase
     .from('group_members')
-    .select('group_id, groups(id, title, is_web_group)')
+    .select('group_id')
     .eq('user_id', userId)
     .eq('status', 'active');
-  if (error) { console.error('getUserGroups error:', error.message); return []; }
 
-  const rows = data || [];
+  if (memberErr) { console.error('getUserGroups members error:', memberErr.message); return []; }
+  if (!memberRows || !memberRows.length) return [];
 
-  // Some rows may have a null groups join (race condition or missing FK) — fetch those directly
-  const resolved   = rows.filter(r => r.groups).map(r => r.groups);
-  const missingIds = rows.filter(r => !r.groups).map(r => r.group_id);
+  const groupIds = memberRows.map(r => r.group_id);
 
-  if (missingIds.length) {
-    const { data: direct } = await supabase
-      .from('groups')
-      .select('id, title, is_web_group')
-      .in('id', missingIds);
-    (direct || []).forEach(g => resolved.push(g));
-  }
+  // Step 2: fetch the actual group records by those IDs
+  const { data: groups, error: groupErr } = await supabase
+    .from('groups')
+    .select('id, title, is_web_group')
+    .in('id', groupIds);
 
-  // Filter: keep web groups (any ID) + real Telegram groups (negative IDs only)
-  return resolved.filter(g => g && (g.is_web_group || g.id < 0));
+  if (groupErr) { console.error('getUserGroups groups error:', groupErr.message); return []; }
+
+  // Only return real groups: web groups (any ID) + Telegram groups (negative IDs)
+  return (groups || []).filter(g => g.is_web_group || g.id < 0);
 }
 
 // ─── PICKS ─────────────────────────────────────────────────
@@ -299,6 +298,80 @@ async function markVideoPosted(videoId, channelId, title) {
   });
 }
 
+async function renameGroup(groupId, newTitle, ownerId) {
+  // Only allow rename if user is the owner
+  const { data, error } = await supabase
+    .from('groups')
+    .update({ title: newTitle })
+    .eq('id', groupId)
+    .eq('owner_id', ownerId)
+    .select('id, title, is_web_group')
+    .single();
+  if (error) { console.error('renameGroup error:', error.message); return null; }
+  return data;
+}
+
+async function deleteGroup(groupId, ownerId) {
+  // Only allow delete if user is the owner of a web group
+  const { error } = await supabase
+    .from('groups')
+    .delete()
+    .eq('id', groupId)
+    .eq('owner_id', ownerId)
+    .eq('is_web_group', true);
+  if (error) { console.error('deleteGroup error:', error.message); return false; }
+  return true;
+}
+
+async function getGroupMembers(groupId) {
+  // Get members — join to users table for name/email
+  const { data: memberRows, error: mErr } = await supabase
+    .from('group_members')
+    .select('id, user_id, email, status')
+    .eq('group_id', groupId)
+    .order('status', { ascending: false }); // active first
+  if (mErr) { console.error('getGroupMembers error:', mErr.message); return []; }
+  if (!memberRows || !memberRows.length) return [];
+
+  // Fetch user details for members who have user_id
+  const userIds = memberRows.filter(r => r.user_id).map(r => r.user_id);
+  let userMap = {};
+  if (userIds.length) {
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, name, email, avatar')
+      .in('id', userIds);
+    (users || []).forEach(u => { userMap[u.id] = u; });
+  }
+
+  return memberRows.map(r => ({
+    memberId: r.id,
+    userId:   r.user_id,
+    email:    r.email || userMap[r.user_id]?.email || '',
+    name:     userMap[r.user_id]?.name || r.email || 'Pending',
+    avatar:   userMap[r.user_id]?.avatar || null,
+    status:   r.status
+  }));
+}
+
+async function removeGroupMember(memberId, groupId, requestingOwnerId) {
+  // Verify requester is the owner before removing
+  const { data: grp } = await supabase
+    .from('groups')
+    .select('owner_id')
+    .eq('id', groupId)
+    .maybeSingle();
+  if (!grp || String(grp.owner_id) !== String(requestingOwnerId)) return false;
+
+  const { error } = await supabase
+    .from('group_members')
+    .delete()
+    .eq('id', memberId)
+    .eq('group_id', groupId);
+  if (error) { console.error('removeGroupMember error:', error.message); return false; }
+  return true;
+}
+
 module.exports = {
   ensureGroup, getAllGroups, getUserGroups,
   savePick, updatePickMessageId, getPick, getGroupPicks,
@@ -308,7 +381,8 @@ module.exports = {
   wasVideoPosted, markVideoPosted,
   upsertGoogleUser, upsertTelegramUser, getUserById, getUserByEmail,
   createWebGroup, addGroupMember, addGroupMemberByEmail, getUserGroups,
-  addPendingInvite, applyPendingInvites
+  addPendingInvite, applyPendingInvites,
+  renameGroup, deleteGroup, getGroupMembers, removeGroupMember
 };
 
 // ─── TRENDING DATA ──────────────────────────────────────────
