@@ -603,3 +603,41 @@ ALTER TABLE group_members ADD CONSTRAINT fk_group_members_groups
 - `disable_web_page_preview: true` is set on the card so the URL in the card text doesn't generate a second preview
 - Fallback: if the original message was deleted before the card could be sent, falls back to sending without `reply_to_message_id`
 - The `"Reading link..."` intermediate message has been completely removed — no more ghost messages
+
+---
+
+## 16. v2.9 — Fix IMDB Title/Image Not Captured by Bot (April 2026)
+
+### Root cause
+When a user pastes an IMDB URL in Telegram, two things happen:
+1. **Telegram** fetches the Open Graph data from IMDB using its own servers (not blocked) and shows the movie preview in the message bubble — title, image, description all visible.
+2. **The bot** also tries to fetch the same IMDB page from Railway's cloud servers. IMDB actively blocks cloud/VPS/datacenter IP ranges, so the bot gets a blocked response, `fetchImdbMeta` returns `null`, and the pick is saved with the generic fallback title `"Movie on IMDB"` and no image.
+
+### Fix 1: Read metadata from Telegram's own preview first (`index.js`)
+Added `extractTelegramPreview(msg)` function that reads the preview data Telegram already fetched and includes in the `msg` object:
+- Checks `msg.link_preview_options`, `msg.web_page`, and `msg.entities[].url_details`
+- If Telegram's preview contains a title, use it directly — no scraping needed
+- Only falls back to `fetchMeta()` (our own scraping) if Telegram didn't provide preview data
+
+This is the most reliable fix — if Telegram can show the preview, the bot now captures that same data.
+
+### Fix 2: Improved `fetchImdbMeta` fallback (`links.js`)
+When Telegram preview data is unavailable (e.g. user disabled link previews):
+- Changed User-Agent to **iPhone/Mobile Safari** — IMDB is significantly more likely to serve a simple HTML page to mobile browsers vs desktop Chrome from a VPS IP
+- Added `Referer: https://www.google.com/` header to look like organic traffic
+- Extended timeout to 14 seconds
+- Added more `@type` values in JSON-LD parser: `TVMovie`, `VideoGame`, `Short`
+- Improved image extraction: handles `data.image` as string, array, or object
+- Added `twitter:image:src` and `img[src*="media-amazon"]` as additional image sources
+- Changed condition from `title !== 'Movie on IMDB'` to just `title` — cleaner check
+- Logs whether image was found or not for easier debugging in Railway logs
+
+### Fix 3: OGS gets proper browser headers
+The fallback `ogs()` call now passes `fetchOptions.headers` with a Chrome User-Agent and `Accept-Language`, making it less likely to be blocked by other sites.
+
+### How to debug on Railway
+Check Railway logs after pasting an IMDB URL. You should see one of:
+- `[Link] Using Telegram preview data: <Movie Title>` ← ideal path
+- `[fetchImdbMeta] OK: <Movie Title> | image: yes` ← scraping worked
+- `[fetchImdbMeta] HTTP 403 for ...` ← IMDB blocked the scrape (Telegram preview should have caught it)
+- `[fetchImdbMeta] Could not parse title from page. Length: N` ← got a response but not a full page (CAPTCHA/redirect)

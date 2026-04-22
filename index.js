@@ -106,16 +106,49 @@ function buildPickKeyboard(pickId, chatId, isGroup) {
 
 // ─── LINK HANDLER ──────────────────────────────────────────
 
+// Extract metadata from Telegram's own link preview (included in msg object)
+// Telegram already fetched this — saves us from scraping IMDB etc.
+function extractTelegramPreview(msg) {
+  // Telegram includes web page data in different places depending on API version
+  // node-telegram-bot-api exposes it as msg.link_preview_options or in entities
+  const wp = msg.link_preview_options
+          || msg.web_page          // older Bot API versions
+          || msg.entities?.find(e => e.type === 'url' && e.url)?.url_details;
+  if (!wp) return null;
+
+  // Modern Telegram (Bot API 7+): link_preview_options has the preview URL
+  // but not the full OG data. However some fields are available.
+  const title       = wp.title       || wp.site_name || '';
+  const description = wp.description || '';
+  const imageUrl    = wp.photo?.file_id
+    ? null  // Telegram file ID — can't use directly as a public URL
+    : wp.thumbnail_url || '';
+  const sourceUrl   = wp.url || '';
+
+  if (!title) return null;
+  return { title, description, imageUrl, sourceUrl };
+}
+
 async function handleLink(bot, msg, url, from) {
-  const chatId  = msg.chat.id;
-  const origMsgId = msg.message_id;   // the user's original message with the URL
+  const chatId    = msg.chat.id;
+  const origMsgId = msg.message_id;
   console.log('[Link] Received:', url, 'from:', from.first_name || from.username);
 
-  // Show a typing indicator while we fetch metadata
+  // Show a typing indicator while we work
   try { await bot.sendChatAction(chatId, 'typing'); } catch(e) {}
 
-  // Fetch metadata and detect type
-  const meta = await fetchMeta(url);
+  // ── Step 1: Try to use metadata Telegram already fetched ──
+  // Telegram includes link preview data in the message for URLs with previews.
+  // This is more reliable than scraping IMDB from a cloud IP.
+  let meta = extractTelegramPreview(msg);
+  if (meta && meta.title) {
+    console.log('[Link] Using Telegram preview data:', meta.title);
+  } else {
+    // ── Step 2: Fall back to our own scraping ──
+    meta = await fetchMeta(url);
+    console.log('[Link] Scraped metadata:', meta.title);
+  }
+
   const type = detectType(url, meta);
   console.log('[Link] Type:', type, '| Title:', meta.title);
 
@@ -123,7 +156,7 @@ async function handleLink(bot, msg, url, from) {
   const pick = await db.savePick({
     groupId: chatId, type,
     title: meta.title, description: meta.description,
-    url, sourceUrl: meta.sourceUrl || url, imageUrl: meta.imageUrl,
+    url, sourceUrl: meta.sourceUrl || url, imageUrl: meta.imageUrl || '',
     addedById: from.id,
     addedByName: from.first_name || from.username || 'Someone',
     reviewerName: null, reviewerScore: null,
@@ -137,10 +170,9 @@ async function handleLink(bot, msg, url, from) {
       { parse_mode: 'HTML', reply_to_message_id: origMsgId });
   }
 
-  console.log('[Link] Pick saved, ID:', pick.id, '| Sending card as reply...');
+  console.log('[Link] Pick saved, ID:', pick.id);
 
-  // Send the pick card as a REPLY to the user's original message
-  // This keeps the URL + vote card together in one visual thread
+  // Send the vote card as a reply to the user's original URL message
   const cardText = formatCard(pick, []);
   const isGroup  = msg.chat.type !== 'private';
   const keyboard = buildPickKeyboard(pick.id, chatId, isGroup);
@@ -149,14 +181,13 @@ async function handleLink(bot, msg, url, from) {
     const sent = await bot.sendMessage(chatId, cardText, {
       parse_mode: 'HTML',
       reply_markup: keyboard,
-      reply_to_message_id: origMsgId,     // ← reply to the original URL message
-      disable_web_page_preview: true,     // ← suppress URL preview on the card itself
+      reply_to_message_id: origMsgId,
+      disable_web_page_preview: true,
     });
     await db.updatePickMessageId(pick.id, sent.message_id);
-    console.log('[Link] Card sent as reply, message ID:', sent.message_id);
+    console.log('[Link] Card sent, message ID:', sent.message_id);
   } catch (sendErr) {
     console.error('[Link] Failed to send card:', sendErr.message);
-    // Fallback: send without reply_to if that message was deleted
     try {
       const sent = await bot.sendMessage(chatId, cardText, {
         parse_mode: 'HTML',
@@ -165,7 +196,7 @@ async function handleLink(bot, msg, url, from) {
       });
       await db.updatePickMessageId(pick.id, sent.message_id);
     } catch (fallbackErr) {
-      console.error('[Link] Fallback send also failed:', fallbackErr.message);
+      console.error('[Link] Fallback also failed:', fallbackErr.message);
     }
   }
 }

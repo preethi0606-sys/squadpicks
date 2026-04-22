@@ -72,98 +72,148 @@ function titleFromUrl(url) {
 }
 
 // ─── DEDICATED IMDB SCRAPER ────────────────────────────────
-// IMDB blocks open-graph-scraper. We fetch directly with browser headers
-// and parse the page HTML using cheerio.
+// IMDB blocks ogs from cloud IPs. We fetch directly with browser headers.
+// Uses multiple strategies to maximise success rate from Railway/VPS IPs.
 
 async function fetchImdbMeta(url) {
   try {
     const fetch   = (...a) => import('node-fetch').then(m => m.default(...a));
     const cheerio = require('cheerio');
+
+    // Strategy 1: Fetch the page directly with browser-like headers
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'User-Agent':      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control':   'no-cache',
+        'Referer':         'https://www.google.com/',
       },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(12000),
+      redirect:  'follow',
+      signal:    AbortSignal.timeout(14000),
     });
-    const html = await res.text();
-    const $ = cheerio.load(html);
 
-    // ── Method 1: JSON-LD structured data (most reliable) ──
+    if (!res.ok) {
+      console.warn('[fetchImdbMeta] HTTP', res.status, 'for', url);
+      return null;
+    }
+
+    const html = await res.text();
+    const $    = cheerio.load(html);
+
     let title = '', image = '', description = '', year = '', rating = '';
+
+    // ── Method 1: JSON-LD (most reliable when IMDB serves full page) ──
     $('script[type="application/ld+json"]').each((_, el) => {
       try {
         const data = JSON.parse($(el).html() || '');
-        if (data['@type'] === 'Movie' || data['@type'] === 'TVSeries' || data['@type'] === 'TVEpisode') {
+        const validTypes = ['Movie','TVSeries','TVEpisode','TVMovie','VideoGame','Short'];
+        if (validTypes.includes(data['@type'])) {
           title       = title       || data.name || '';
-          image       = image       || (Array.isArray(data.image) ? data.image[0]?.url : data.image?.url || data.image) || '';
+          // image can be string, object, or array
+          if (!image) {
+            if (typeof data.image === 'string') image = data.image;
+            else if (Array.isArray(data.image)) image = data.image[0]?.url || data.image[0] || '';
+            else if (data.image?.url) image = data.image.url;
+          }
           description = description || data.description || '';
-          year        = year        || (data.datePublished || '').slice(0, 4) || '';
-          rating      = rating      || data.aggregateRating?.ratingValue || '';
+          year        = year        || String(data.datePublished || '').slice(0, 4);
+          rating      = rating      || String(data.aggregateRating?.ratingValue || '');
         }
       } catch(e) {}
     });
 
-    // ── Method 2: og/meta tags ──
+    // ── Method 2: Open Graph / meta tags ──
     if (!title) {
-      title = $('meta[property="og:title"]').attr('content') ||
-              $('meta[name="twitter:title"]').attr('content') ||
-              $('title').text() || '';
-      // IMDB og:title includes " - IMDb" — strip it
+      title = $('meta[property="og:title"]').attr('content')
+           || $('meta[name="twitter:title"]').attr('content')
+           || $('title').text()
+           || '';
       title = title.replace(/\s*[-|]\s*IMDb\s*$/i, '').trim();
     }
     if (!image) {
-      image = $('meta[property="og:image"]').attr('content') ||
-              $('meta[name="twitter:image"]').attr('content') || '';
+      image = $('meta[property="og:image"]').attr('content')
+           || $('meta[name="twitter:image:src"]').attr('content')
+           || $('meta[name="twitter:image"]').attr('content')
+           || '';
     }
     if (!description) {
-      description = $('meta[property="og:description"]').attr('content') ||
-                    $('meta[name="description"]').attr('content') || '';
+      description = $('meta[property="og:description"]').attr('content')
+                 || $('meta[name="description"]').attr('content')
+                 || '';
     }
 
-    // ── Method 3: DOM selectors ──
+    // ── Method 3: DOM selectors (IMDB React app) ──
     if (!title) {
-      title = $('[data-testid="hero__pageTitle"] span').first().text() ||
-              $('h1[data-testid="hero-title-block__title"]').text() ||
-              $('h1.sc-afe43def').text() || '';
+      title = $('[data-testid="hero__pageTitle"] span').first().text()
+           || $('h1[data-testid="hero-title-block__title"]').text()
+           || $('h1.sc-afe43def').text()
+           || '';
     }
     if (!image) {
-      image = $('[data-testid="hero-media__poster"] img').attr('src') ||
-              $('img.ipc-image').first().attr('src') || '';
+      image = $('[data-testid="hero-media__poster"] img').attr('src')
+           || $('img.ipc-image[src*="media-amazon"]').first().attr('src')
+           || $('img.ipc-image').first().attr('src')
+           || '';
     }
     if (!year) {
-      year = $('[data-testid="hero-title-block__metadata"] a').first().text().trim() || '';
+      year = $('[data-testid="hero-title-block__metadata"] a').first().text().trim();
     }
     if (!rating) {
-      rating = $('[data-testid="hero-rating-bar__aggregate-rating__score"] span').first().text() || '';
+      rating = $('[data-testid="hero-rating-bar__aggregate-rating__score"] span').first().text()
+            || $('span[itemprop="ratingValue"]').text()
+            || '';
     }
 
-    if (!title) throw new Error('IMDB: could not parse title');
+    if (!title) {
+      console.warn('[fetchImdbMeta] Could not parse title from page. Length:', html.length);
+      return null;
+    }
 
-    const desc = [description, year ? `(${year})` : '', rating ? `⭐ ${rating}` : ''].filter(Boolean).join(' · ');
-    return { title: title.trim(), description: desc, imageUrl: image, sourceUrl: url };
+    // Build a rich description
+    const descParts = [];
+    if (description) descParts.push(description.slice(0, 150));
+    if (year)   descParts.push(`(${year})`);
+    if (rating) descParts.push(`⭐ ${rating}`);
+
+    console.log('[fetchImdbMeta] OK:', title, '| image:', image ? 'yes' : 'no');
+    return {
+      title:       title.trim(),
+      description: descParts.join(' · '),
+      imageUrl:    image,
+      sourceUrl:   url
+    };
   } catch (err) {
     console.error('[fetchImdbMeta] error:', err.message);
-    return null; // caller will fall back to ogs
+    return null;
   }
 }
 
 // ─── FETCH METADATA FROM ANY URL ───────────────────────────
 
 async function fetchMeta(url) {
-  // Use dedicated IMDB scraper for IMDB URLs — ogs gets blocked
+  // Use dedicated IMDB scraper — ogs gets blocked by IMDB from cloud IPs
   if (/imdb\.com\/(title|name|film)/.test(url)) {
     const imdbMeta = await fetchImdbMeta(url);
-    if (imdbMeta && imdbMeta.title && imdbMeta.title !== 'Movie on IMDB') {
+    if (imdbMeta && imdbMeta.title) {
       console.log('[fetchMeta] IMDB direct scrape OK:', imdbMeta.title);
       return imdbMeta;
     }
+    console.warn('[fetchMeta] IMDB scrape failed, falling back to ogs');
   }
 
   try {
-    const { result } = await ogs({ url, timeout: 10000 });
+    const { result } = await ogs({
+      url,
+      timeout: 12000,
+      fetchOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        }
+      }
+    });
     const title = result.ogTitle || result.twitterTitle || result.dcTitle || '';
     if (title) {
       return {
@@ -173,7 +223,7 @@ async function fetchMeta(url) {
         sourceUrl:   url,
       };
     }
-    throw new Error('no title in result');
+    throw new Error('no title in ogs result');
   } catch (err) {
     console.error('fetchMeta fallback for:', url, '-', err.message || err);
     return { title: titleFromUrl(url), description: '', imageUrl: '', sourceUrl: url };
