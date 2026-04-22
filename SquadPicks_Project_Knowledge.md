@@ -641,3 +641,36 @@ Check Railway logs after pasting an IMDB URL. You should see one of:
 - `[fetchImdbMeta] OK: <Movie Title> | image: yes` ← scraping worked
 - `[fetchImdbMeta] HTTP 403 for ...` ← IMDB blocked the scrape (Telegram preview should have caught it)
 - `[fetchImdbMeta] Could not parse title from page. Length: N` ← got a response but not a full page (CAPTCHA/redirect)
+
+---
+
+## 16. v2.9 — IMDB Metadata Fix (April 2026)
+
+### Root cause analysis
+Two compounding issues were causing the bot to save "Movie on IMDB" with no image:
+
+1. **`extractTelegramPreview` always returned null.** The Telegram Bot API does not include link preview data (title, image, description) in the `message` object received by bots via polling. The `link_preview_options`, `web_page`, and `url_details` fields simply are not populated. The function was dead code — always falling through to `fetchMeta` anyway. Now removed entirely.
+
+2. **IMDB blocks Railway/cloud IPs.** IMDB uses Cloudflare bot detection. Even with realistic browser `User-Agent` and `Referer` headers, requests from Railway's shared IP ranges are blocked or served a Cloudflare challenge page — the response is valid HTML but contains no movie data. `fetchImdbMeta` was logging a warning and returning `null`, then `fetchMeta` fell back to `titleFromUrl()` which returned the useless string `"Movie on IMDB"`.
+
+### Fix in `links.js`
+
+**New function `extractImdbId(url)`** — extracts the `tt\d+` IMDB title ID from any IMDB URL.
+
+**`fetchImdbMeta()` now has three strategies in order:**
+
+1. **OMDB API** — if `OMDB_API_KEY` env var is set, calls `https://www.omdbapi.com/?i=ttXXXXXXX&apikey=...`. Returns title, poster URL, plot, year, rating, genre. No web scraping, no IP blocking, 100% reliable. Free tier: 1,000 calls/day. Get a key at https://www.omdbapi.com/apikey.aspx.
+
+2. **Cheerio scrape** — tries the movie page directly with a mobile iPhone `User-Agent`. Extracts from JSON-LD structured data first (most reliable), then OG/meta tags. Fallback when OMDB key is not set or OMDB doesn't have the title.
+
+3. **`titleFromUrl()` last resort** — returns `"Movie on IMDB"` only if both above fail (e.g. completely blocked IP + no OMDB key).
+
+**`extractTelegramPreview()` removed** — was dead code, Bot API never populates those fields.
+
+### Required Railway env var
+```
+OMDB_API_KEY=your_free_key_here
+```
+Get a free key (1,000 calls/day) at: https://www.omdbapi.com/apikey.aspx
+
+Without this key, Strategy 2 (cheerio scrape) is used, which works on some IPs but may fail on Railway. **Setting `OMDB_API_KEY` is strongly recommended.**

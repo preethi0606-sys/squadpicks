@@ -71,51 +71,123 @@ function titleFromUrl(url) {
   } catch (e) { return url; }
 }
 
-// ─── DEDICATED IMDB SCRAPER ────────────────────────────────
-// IMDB blocks ogs from cloud IPs. We fetch directly with browser headers.
-// Uses multiple strategies to maximise success rate from Railway/VPS IPs.
+// ─── IMDB ID EXTRACTOR ─────────────────────────────────────
+function extractImdbId(url) {
+  const m = url.match(/imdb\.com\/title\/(tt\d+)/i);
+  return m ? m[1] : null;
+}
+
+// ─── FETCH IMDB METADATA ───────────────────────────────────
+// Strategy order:
+//   1. OMDB API       — needs OMDB_API_KEY env var (free 1000/day at omdbapi.com)
+//   2. TMDB API       — needs TMDB_API_KEY env var (free, unlimited at themoviedb.org)
+//   3. Cheerio scrape — unreliable from cloud IPs, kept as last resort
+// Always falls back to titleFromUrl() if all strategies fail.
 
 async function fetchImdbMeta(url) {
-  try {
-    const fetch   = (...a) => import('node-fetch').then(m => m.default(...a));
-    const cheerio = require('cheerio');
+  const imdbId = extractImdbId(url);
+  const fetch  = (...a) => import('node-fetch').then(m => m.default(...a));
 
-    // Strategy 1: Fetch the page directly with browser-like headers
+  // ── Strategy 1: OMDB API ──────────────────────────────────
+  if (imdbId && process.env.OMDB_API_KEY) {
+    try {
+      const r = await fetch(
+        `https://www.omdbapi.com/?i=${imdbId}&apikey=${process.env.OMDB_API_KEY}`,
+        { signal: AbortSignal.timeout(8000) }
+      );
+      const d = await r.json();
+      if (d.Response === 'True' && d.Title) {
+        const descParts = [];
+        if (d.Plot   && d.Plot   !== 'N/A') descParts.push(d.Plot.slice(0, 150));
+        if (d.Year   && d.Year   !== 'N/A') descParts.push(`(${d.Year})`);
+        if (d.imdbRating && d.imdbRating !== 'N/A') descParts.push(`⭐ ${d.imdbRating}`);
+        if (d.Genre  && d.Genre  !== 'N/A') descParts.push(d.Genre.split(',')[0].trim());
+        console.log('[OMDB] OK:', d.Title);
+        return {
+          title:       d.Title,
+          description: descParts.join(' · '),
+          imageUrl:    d.Poster !== 'N/A' ? d.Poster : '',
+          sourceUrl:   url,
+        };
+      }
+      console.warn('[OMDB] No result:', d.Error || 'unknown');
+    } catch(e) {
+      console.warn('[OMDB] Error:', e.message);
+    }
+  }
+
+  // ── Strategy 2: TMDB API (find by IMDB ID) ────────────────
+  if (imdbId && process.env.TMDB_API_KEY) {
+    try {
+      // TMDB's /find endpoint resolves an IMDB ID to a TMDB record
+      const r = await fetch(
+        `https://api.themoviedb.org/3/find/${imdbId}?external_source=imdb_id`,
+        {
+          headers: { 'Authorization': `Bearer ${process.env.TMDB_API_KEY}`, 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(8000)
+        }
+      );
+      const d = await r.json();
+      // Results can be in movie_results or tv_results
+      const item = (d.movie_results && d.movie_results[0]) || (d.tv_results && d.tv_results[0]);
+      if (item && (item.title || item.name)) {
+        const title   = item.title || item.name;
+        const year    = (item.release_date || item.first_air_date || '').slice(0, 4);
+        const rating  = item.vote_average ? `⭐ ${item.vote_average.toFixed(1)}` : '';
+        const imgPath = item.poster_path;
+        const imgUrl  = imgPath ? `https://image.tmdb.org/t/p/w500${imgPath}` : '';
+        const desc    = [item.overview?.slice(0, 150), year ? `(${year})` : '', rating].filter(Boolean).join(' · ');
+        console.log('[TMDB] OK:', title);
+        return { title, description: desc, imageUrl: imgUrl, sourceUrl: url };
+      }
+      console.warn('[TMDB] No result for', imdbId);
+    } catch(e) {
+      console.warn('[TMDB] Error:', e.message);
+    }
+  }
+
+  // ── Strategy 3: Cheerio scrape (last resort — often blocked by Cloudflare) ──
+  try {
+    const cheerio = require('cheerio');
     const res = await fetch(url, {
       headers: {
         'User-Agent':      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
         'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
         'Cache-Control':   'no-cache',
         'Referer':         'https://www.google.com/',
       },
-      redirect:  'follow',
-      signal:    AbortSignal.timeout(14000),
+      redirect: 'follow',
+      signal:   AbortSignal.timeout(12000),
     });
 
     if (!res.ok) {
-      console.warn('[fetchImdbMeta] HTTP', res.status, 'for', url);
+      console.warn('[fetchImdbMeta] Scrape blocked: HTTP', res.status);
       return null;
     }
 
     const html = await res.text();
-    const $    = cheerio.load(html);
 
+    // Quick check — if Cloudflare challenge page, bail early
+    if (html.includes('cf-browser-verification') || html.includes('Just a moment') || html.length < 5000) {
+      console.warn('[fetchImdbMeta] Cloudflare challenge detected, scrape blocked');
+      return null;
+    }
+
+    const $ = cheerio.load(html);
     let title = '', image = '', description = '', year = '', rating = '';
 
-    // ── Method 1: JSON-LD (most reliable when IMDB serves full page) ──
+    // JSON-LD (most reliable when full page is served)
     $('script[type="application/ld+json"]').each((_, el) => {
       try {
         const data = JSON.parse($(el).html() || '');
-        const validTypes = ['Movie','TVSeries','TVEpisode','TVMovie','VideoGame','Short'];
-        if (validTypes.includes(data['@type'])) {
+        const valid = ['Movie','TVSeries','TVEpisode','TVMovie','VideoGame','Short'];
+        if (valid.includes(data['@type'])) {
           title       = title       || data.name || '';
-          // image can be string, object, or array
           if (!image) {
-            if (typeof data.image === 'string') image = data.image;
-            else if (Array.isArray(data.image)) image = data.image[0]?.url || data.image[0] || '';
-            else if (data.image?.url) image = data.image.url;
+            if (typeof data.image === 'string')      image = data.image;
+            else if (Array.isArray(data.image))      image = data.image[0]?.url || data.image[0] || '';
+            else if (data.image?.url)                image = data.image.url;
           }
           description = description || data.description || '';
           year        = year        || String(data.datePublished || '').slice(0, 4);
@@ -124,68 +196,21 @@ async function fetchImdbMeta(url) {
       } catch(e) {}
     });
 
-    // ── Method 2: Open Graph / meta tags ──
-    if (!title) {
-      title = $('meta[property="og:title"]').attr('content')
-           || $('meta[name="twitter:title"]').attr('content')
-           || $('title').text()
-           || '';
-      title = title.replace(/\s*[-|]\s*IMDb\s*$/i, '').trim();
-    }
-    if (!image) {
-      image = $('meta[property="og:image"]').attr('content')
-           || $('meta[name="twitter:image:src"]').attr('content')
-           || $('meta[name="twitter:image"]').attr('content')
-           || '';
-    }
-    if (!description) {
-      description = $('meta[property="og:description"]').attr('content')
-                 || $('meta[name="description"]').attr('content')
-                 || '';
-    }
-
-    // ── Method 3: DOM selectors (IMDB React app) ──
-    if (!title) {
-      title = $('[data-testid="hero__pageTitle"] span').first().text()
-           || $('h1[data-testid="hero-title-block__title"]').text()
-           || $('h1.sc-afe43def').text()
-           || '';
-    }
-    if (!image) {
-      image = $('[data-testid="hero-media__poster"] img').attr('src')
-           || $('img.ipc-image[src*="media-amazon"]').first().attr('src')
-           || $('img.ipc-image').first().attr('src')
-           || '';
-    }
-    if (!year) {
-      year = $('[data-testid="hero-title-block__metadata"] a').first().text().trim();
-    }
-    if (!rating) {
-      rating = $('[data-testid="hero-rating-bar__aggregate-rating__score"] span').first().text()
-            || $('span[itemprop="ratingValue"]').text()
-            || '';
-    }
+    // OG / meta tags fallback
+    if (!title) title = ($('meta[property="og:title"]').attr('content') || $('title').text() || '').replace(/\s*[-|]\s*IMDb\s*$/i, '').trim();
+    if (!image) image = $('meta[property="og:image"]').attr('content') || $('meta[name="twitter:image"]').attr('content') || '';
+    if (!description) description = $('meta[property="og:description"]').attr('content') || '';
 
     if (!title) {
-      console.warn('[fetchImdbMeta] Could not parse title from page. Length:', html.length);
+      console.warn('[fetchImdbMeta] Scrape returned page but no title found');
       return null;
     }
 
-    // Build a rich description
-    const descParts = [];
-    if (description) descParts.push(description.slice(0, 150));
-    if (year)   descParts.push(`(${year})`);
-    if (rating) descParts.push(`⭐ ${rating}`);
-
-    console.log('[fetchImdbMeta] OK:', title, '| image:', image ? 'yes' : 'no');
-    return {
-      title:       title.trim(),
-      description: descParts.join(' · '),
-      imageUrl:    image,
-      sourceUrl:   url
-    };
+    const descParts = [description.slice(0, 150), year ? `(${year})` : '', rating ? `⭐ ${rating}` : ''].filter(Boolean);
+    console.log('[fetchImdbMeta] Scrape OK:', title, '| image:', image ? 'yes' : 'no');
+    return { title: title.trim(), description: descParts.join(' · '), imageUrl: image, sourceUrl: url };
   } catch (err) {
-    console.error('[fetchImdbMeta] error:', err.message);
+    console.error('[fetchImdbMeta] Scrape error:', err.message);
     return null;
   }
 }
@@ -193,23 +218,22 @@ async function fetchImdbMeta(url) {
 // ─── FETCH METADATA FROM ANY URL ───────────────────────────
 
 async function fetchMeta(url) {
-  // Use dedicated IMDB scraper — ogs gets blocked by IMDB from cloud IPs
+  // IMDB: use dedicated fetcher (OMDB API first, then scrape)
   if (/imdb\.com\/(title|name|film)/.test(url)) {
     const imdbMeta = await fetchImdbMeta(url);
-    if (imdbMeta && imdbMeta.title) {
-      console.log('[fetchMeta] IMDB direct scrape OK:', imdbMeta.title);
-      return imdbMeta;
-    }
-    console.warn('[fetchMeta] IMDB scrape failed, falling back to ogs');
+    if (imdbMeta && imdbMeta.title) return imdbMeta;
+    console.warn('[fetchMeta] All IMDB strategies failed, using URL fallback');
+    return { title: titleFromUrl(url), description: '', imageUrl: '', sourceUrl: url };
   }
 
+  // All other URLs: use open-graph-scraper
   try {
     const { result } = await ogs({
       url,
       timeout: 12000,
       fetchOptions: {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'User-Agent':      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
           'Accept-Language': 'en-US,en;q=0.9',
         }
       }

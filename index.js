@@ -106,51 +106,19 @@ function buildPickKeyboard(pickId, chatId, isGroup) {
 
 // ─── LINK HANDLER ──────────────────────────────────────────
 
-// Extract metadata from Telegram's own link preview (included in msg object)
-// Telegram already fetched this — saves us from scraping IMDB etc.
-function extractTelegramPreview(msg) {
-  // Telegram includes web page data in different places depending on API version
-  // node-telegram-bot-api exposes it as msg.link_preview_options or in entities
-  const wp = msg.link_preview_options
-          || msg.web_page          // older Bot API versions
-          || msg.entities?.find(e => e.type === 'url' && e.url)?.url_details;
-  if (!wp) return null;
-
-  // Modern Telegram (Bot API 7+): link_preview_options has the preview URL
-  // but not the full OG data. However some fields are available.
-  const title       = wp.title       || wp.site_name || '';
-  const description = wp.description || '';
-  const imageUrl    = wp.photo?.file_id
-    ? null  // Telegram file ID — can't use directly as a public URL
-    : wp.thumbnail_url || '';
-  const sourceUrl   = wp.url || '';
-
-  if (!title) return null;
-  return { title, description, imageUrl, sourceUrl };
-}
-
 async function handleLink(bot, msg, url, from) {
   const chatId    = msg.chat.id;
   const origMsgId = msg.message_id;
   console.log('[Link] Received:', url, 'from:', from.first_name || from.username);
 
-  // Show a typing indicator while we work
+  // Show typing indicator while we fetch metadata
   try { await bot.sendChatAction(chatId, 'typing'); } catch(e) {}
 
-  // ── Step 1: Try to use metadata Telegram already fetched ──
-  // Telegram includes link preview data in the message for URLs with previews.
-  // This is more reliable than scraping IMDB from a cloud IP.
-  let meta = extractTelegramPreview(msg);
-  if (meta && meta.title) {
-    console.log('[Link] Using Telegram preview data:', meta.title);
-  } else {
-    // ── Step 2: Fall back to our own scraping ──
-    meta = await fetchMeta(url);
-    console.log('[Link] Scraped metadata:', meta.title);
-  }
-
+  // Fetch metadata — IMDB uses OMDB API first, then cheerio scrape
+  // All other URLs use open-graph-scraper
+  const meta = await fetchMeta(url);
   const type = detectType(url, meta);
-  console.log('[Link] Type:', type, '| Title:', meta.title);
+  console.log('[Link] Type:', type, '| Title:', meta.title, '| Image:', meta.imageUrl ? 'yes' : 'no');
 
   // Save to database
   const pick = await db.savePick({
@@ -179,9 +147,9 @@ async function handleLink(bot, msg, url, from) {
 
   try {
     const sent = await bot.sendMessage(chatId, cardText, {
-      parse_mode: 'HTML',
-      reply_markup: keyboard,
-      reply_to_message_id: origMsgId,
+      parse_mode:               'HTML',
+      reply_markup:             keyboard,
+      reply_to_message_id:      origMsgId,
       disable_web_page_preview: true,
     });
     await db.updatePickMessageId(pick.id, sent.message_id);
@@ -190,9 +158,7 @@ async function handleLink(bot, msg, url, from) {
     console.error('[Link] Failed to send card:', sendErr.message);
     try {
       const sent = await bot.sendMessage(chatId, cardText, {
-        parse_mode: 'HTML',
-        reply_markup: keyboard,
-        disable_web_page_preview: true,
+        parse_mode: 'HTML', reply_markup: keyboard, disable_web_page_preview: true,
       });
       await db.updatePickMessageId(pick.id, sent.message_id);
     } catch (fallbackErr) {
