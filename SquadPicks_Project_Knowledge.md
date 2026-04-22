@@ -583,3 +583,23 @@ ALTER TABLE group_members DROP CONSTRAINT IF EXISTS fk_group_members_groups;
 ALTER TABLE group_members ADD CONSTRAINT fk_group_members_groups
   FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE;
 ```
+
+---
+
+## 15. v2.8 — Bot Improvements (April 2026)
+
+### Feature 1: `/groupid` command
+- New bot command that returns the current group's Telegram ID in a copyable `<code>` block
+- In a **group chat**: shows the group name + ID + instructions to paste it in SquadPicks web app under Settings → Link Telegram Group. Includes a direct link to the web app.
+- In a **private/DM chat**: shows the user's own chat ID + explains that group IDs are negative and require being in a group
+- Added to `/help` command list
+- Added to the welcome message when the bot joins a group
+- Uses `APP_URL` or `MINI_APP_URL` env var for the web app link
+
+### Feature 2: Vote card replies to original message instead of new message
+- **Before:** `handleLink` sent a `"Reading link..."` placeholder message, then deleted it, then sent a brand-new card message — resulting in two messages in the chat (user's URL + bot's card)
+- **After:** Bot sends a `sendChatAction('typing')` indicator while fetching metadata, then sends the vote card as a **reply to the user's original URL message** using `reply_to_message_id: origMsgId`
+- Result: In Telegram, the vote card appears visually attached to the user's message — one clean thread instead of two separate messages
+- `disable_web_page_preview: true` is set on the card so the URL in the card text doesn't generate a second preview
+- Fallback: if the original message was deleted before the card could be sent, falls back to sending without `reply_to_message_id`
+- The `"Reading link..."` intermediate message has been completely removed — no more ghost messages

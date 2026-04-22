@@ -46,7 +46,9 @@ bot.on('new_chat_members', async (msg) => {
     `I'm also watching <b>Filmi Craft</b> \u2014 whenever they post a new review I'll drop a card here automatically!\n\n` +
     `<b>Vote on any pick:</b>\n` +
     `\u2705 Seen/Been \u00B7 \u2B50 Want to \u00B7 \u274C Not for me\n\n` +
-    `Type /help to see all commands.\n\n` +
+    `<b>Useful commands:</b>\n` +
+    `/groupid \u2014 get this group's ID to link it in the SquadPicks web app\n` +
+    `/help \u2014 see all commands\n\n` +
     `Let's go! Paste your first link \u{1F680}\n\n` +
     `<i>Your squad. Any plan. One bot. \u2014 SquadPicks</i>`;
 
@@ -105,16 +107,12 @@ function buildPickKeyboard(pickId, chatId, isGroup) {
 // ─── LINK HANDLER ──────────────────────────────────────────
 
 async function handleLink(bot, msg, url, from) {
-  const chatId = msg.chat.id;
+  const chatId  = msg.chat.id;
+  const origMsgId = msg.message_id;   // the user's original message with the URL
   console.log('[Link] Received:', url, 'from:', from.first_name || from.username);
 
-  // Send "reading link" indicator
-  let processingMsg;
-  try {
-    processingMsg = await bot.sendMessage(chatId, '<i>Reading link...</i>', { parse_mode: 'HTML' });
-  } catch (e) {
-    console.error('[Link] Could not send processing message:', e.message);
-  }
+  // Show a typing indicator while we fetch metadata
+  try { await bot.sendChatAction(chatId, 'typing'); } catch(e) {}
 
   // Fetch metadata and detect type
   const meta = await fetchMeta(url);
@@ -125,47 +123,46 @@ async function handleLink(bot, msg, url, from) {
   const pick = await db.savePick({
     groupId: chatId, type,
     title: meta.title, description: meta.description,
-    url, imageUrl: meta.imageUrl,
+    url, sourceUrl: meta.sourceUrl || url, imageUrl: meta.imageUrl,
     addedById: from.id,
     addedByName: from.first_name || from.username || 'Someone',
     reviewerName: null, reviewerScore: null,
     reviewerQuote: null, reviewerVideoId: null
   });
 
-  // Delete "reading link..." message
-  if (processingMsg) {
-    try { await bot.deleteMessage(chatId, processingMsg.message_id); } catch (e) {}
-  }
-
   if (!pick) {
     console.error('[Link] Failed to save pick to database');
     return bot.sendMessage(chatId,
       `<i>Couldn't save that pick. Please try again.</i>`,
-      { parse_mode: 'HTML' });
+      { parse_mode: 'HTML', reply_to_message_id: origMsgId });
   }
 
-  console.log('[Link] Pick saved, ID:', pick.id, '| Sending card...');
+  console.log('[Link] Pick saved, ID:', pick.id, '| Sending card as reply...');
 
-  // Build and send the pick card
+  // Send the pick card as a REPLY to the user's original message
+  // This keeps the URL + vote card together in one visual thread
   const cardText = formatCard(pick, []);
   const isGroup  = msg.chat.type !== 'private';
   const keyboard = buildPickKeyboard(pick.id, chatId, isGroup);
+
   try {
     const sent = await bot.sendMessage(chatId, cardText, {
       parse_mode: 'HTML',
       reply_markup: keyboard,
-      disable_web_page_preview: false
+      reply_to_message_id: origMsgId,     // ← reply to the original URL message
+      disable_web_page_preview: true,     // ← suppress URL preview on the card itself
     });
     await db.updatePickMessageId(pick.id, sent.message_id);
-    console.log('[Link] Card sent successfully, message ID:', sent.message_id);
+    console.log('[Link] Card sent as reply, message ID:', sent.message_id);
   } catch (sendErr) {
     console.error('[Link] Failed to send card:', sendErr.message);
-    // Try sending without HTML formatting as fallback
+    // Fallback: send without reply_to if that message was deleted
     try {
-      const sent = await bot.sendMessage(chatId,
-        `New pick: ${meta.title}\nAdded by ${from.first_name || 'someone'}`,
-        { reply_markup: buildPickKeyboard(pick.id, chatId, true) }
-      );
+      const sent = await bot.sendMessage(chatId, cardText, {
+        parse_mode: 'HTML',
+        reply_markup: keyboard,
+        disable_web_page_preview: true,
+      });
       await db.updatePickMessageId(pick.id, sent.message_id);
     } catch (fallbackErr) {
       console.error('[Link] Fallback send also failed:', fallbackErr.message);
@@ -194,6 +191,7 @@ async function handleCommand(bot, msg, text, from) {
         `/seen \u2014 everything the group has already done\n` +
         `/reviewers \u2014 active YouTube reviewer channels\n` +
         `/add Title \u2014 add a pick manually without a link\n` +
+        `/groupid \u2014 show this group's ID (for linking in SquadPicks web app)\n` +
         `/digest \u2014 trigger the weekly summary now\n` +
         `/help \u2014 this message\n\n` +
         `<b>Voting:</b>\n` +
@@ -204,6 +202,33 @@ async function handleCommand(bot, msg, text, from) {
         `I'll flag it as <b>Group ok</b> automatically.\n\n` +
         `<i>Your squad. Any plan. One bot. \u2014 SquadPicks</i>`;
       await bot.sendMessage(chatId, help, { parse_mode: 'HTML' });
+      break;
+    }
+
+    case '/groupid': {
+      const chatType = msg.chat.type; // 'group' | 'supergroup' | 'private' | 'channel'
+      const chatTitle = escHtml(msg.chat.title || msg.chat.first_name || 'this chat');
+
+      if (chatType === 'private') {
+        // In private chat — show the user's own chat ID and explain
+        await bot.sendMessage(chatId,
+          `<b>Your chat ID:</b> <code>${chatId}</code>\n\n` +
+          `<i>To get a group ID, add me to a Telegram group and run /groupid there.\n` +
+          `Group IDs start with -100 and are needed to link groups in the SquadPicks web app.</i>`,
+          { parse_mode: 'HTML' }
+        );
+      } else {
+        // In a group — show the group ID with copy hint
+        const webAppUrl = `${process.env.APP_URL || process.env.MINI_APP_URL || 'https://squadpicks.app'}/dashboard`;
+        await bot.sendMessage(chatId,
+          `\u{1F194} <b>Group ID for "${chatTitle}"</b>\n\n` +
+          `<code>${chatId}</code>\n\n` +
+          `Tap the ID above to copy it, then paste it in the SquadPicks web app under:\n` +
+          `<b>Settings \u2192 Link Telegram Group</b>\n\n` +
+          `<a href="${escHtml(webAppUrl)}">Open SquadPicks web app \u2197</a>`,
+          { parse_mode: 'HTML', disable_web_page_preview: true }
+        );
+      }
       break;
     }
 

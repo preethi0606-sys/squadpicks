@@ -3,476 +3,1487 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>SquadPicks — Your squad. Any plan. One bot.</title>
-<meta name="description" content="SquadPicks is the Telegram bot that turns any link into a group decision. Movies, restaurants, places, events — paste a link, your squad votes, plans get made."/>
-<meta property="og:title" content="SquadPicks"/>
-<meta property="og:description" content="Your squad. Any plan. One bot."/>
-<meta property="og:image" content="/og-image.png"/>
-<link rel="stylesheet" href="/styles.css"/>
+<title>SquadPicks — Full App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
-/* ── HERO ── */
-.hero {
-  min-height: 100vh;
-  display: flex; align-items: center;
-  padding: 100px 2rem 5rem;
-  position: relative; overflow: hidden;
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --navy:#6B21A8;--navy2:#581C87;
+  --blue:#7C3AED;--blue2:#8B5CF6;
+  --beige:#F5F3FF;--beige2:#EDE9FE;--beige3:#DDD6FE;
+  --text:#1E1333;--text2:#3B1F6B;--text3:#7C5AB8;
+  --white:#FFFFFF;--surface:#FFFFFF;--card:#FFFFFF;
+  --border:#DDD6FE;--muted:#7C5AB8;--hint:#A78BCA;
+  --green:#059669;--green-bg:rgba(5,150,105,.1);--green-dk:#047857;
+  --amber:#D97706;--amber-bg:rgba(217,119,6,.1);
+  --red:#DC2626;--red-bg:rgba(220,38,38,.08);
+  --font-d:'Fraunces',Georgia,serif;
+  --font-b:'DM Sans',system-ui,sans-serif;
+  --r:16px;--rsm:10px;
+  --nav-h:62px;--sidebar-w:240px;
 }
-.hero::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse 60% 60% at 70% 50%, rgba(0,168,132,0.08) 0%, transparent 70%);
-  pointer-events: none;
-}
-.hero-inner {
-  max-width: 1080px; margin: 0 auto;
-  display: flex; gap: 4rem; align-items: center;
-}
-.hero-text { flex: 1; }
-.hero-eyebrow {
-  display: inline-flex; align-items: center; gap: 7px;
-  background: var(--green-bg); border: 1px solid var(--green-dk);
-  border-radius: 20px; padding: 5px 14px;
-  font-size: 12px; font-weight: 500; color: var(--green);
-  margin-bottom: 1.5rem;
-}
-.hero-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
-h1.hero-title {
-  font-family: var(--font-display);
-  font-size: clamp(44px, 7vw, 76px);
-  font-weight: 900; line-height: 1.05;
-  color: var(--text); margin-bottom: 1.25rem;
-  letter-spacing: -1.5px;
-}
-h1.hero-title .accent { color: var(--green); }
-.hero-sub {
-  font-size: 18px; color: var(--muted);
-  max-width: 460px; line-height: 1.75;
-  margin-bottom: 2rem;
-}
-.hero-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 2.5rem; }
-.tag {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 20px; padding: 5px 14px;
-  font-size: 13px; color: var(--muted);
-}
-.hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-height:100vh;overflow-x:hidden}
 
-/* ── PHONE MOCKUP ── */
-.hero-phone-wrap { flex: 0 0 300px; }
-.phone {
-  background: var(--surface);
-  border: 1px solid var(--green-dk);
-  border-radius: 28px; overflow: hidden;
-  box-shadow: 0 40px 80px rgba(0,0,0,0.5);
-}
-.ph-bar {
-  background: #1F2C34; padding: 10px 14px;
-  display: flex; align-items: center; gap: 8px;
-}
-.ph-av {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: #2A3942; display: flex; align-items: center;
-  justify-content: center; font-size: 14px;
-}
-.ph-name { font-size: 13px; font-weight: 600; color: var(--text); }
-.ph-sub { font-size: 10px; color: var(--muted); }
-.ph-chat { background: #0E1621; padding: 10px; }
-.bubble {
-  border-radius: 8px; padding: 7px 10px; margin-bottom: 5px;
-  font-size: 12px; max-width: 85%;
-}
-.bubble.them { background: #182533; color: var(--text); }
-.bubble.me { background: #005C4B; color: var(--text); margin-left: auto; }
-.bubble.bot {
-  background: #1A2F45; border-left: 3px solid var(--green);
-  color: var(--text); max-width: 100%;
-}
-.bot-name { font-size: 10px; font-weight: 600; color: var(--green); margin-bottom: 3px; }
-.bot-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
-.bot-meta { font-size: 10px; color: var(--muted); margin-bottom: 6px; }
-.fc-pill {
-  background: #0A1A10; border-radius: 5px; padding: 4px 7px;
-  font-size: 10px; color: var(--muted);
-  display: flex; align-items: center; gap: 5px; margin-bottom: 6px;
-}
-.yt { background: var(--red); color: white; font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 2px; }
-.vote-chips { display: flex; gap: 3px; margin-bottom: 6px; flex-wrap: wrap; }
-.vc { font-size: 9px; padding: 2px 6px; border-radius: 8px; }
-.vc-w { background: #1F1900; color: var(--amber); }
-.vc-n { background: rgba(255,255,255,.05); color: var(--hint); }
-.vote-row { display: flex; border-top: 1px solid rgba(255,255,255,.08); }
-.vb {
-  flex: 1; padding: 6px 4px; text-align: center;
-  font-size: 10px; font-weight: 500; color: var(--green);
-  background: transparent; border: none; cursor: default;
-}
-.vb:not(:last-child) { border-right: 1px solid rgba(255,255,255,.08); }
-.ok-pill {
-  background: var(--green-bg); border: 1px solid var(--green-dk);
-  border-radius: 6px; padding: 5px 8px;
-  font-size: 10px; color: var(--green); font-weight: 600;
-  margin-top: 5px;
-}
+/* ── TOP NAV ── */
+.topnav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);background:var(--navy);display:flex;align-items:center;padding:0 1rem;z-index:100;gap:10px}
+.topnav-logo{font-family:var(--font-d);font-size:21px;font-weight:700;color:var(--beige);text-decoration:none;white-space:nowrap}
+.topnav-logo span{color:var(--blue2)}
+.topnav-squad{font-size:11px;color:#C4B5FD;margin-left:4px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topnav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.topnav-avatar{width:32px;height:32px;border-radius:50%;background:var(--blue2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;cursor:pointer;border:2px solid rgba(255,255,255,.2)}
+.ham-btn{background:transparent;border:none;cursor:pointer;display:flex;flex-direction:column;gap:5px;padding:6px;flex-shrink:0}
+.ham-line{width:22px;height:2px;background:#fff;border-radius:2px}
 
-/* ── PROBLEM STRIP ── */
-.problem-strip {
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  padding: 3.5rem 2rem;
-}
-.problem-grid {
-  max-width: 1080px; margin: 0 auto;
-  display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
-  gap: 1.5rem;
-}
-.problem-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r); padding: 1.5rem;
-}
-.problem-label {
-  font-size: 9px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .08em;
-  padding: 2px 8px; border-radius: 4px;
-  display: inline-block; margin-bottom: .75rem;
-}
-.problem-card h3 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
-.problem-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+/* ── DRAWER ── */
+.drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110}
+.drawer-overlay.open{display:block}
+.drawer{position:fixed;top:0;left:-260px;bottom:0;width:260px;background:var(--navy);z-index:115;transition:left .25s ease;display:flex;flex-direction:column;box-shadow:4px 0 24px rgba(0,0,0,.35)}
+.drawer.open{left:0}
+.drawer-header{padding:52px 20px 20px;border-bottom:1px solid rgba(255,255,255,.1)}
+.drawer-logo{font-family:var(--font-d);font-size:20px;font-weight:700;color:var(--beige)}
+.drawer-logo span{color:var(--blue2)}
+.drawer-user{font-size:12px;color:#C4B5FD;margin-top:4px}
+.drawer-nav{flex:1;padding:8px 0;overflow-y:auto}
+.drawer-item{display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;border:none;background:transparent;width:100%;text-align:left;font-family:var(--font-b);font-size:14px;font-weight:500;color:#A8C8F0;transition:all .15s;text-decoration:none}
+.drawer-item:hover{background:rgba(255,255,255,.06)}
+.drawer-item.on{background:rgba(124,58,237,.2);color:#fff}
+.drawer-icon{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.drawer-item.on .drawer-icon{background:var(--blue)}
+.drawer-footer{padding:14px 20px 28px;border-top:1px solid rgba(255,255,255,.1)}
+.drawer-signout{display:flex;align-items:center;gap:10px;font-size:13px;color:#f87171;cursor:pointer;background:none;border:none;font-family:var(--font-b);padding:8px 0;width:100%}
 
-/* ── HOW IT WORKS ── */
-.steps-grid {
-  display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
-  gap: 1.5rem;
-}
-.step { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.75rem; }
-.step-num {
-  width: 38px; height: 38px; border-radius: 50%;
-  background: var(--green); display: flex;
-  align-items: center; justify-content: center;
-  font-family: var(--font-display); font-size: 17px;
-  font-weight: 700; color: #0D2218; margin-bottom: 1rem;
-}
-.step-badge {
-  display: inline-block; font-size: 10px; font-weight: 700;
-  padding: 2px 8px; border-radius: 4px; margin-bottom: .75rem;
-  background: var(--green-bg); color: var(--green); border: 1px solid var(--green-dk);
-}
-.step h3 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
-.step p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+/* ── LAYOUT ── */
+.main-wrap{padding-top:var(--nav-h)}
+.page-section{display:none;min-height:calc(100vh - var(--nav-h))}
+.page-section.on{display:block}
 
-/* ── FEATURES ── */
-.features-section { background: var(--surface); }
-.features-grid {
-  display: grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr));
-  gap: 1.25rem;
-}
-.feat {
-  background: var(--card); border-radius: var(--r);
-  padding: 1.5rem; border-left: 3px solid;
-}
-.feat-tag {
-  font-size: 10px; font-weight: 700;
-  padding: 2px 8px; border-radius: 4px;
-  display: inline-block; margin-bottom: .75rem;
-}
-.feat h3 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
-.feat p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+/* ── PICKS PAGE ── */
+.picks-page{display:flex;flex-direction:column}
+.picks-header{background:var(--white);border-bottom:1px solid var(--border);padding:1rem 1.25rem}
+.picks-header-top{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.squad-title{font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.group-select{background:var(--beige);border:1.5px solid var(--beige3);border-radius:var(--rsm);padding:7px 12px;color:var(--text);font-family:var(--font-b);font-size:13px;cursor:pointer;outline:none;max-width:180px}
+.group-select optgroup{font-weight:700;color:var(--navy)}
+.stats-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:.75rem}
+.stat{background:var(--beige);border:1px solid var(--beige3);border-radius:var(--rsm);padding:.5rem .875rem}
+.stat-num{font-size:18px;font-weight:700;color:var(--text)}
+.stat-lbl{font-size:10px;color:var(--muted);margin-top:1px}
+.filter-bar{display:flex;gap:6px;padding:.75rem 1.25rem;overflow-x:auto;scrollbar-width:none;background:var(--beige2);border-bottom:1px solid var(--beige3);position:sticky;top:var(--nav-h);z-index:30}
+.filter-bar::-webkit-scrollbar{display:none}
+.fpill{flex-shrink:0;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--beige3);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;font-family:var(--font-b)}
+.fpill.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.add-btn{margin-left:auto;flex-shrink:0;background:var(--blue);color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-b)}
 
-/* ── PRICING ── */
-.pricing-grid {
-  display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr));
-  gap: 1.25rem; align-items: start;
-}
-.price-card {
-  background: var(--card); border-radius: var(--r);
-  padding: 2rem; border: 1px solid var(--border);
-}
-.price-card.featured { border: 2px solid var(--green); }
-.popular {
-  background: var(--green); color: #0D2218;
-  font-size: 10px; font-weight: 700;
-  padding: 3px 10px; border-radius: 4px;
-  display: inline-block; margin-bottom: 1rem;
-  letter-spacing: .04em;
-}
-.price-name {
-  font-family: var(--font-display);
-  font-size: 26px; font-weight: 700; margin-bottom: 4px;
-}
-.price-amount { font-size: 20px; font-weight: 600; margin-bottom: 1.25rem; }
-.price-divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
-.price-feat { display: flex; gap: 8px; margin-bottom: 10px; font-size: 14px; color: var(--text); }
-.check { color: var(--green); flex-shrink: 0; }
-.price-note { font-size: 12px; color: var(--muted); font-style: italic; margin-top: 1.25rem; }
+/* ── PICKS GRID ── */
+.picks-grid{padding:1rem 1.25rem 5rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+@media(max-width:640px){.picks-grid{grid-template-columns:1fr}}
 
-/* ── CTA BAND ── */
-.cta-band { background: var(--green-bg); border-top: 1px solid rgba(0,168,132,.3); border-bottom: 1px solid rgba(0,168,132,.3); padding: 4rem 2rem; }
-.cta-inner { max-width: 640px; margin: 0 auto; text-align: center; }
-.cta-inner h2 { font-family: var(--font-display); font-size: clamp(26px,4vw,38px); font-weight: 700; color: var(--text); margin-bottom: .75rem; }
-.cta-inner p { font-size: 16px; color: var(--muted); margin-bottom: 2rem; }
-.cta-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+/* ── PICK CARD ── */
+.pick-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 2px 8px rgba(124,58,237,.06);transition:border-color .15s}
+.pick-card:hover{border-color:var(--blue2)}
+.card-thumb{width:100%;height:170px;position:relative;overflow:hidden;background:var(--navy2,#3B0764);display:flex;align-items:center;justify-content:center;font-size:52px}
+.card-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.card-thumb-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(30,19,51,.85))}
+.card-thumb-info{position:absolute;bottom:10px;left:12px;right:12px}
+.card-type-badge{display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;margin-bottom:4px;letter-spacing:.04em}
+.card-thumb-title{font-family:var(--font-d);font-size:16px;font-weight:700;color:#fff;line-height:1.15}
+.card-thumb-emoji{font-size:52px;z-index:1;position:relative}
+.card-body{padding:10px 12px 0}
+.card-desc{font-size:12px;color:var(--text2);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-by{font-size:11px;color:var(--muted);margin-bottom:8px}
+.card-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--blue);border:1px solid var(--beige3);border-radius:20px;padding:3px 9px;text-decoration:none;margin-bottom:8px;transition:background .15s}
+.card-link:hover{background:var(--beige2)}
+.card-ok{font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;background:rgba(5,150,105,.1);color:#059669;border:1px solid rgba(5,150,105,.2);display:inline-block;margin-bottom:8px}
+.voters-row{display:flex;gap:4px;flex-wrap:wrap;align-items:center;padding:0 0 8px}
+.vc{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600}
+.vc-seen{background:rgba(5,150,105,.12);color:#059669;border:1px solid rgba(5,150,105,.2)}
+.vc-want{background:rgba(217,119,6,.1);color:#D97706;border:1px solid rgba(217,119,6,.2)}
+.vc-skip{background:rgba(220,38,38,.08);color:#DC2626;border:1px solid rgba(220,38,38,.15)}
+.vote-count{margin-left:auto;font-size:10px;color:var(--hint)}
+.vote-btns{display:flex;border-top:1px solid var(--border)}
+.vbtn{flex:1;padding:10px 4px;text-align:center;font-size:12px;font-weight:600;color:var(--muted);background:transparent;border:none;cursor:pointer;transition:all .15s;font-family:var(--font-b)}
+.vbtn:not(:last-child){border-right:1px solid var(--border)}
+.vbtn:hover{background:var(--beige)}
+.vbtn.on-seen{color:#059669;background:rgba(5,150,105,.08)}
+.vbtn.on-want{color:#D97706;background:rgba(217,119,6,.08)}
+.vbtn.on-skip{color:#DC2626;background:rgba(220,38,38,.05)}
+
+/* ── TRENDING SECTION (inside Full App) ── */
+.section-wrap{padding:1rem 1.25rem 5rem}
+.section-title{font-family:var(--font-d);font-size:20px;font-weight:700;color:var(--text);margin-bottom:1rem}
+.trend-cat-bar{display:flex;gap:8px;margin-bottom:1rem;overflow-x:auto;scrollbar-width:none}
+.trend-cat-bar::-webkit-scrollbar{display:none}
+.tcb-btn{flex-shrink:0;padding:7px 18px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid var(--beige3);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;font-family:var(--font-b)}
+.tcb-btn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.trend-cat-section{display:none}.trend-cat-section.on{display:block}
+.trend-sec-hdr{font-size:13px;font-weight:700;color:var(--text2);margin:1rem 0 .5rem;display:flex;align-items:center;gap:8px}
+.tsh-tag{font-size:9px;font-weight:800;padding:2px 7px;border-radius:10px;background:var(--navy);color:#fff;letter-spacing:.04em}
+.tsh-live{font-size:9px;font-weight:700;color:#059669}
+.trend-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+.trend-row::-webkit-scrollbar{display:none}
+.tc-poster{flex-shrink:0;width:120px;border-radius:var(--rsm);overflow:hidden;background:var(--navy2,#3B0764);border:1px solid var(--beige3)}
+.tc-poster-img{width:120px;height:175px;display:flex;align-items:center;justify-content:center;font-size:52px;position:relative;overflow:hidden;background:var(--navy2,#3B0764)}
+.tc-score{position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.65);color:#FFD700;font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px}
+.tc-stream-badge{position:absolute;top:6px;left:6px;font-size:8px;font-weight:900;padding:3px 7px;border-radius:5px;color:white;letter-spacing:.04em;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.tc-rank-badge{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.65);color:#FFD700;font-size:9px;font-weight:800;padding:2px 5px;border-radius:4px}
+.tc-poster-body{padding:7px 8px;background:var(--white)}
+.tc-poster-title{font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px}
+.tc-poster-meta{font-size:9px;color:var(--muted);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-poster-actions{display:flex;border-top:1px solid var(--border);background:var(--beige)}
+.tc-pa-btn{flex:1;padding:7px 3px;text-align:center;font-size:9px;font-weight:700;border:none;background:transparent;cursor:pointer;font-family:var(--font-b);display:flex;align-items:center;justify-content:center;gap:2px;transition:background .12s;color:var(--blue)}
+.tc-pa-btn:not(:last-child){border-right:1px solid var(--border)}
+.tc-wide{flex-shrink:0;width:190px;border-radius:var(--rsm);overflow:hidden;background:var(--white);border:1px solid var(--border)}
+.tc-wide-img{width:190px;height:110px;display:flex;align-items:center;justify-content:center;font-size:40px;background:var(--navy2,#3B0764);position:relative;overflow:hidden}
+.tc-wide-body{padding:9px 11px}
+.tc-wide-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px}
+.tc-wide-meta{font-size:10px;color:var(--muted);margin-bottom:5px}
+.tc-wide-src{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--muted);font-weight:500}
+.tc-src-dot{width:12px;height:12px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:800;color:white;flex-shrink:0}
+.trend-loading{padding:2rem;text-align:center;color:var(--muted);font-size:13px}
+.trend-spin{display:inline-block;width:18px;height:18px;border:2px solid var(--beige3);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── PLAN SECTION ── */
+.plan-section{display:none}.plan-section.on{display:block}
+.plan-filter-row{display:flex;gap:6px;padding:.75rem 1.25rem;overflow-x:auto;scrollbar-width:none;background:var(--beige2);border-bottom:1px solid var(--beige3)}
+.plan-filter-row::-webkit-scrollbar{display:none}
+.plan-cards{padding:1rem 1.25rem 5rem;display:flex;flex-direction:column;gap:10px}
+.plan-group-title{font-family:var(--font-d);font-size:15px;font-weight:700;color:var(--text);margin:10px 0 6px;display:flex;align-items:center;gap:8px}
+.plan-count{font-family:var(--font-b);font-size:11px;font-weight:600;background:var(--navy);color:var(--beige2);padding:2px 8px;border-radius:10px}
+.pcard{background:var(--white);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;display:flex;box-shadow:0 1px 4px rgba(124,58,237,.06)}
+.pcard-thumb{width:72px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:28px;position:relative;overflow:hidden}
+.pcard-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pcard-thumb-emoji{font-size:28px;z-index:1;position:relative}
+.pcard-body{flex:1;padding:10px 12px;min-width:0}
+.pcard-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcard-title a{color:var(--text);text-decoration:none}
+.pcard-title a:hover{color:var(--blue)}
+.pcard-meta{font-size:10px;color:var(--muted);margin-bottom:5px}
+.pcard-badges{display:flex;gap:4px;flex-wrap:wrap}
+.pb{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px}
+.pb-ok{background:rgba(5,150,105,.1);color:#059669;border:1px solid rgba(5,150,105,.2)}
+.pb-skip{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.15)}
+.pb-wait{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(217,119,6,.2)}
+.pcard-voters{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap}
+.pvc{font-size:9px;padding:2px 5px;border-radius:6px;font-weight:600}
+.pvc-ok{background:rgba(124,58,237,.12);color:var(--blue);border:1px solid rgba(124,58,237,.2)}
+.pvc-want{background:var(--beige2);color:var(--text2);border:1px solid var(--beige3)}
+.pvc-skip{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.15)}
+
+/* ── SETTINGS SECTION ── */
+.settings-wrap{padding:1rem 1.25rem 5rem;max-width:600px}
+.settings-section{background:var(--white);border-radius:var(--r);overflow:hidden;margin-bottom:16px;border:1px solid var(--border)}
+.settings-hdr{padding:10px 14px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.05em;text-transform:uppercase}
+.settings-row{padding:13px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.settings-row:last-child{border-bottom:none}
+.si-icon{font-size:18px;width:36px;text-align:center;flex-shrink:0}
+.si-lbl{flex:1}
+.si-lbl h4{font-size:14px;font-weight:600;color:var(--text);margin-bottom:1px}
+.si-lbl p{font-size:12px;color:var(--muted)}
+.si-arrow{color:var(--muted);font-size:16px}
+.settings-signout{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;width:100%;background:none;border:none;font-family:var(--font-b);text-align:left}
+.settings-signout-lbl h4{font-size:14px;font-weight:600;color:#DC2626}
+.settings-signout-lbl p{font-size:12px;color:#f87171}
+
+/* ── MODALS ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center;padding:1.25rem}
+.overlay.open{display:flex}
+.modal{background:var(--white);border-radius:var(--r);padding:1.75rem;width:100%;max-width:460px;border:1px solid var(--border);max-height:90vh;overflow-y:auto}
+.modal h3{font-family:var(--font-d);font-size:20px;font-weight:700;color:var(--text);margin-bottom:1.25rem}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.field input{width:100%;background:var(--beige);border:1.5px solid var(--beige3);border-radius:var(--rsm);padding:10px 14px;color:var(--text);font-size:14px;font-family:var(--font-b);outline:none}
+.field input:focus{border-color:var(--blue2)}
+.modal-footer{display:flex;gap:10px;margin-top:1.25rem}
+.modal-cancel{flex:1;padding:11px;border-radius:var(--rsm);background:var(--beige);border:1.5px solid var(--beige3);color:var(--muted);font-family:var(--font-b);font-size:14px;cursor:pointer}
+.modal-save{flex:2;padding:11px;border-radius:var(--rsm);background:var(--blue);border:none;color:#fff;font-family:var(--font-b);font-size:14px;font-weight:700;cursor:pointer}
+.modal-save:disabled{background:var(--beige3);color:var(--muted);cursor:not-allowed}
+.gp-tab{padding:6px 13px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--beige3);background:transparent;color:var(--muted);cursor:pointer;font-family:var(--font-b);transition:all .15s}
+.gp-tab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.gp-pane{display:none}.gp-pane.on{display:block}
+.cat-btn{padding:7px 13px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--beige3);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--font-b);transition:all .15s;white-space:nowrap}
+.cat-btn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.gp-pane{display:none}.gp-pane.on{display:block}
+
+/* ── EMPTY / TOAST ── */
+.empty{text-align:center;padding:3.5rem 1rem;color:var(--muted);grid-column:1/-1}
+.empty-icon{font-size:40px;margin-bottom:1rem}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:500;opacity:0;transition:opacity .2s;pointer-events:none;z-index:300}
+.toast.show{opacity:1}
+@media(max-width:480px){.picks-grid{padding:.75rem .75rem 5rem}.section-wrap{padding:.75rem .75rem 5rem}.settings-wrap{padding:.75rem .75rem 5rem}.plan-cards{padding:.75rem .75rem 5rem}}
 </style>
 </head>
 <body>
 
-<nav class="nav">
-  <a href="/" class="nav-logo">Squad<span>Picks</span></a>
-  <div class="nav-links">
-    <a href="#how">How it works</a>
-    <a href="#features">Features</a>
-    <a href="#pricing">Pricing</a>
-    <a href="/blog">Blog</a>
-    <a href="/login" class="nav-cta">Get started</a>
-  </div>
-  <button class="nav-hamburger" id="nav-ham" onclick="document.getElementById('mobile-nav').classList.toggle('open')" aria-label="Menu">
-    <span></span><span></span><span></span>
+<!-- TOP NAV -->
+<header class="topnav">
+  <button class="ham-btn" onclick="toggleDrawer()" aria-label="Menu">
+    <div class="ham-line"></div><div class="ham-line"></div><div class="ham-line"></div>
   </button>
+  <a href="/" class="topnav-logo">Squad<span>Picks</span></a>
+  <span class="topnav-squad" id="topnav-squad"></span>
+  <div class="topnav-right">
+    <div class="topnav-avatar" id="topnav-av">?</div>
+  </div>
+</header>
+
+<!-- DRAWER OVERLAY -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+
+<!-- DRAWER -->
+<nav class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-logo">Squad<span>Picks</span></div>
+    <div class="drawer-user" id="drawer-user">Loading...</div>
+  </div>
+  <div class="drawer-nav">
+    <a class="drawer-item on" id="dnav-picks" onclick="goSection('picks',this)">
+      <div class="drawer-icon">✓</div><span>Picks</span>
+    </a>
+    <a class="drawer-item" id="dnav-plan" onclick="goSection('plan',this)">
+      <div class="drawer-icon">📋</div><span>Plan</span>
+    </a>
+    <a class="drawer-item" id="dnav-trending" onclick="goSection('trending',this)">
+      <div class="drawer-icon">🔥</div><span>Trending</span>
+    </a>
+    <a class="drawer-item" id="dnav-settings" onclick="goSection('settings',this)">
+      <div class="drawer-icon">⚙️</div><span>Settings</span>
+    </a>
+    <div style="height:1px;background:rgba(255,255,255,.1);margin:8px 16px"></div>
+    <a class="drawer-item" onclick="openGroupPanel()">
+      <div class="drawer-icon">👥</div><span>My Squads</span>
+    </a>
+  </div>
+  <div class="drawer-footer">
+    <button class="drawer-signout" onclick="doSignOut()">
+      🚪 <span style="font-size:13px;color:#f87171;font-weight:600">Sign out</span>
+    </button>
+  </div>
 </nav>
-<div class="mobile-nav" id="mobile-nav">
-  <a href="#how" onclick="document.getElementById('mobile-nav').classList.remove('open')">How it works</a>
-  <a href="#features" onclick="document.getElementById('mobile-nav').classList.remove('open')">Features</a>
-  <a href="#pricing" onclick="document.getElementById('mobile-nav').classList.remove('open')">Pricing</a>
-  <a href="/blog">Blog</a>
-  <a href="/login" class="active">Get started</a>
-</div>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-inner">
-    <div class="hero-text">
-      <div class="hero-eyebrow"><div class="hero-dot"></div>Telegram · Google · Zero app downloads</div>
-      <h1 class="hero-title">Your squad.<br><span class="accent">Any plan.</span><br>One bot.</h1>
-      <p class="hero-sub">Paste any link into your Telegram group — or create a squad with Google — and your whole family votes together. Plans get made.</p>
-      <div class="hero-tags">
-        <span class="tag">🎬 Movies</span>
-        <span class="tag">🍜 Restaurants</span>
-        <span class="tag">📍 Places</span>
-        <span class="tag">🎭 Events</span>
-        <span class="tag">📺 Filmi Craft reviews</span>
-      </div>
-      <div class="hero-actions">
-        <a href="/login" class="btn btn-tg">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.026 9.547c-.148.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.31l-2.95-.924c-.642-.2-.655-.642.136-.95l11.532-4.448c.537-.194 1.006.131.834.943h.53v.317z"/></svg>
-          Get Started Free
-        </a>
-        <a href="#how" class="btn btn-outline">See how it works</a>
-      </div>
-    </div>
-    <div class="hero-phone-wrap">
-      <div class="phone">
-        <div class="ph-bar">
-          <div class="ph-av">👨‍👩‍👧‍👦</div>
-          <div>
-            <div class="ph-name">Family Squad</div>
-            <div class="ph-sub">Priya, Raj, Meera, Dev · @SquadPicksBot</div>
-          </div>
+<!-- MAIN -->
+<div class="main-wrap">
+
+  <!-- ── PICKS SECTION ── -->
+  <section class="page-section on" id="sec-picks">
+    <div class="picks-page">
+      <div class="picks-header">
+        <div class="picks-header-top">
+          <div class="squad-title" id="squad-title">Your Squad</div>
+          <select class="group-select" id="group-select" onchange="switchGroup(this.value)">
+            <option value="">Loading...</option>
+          </select>
         </div>
-        <div class="ph-chat">
-          <div class="bubble them"><div style="font-size:10px;font-weight:600;color:#4FC3F7;margin-bottom:2px">Raj</div>Check this out! imdb.com/kaantha</div>
-          <div class="bubble bot">
-            <div class="bot-name">SquadPicksBot</div>
-            <div class="bot-title">🎬 Kaantha (2025)</div>
-            <div class="bot-meta">Tamil · Dulquer Salmaan · Action drama</div>
-            <div class="fc-pill"><span class="yt">YT</span> Filmi Craft · <span style="color:var(--amber);font-weight:600">★ 4.1/5</span></div>
-            <div class="vote-chips">
-              <span class="vc vc-w">★ Raj</span>
-              <span class="vc vc-n">? Priya</span>
-              <span class="vc vc-n">? Meera</span>
-              <span class="vc vc-n">? Dev</span>
-            </div>
-            <div class="vote-row">
-              <span class="vb">✓ Seen</span>
-              <span class="vb">★ Want</span>
-              <span class="vb">✕ Skip</span>
-            </div>
-          </div>
-          <div class="bubble me">I want to watch! ★</div>
-          <div class="bubble bot">
-            <div class="bot-name">SquadPicksBot</div>
-            <div class="ok-pill">✓ Group ok — everyone can watch Kaantha!</div>
-          </div>
+        <div class="stats-row" id="stats-row"></div>
+      </div>
+      <div class="filter-bar">
+        <button class="fpill on" onclick="setFilter('all',this)">All</button>
+        <button class="fpill" onclick="setFilter('want',this)">★ Want to</button>
+        <button class="fpill" onclick="setFilter('group',this)">✓ Group ok</button>
+        <button class="fpill" onclick="setFilter('movie',this)">🎬 Movies</button>
+        <button class="fpill" onclick="setFilter('food',this)">🍽 Food</button>
+        <button class="fpill" onclick="setFilter('place',this)">📍 Places</button>
+        <button class="fpill" onclick="setFilter('event',this)">🎭 Events</button>
+        <button class="add-btn" onclick="openAdd()">+ Add pick</button>
+      </div>
+      <div class="picks-grid" id="picks-grid">
+        <div class="empty"><div class="empty-icon">⏳</div>Loading picks...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PLAN SECTION ── -->
+  <section class="page-section" id="sec-plan">
+    <div class="filter-bar">
+      <button class="fpill on" onclick="setPlanFilter('all',this)">All</button>
+      <button class="fpill" onclick="setPlanFilter('ok',this)">✓ Group ok</button>
+      <button class="fpill" onclick="setPlanFilter('skip',this)">✕ Has skip</button>
+      <button class="fpill" onclick="setPlanFilter('pending',this)">⏳ Pending</button>
+      <button class="fpill" onclick="setPlanFilter('movie',this)">🎬</button>
+      <button class="fpill" onclick="setPlanFilter('food',this)">🍽</button>
+      <button class="fpill" onclick="setPlanFilter('place',this)">📍</button>
+      <button class="fpill" onclick="setPlanFilter('event',this)">🎭</button>
+    </div>
+    <div class="plan-cards" id="plan-cards">
+      <div class="empty"><div class="empty-icon">⏳</div>Loading plan...</div>
+    </div>
+  </section>
+
+  <!-- ── TRENDING SECTION ── -->
+  <section class="page-section" id="sec-trending">
+    <div class="section-wrap">
+      <div class="section-title">Trending</div>
+      <div class="trend-cat-bar">
+        <button class="tcb-btn on" onclick="setTrendCat('movies',this)">🎬 Movies</button>
+        <button class="tcb-btn" onclick="setTrendCat('events',this)">🎭 Events</button>
+        <button class="tcb-btn" onclick="setTrendCat('places',this)">📍 Places</button>
+      </div>
+      <div class="trend-cat-section on" id="tcat-movies">
+        <div class="trend-sec-hdr">Netflix Top 10 <span class="tsh-tag" style="background:#E50914">N</span><span class="tsh-live" id="nf-live" style="display:none"> ● LIVE</span></div>
+        <div id="tr-netflix"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
+        <div class="trend-sec-hdr" style="margin-top:1rem">Prime Video Top 10 <span class="tsh-tag" style="background:#00A8E0">P</span><span class="tsh-live" id="pv-live" style="display:none"> ● LIVE</span></div>
+        <div id="tr-prime"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
+        <div class="trend-sec-hdr" style="margin-top:1rem">IMDb Top Picks <span class="tsh-tag" style="background:#F5C518;color:#000;font-weight:900">IMDb</span><span class="tsh-live" id="imdb-live" style="display:none"> ● LIVE</span></div>
+        <div id="tr-imdb"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
+      </div>
+      <div class="trend-cat-section" id="tcat-events">
+        <div class="trend-sec-hdr">Top Events <span class="tsh-tag" style="background:#F05537">Eventbrite</span></div>
+        <div class="trend-row" id="tr-events"></div>
+      </div>
+      <div class="trend-cat-section" id="tcat-places">
+        <div class="trend-sec-hdr">Top Restaurants <span class="tsh-tag" style="background:#E23744">Zomato</span></div>
+        <div class="trend-row" id="tr-food"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SETTINGS SECTION ── -->
+  <section class="page-section" id="sec-settings">
+    <div class="settings-wrap">
+      <div class="settings-section" id="identity-card" style="display:none">
+        <div class="settings-hdr">Signed in as</div>
+        <div class="settings-row" style="cursor:default">
+          <div class="si-icon" id="si-av" style="width:36px;height:36px;border-radius:50%;background:var(--beige2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--navy)">?</div>
+          <div class="si-lbl"><h4 id="si-name">Member</h4><p id="si-type">Google account</p></div>
         </div>
       </div>
+      <div class="settings-section">
+        <div class="settings-hdr">Squad</div>
+        <div class="settings-row" onclick="openGroupPanel('manage')" style="cursor:pointer">
+          <div class="si-icon">👥</div>
+          <div class="si-lbl"><h4>My Squads</h4><p>Manage, rename, invite members, delete</p></div>
+          <span class="si-arrow">›</span>
+        </div>
+        <div class="settings-row" onclick="openGroupPanel('google')" style="cursor:pointer">
+          <div class="si-icon">🌐</div>
+          <div class="si-lbl"><h4>New Google Squad</h4><p>Create a squad, invite by Gmail</p></div>
+          <span class="si-arrow">›</span>
+        </div>
+        <div class="settings-row" onclick="openGroupPanel('telegram')" style="cursor:pointer">
+          <div class="si-icon">💬</div>
+          <div class="si-lbl"><h4>Link Telegram Group</h4><p>Add one or more Telegram groups</p></div>
+          <span class="si-arrow">›</span>
+        </div>
+        <div class="settings-row" style="cursor:default">
+          <div class="si-icon">🔔</div>
+          <div class="si-lbl"><h4>Notifications</h4><p>Weekly digest · Friday picks</p></div>
+          <span class="si-arrow">›</span>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-hdr">Account</div>
+        <div class="settings-row" style="cursor:default">
+          <div class="si-icon">✨</div>
+          <div class="si-lbl"><h4>Squad+ Plan</h4><p>Free · Upgrade for more</p></div>
+          <span class="si-arrow">›</span>
+        </div>
+        <div class="settings-row" style="cursor:default">
+          <div class="si-icon">❓</div>
+          <div class="si-lbl"><h4>Help</h4><p>How to use SquadPicks</p></div>
+          <span class="si-arrow">›</span>
+        </div>
+        <button class="settings-signout" onclick="doSignOut()">
+          <div class="si-icon">🚪</div>
+          <div class="settings-signout-lbl"><h4>Sign out</h4><p>Return to login page</p></div>
+        </button>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- PROBLEM STRIP -->
-<div class="problem-strip">
-  <div class="problem-grid">
-    <div class="problem-card">
-      <div class="problem-label" style="background:#1A0808;color:#EF9A9A">PROBLEM 1</div>
-      <h3>Links get buried</h3>
-      <p>Someone shares a great restaurant in WhatsApp. 200 messages later it's gone forever.</p>
-    </div>
-    <div class="problem-card">
-      <div class="problem-label" style="background:#1A1200;color:#FFB74D">PROBLEM 2</div>
-      <h3>Nobody knows who's seen what</h3>
-      <p>Every movie night starts with "have you seen this?" to four different people.</p>
-    </div>
-    <div class="problem-card">
-      <div class="problem-label" style="background:#0D2218;color:#69D47E">PROBLEM 3</div>
-      <h3>No group consensus</h3>
-      <p>You plan a trip and discover halfway through that two people have already been there.</p>
-    </div>
-    <div class="problem-card">
-      <div class="problem-label" style="background:#0A1E30;color:#90CAF9">PROBLEM 4</div>
-      <h3>Decisions take forever</h3>
-      <p>The "what should we watch?" conversation loop. Every. Single. Weekend.</p>
-    </div>
-  </div>
-</div>
+</div><!-- end main-wrap -->
 
-<!-- HOW IT WORKS -->
-<section class="section" id="how">
-  <div class="container">
-    <div class="section-tag">How it works</div>
-    <h2 class="section-title">Three steps. Plans get made.</h2>
-    <p class="section-sub">No new app to download. No account for your family. Just add the bot to your Telegram group and start.</p>
-    <div class="steps-grid">
-      <div class="step">
-        <div class="step-num">1</div>
-        <div class="step-badge">LINK</div>
-        <h3>Someone pastes a link</h3>
-        <p>Any URL — IMDB, Google Maps, Yelp, Zomato, Eventbrite. The bot reads it and figures out what it is automatically.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div class="step-badge">CARD</div>
-        <h3>Bot posts a pick card</h3>
-        <p>A clean card appears in the chat with the title, details and three vote buttons — right inside Telegram. No link to click, no app to open.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-badge">VOTE</div>
-        <h3>Everyone taps their vote</h3>
-        <p>Seen/Been · Want to · Not for me. When nobody says skip, the bot flags "Group ok" — your squad can do this together.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">4</div>
-        <div class="step-badge">AUTO</div>
-        <h3>Filmi Craft alerts you</h3>
-        <p>The bot monitors Filmi Craft every Friday. New review posted → automatic card in your group. Zero effort from anyone.</p>
+<!-- ADD PICK MODAL -->
+<div class="overlay" id="add-modal" onclick="if(event.target===this)closeAdd()">
+  <div class="modal">
+    <h3>Add a pick</h3>
+    <!-- Step 1: Category -->
+    <div style="margin-bottom:1rem">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Category</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap" id="add-category-row">
+        <button class="cat-btn on" data-type="movie"  onclick="setAddCat(this)">🎬 Movie</button>
+        <button class="cat-btn"    data-type="show"   onclick="setAddCat(this)">📺 Show</button>
+        <button class="cat-btn"    data-type="food"   onclick="setAddCat(this)">🍽 Restaurant</button>
+        <button class="cat-btn"    data-type="place"  onclick="setAddCat(this)">📍 Place</button>
+        <button class="cat-btn"    data-type="event"  onclick="setAddCat(this)">🎭 Event</button>
+        <button class="cat-btn"    data-type="link"   onclick="setAddCat(this)">🔗 Other</button>
       </div>
     </div>
-  </div>
-</section>
-
-<!-- FEATURES -->
-<section class="section features-section" id="features">
-  <div class="container">
-    <div class="section-tag">Features</div>
-    <h2 class="section-title">Everything your squad needs.</h2>
-    <p class="section-sub">Nothing you don't. Built for real families and friend groups — not power users.</p>
-    <div class="features-grid">
-      <div class="feat" style="border-color:var(--green)">
-        <div class="feat-tag" style="background:var(--green-bg);color:var(--green)">UNIVERSAL</div>
-        <h3>Any link, auto-detected</h3>
-        <p>IMDB · Google Maps · Yelp · Zomato · Eventbrite · YouTube. Paste anything and the bot reads the title, type and details automatically.</p>
-      </div>
-      <div class="feat" style="border-color:#9C27B0">
-        <div class="feat-tag" style="background:#1A0F2E;color:#CE93D8">MOVIES & SHOWS</div>
-        <h3>Film & TV tracking</h3>
-        <p>Title, year, genre, runtime. Know instantly who's seen it and who still needs to — no more asking around.</p>
-      </div>
-      <div class="feat" style="border-color:#4CAF50">
-        <div class="feat-tag" style="background:#0D2210;color:#81C784">PLACES & FOOD</div>
-        <h3>Restaurants & locations</h3>
-        <p>Google Maps, Yelp and Zomato parsed with address, cuisine and price range. Track which places the squad has already visited.</p>
-      </div>
-      <div class="feat" style="border-color:var(--red)">
-        <div class="feat-tag" style="background:#1A0808;color:#EF9A9A">FILMI CRAFT</div>
-        <h3>YouTube reviewer feed</h3>
-        <p>Bot monitors Filmi Craft every Friday. New review → automatic card with score and quote. Your squad always knows what's worth watching.</p>
-      </div>
-      <div class="feat" style="border-color:#2196F3">
-        <div class="feat-tag" style="background:#0A1E30;color:#90CAF9">/SUMMARY</div>
-        <h3>Group consensus view</h3>
-        <p>Type /summary and instantly see what the group can do together, what has a skip, and who still hasn't voted.</p>
-      </div>
-      <div class="feat" style="border-color:var(--amber)">
-        <div class="feat-tag" style="background:var(--green-bg);color:var(--amber)">WEEKLY DIGEST</div>
-        <h3>Sunday roundup</h3>
-        <p>Every Sunday the bot posts new picks, Filmi Craft reviews from the week, and a nudge to anyone who hasn't voted yet.</p>
+    <!-- Step 2: Link (optional) -->
+    <div class="field">
+      <label>Link <span style="font-size:11px;font-weight:400;color:var(--hint)">(optional — paste URL for auto title &amp; image)</span></label>
+      <input id="add-url" placeholder="https://www.imdb.com/title/... or any URL"/>
+    </div>
+    <!-- Step 3: Manual title (shown when no link or as override) -->
+    <div class="field" id="add-title-field">
+      <label>Title <span style="font-size:11px;font-weight:400;color:var(--hint)" id="add-title-hint">(auto-filled from link, or type manually)</span></label>
+      <input id="add-title" placeholder="e.g. Interstellar, Miku Restaurant..."/>
+    </div>
+    <!-- Fetched preview -->
+    <div id="add-preview" style="display:none;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:10px 12px;margin-bottom:12px;display:none;align-items:center;gap:10px">
+      <img id="add-preview-img" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0" src="" alt=""/>
+      <div>
+        <div id="add-preview-title" style="font-size:13px;font-weight:700;color:var(--text)"></div>
+        <div id="add-preview-desc"  style="font-size:11px;color:var(--muted);margin-top:1px"></div>
       </div>
     </div>
-  </div>
-</section>
-
-<!-- PRICING -->
-<section class="section" id="pricing">
-  <div class="container">
-    <div class="section-tag">Pricing</div>
-    <h2 class="section-title">Free to start. Premium when you need more.</h2>
-    <p class="section-sub">No credit card needed. Get your family hooked first.</p>
-    <div class="pricing-grid">
-      <div class="price-card">
-        <div class="price-name" style="color:var(--muted)">Free</div>
-        <div class="price-amount" style="color:var(--muted)">Forever free</div>
-        <hr class="price-divider"/>
-        <div class="price-feat"><span class="check">✓</span> Groups up to 6 members</div>
-        <div class="price-feat"><span class="check">✓</span> 1 YouTube reviewer channel</div>
-        <div class="price-feat"><span class="check">✓</span> All link types</div>
-        <div class="price-feat"><span class="check">✓</span> Weekly digest</div>
-        <div class="price-feat"><span class="check">✓</span> /summary command</div>
-        <div class="price-note">Gets families hooked</div>
-      </div>
-      <div class="price-card featured">
-        <div class="popular">MOST POPULAR</div>
-        <div class="price-name" style="color:var(--green)">Squad+</div>
-        <div class="price-amount">$2.99 / month</div>
-        <hr class="price-divider"/>
-        <div class="price-feat"><span class="check">✓</span> Groups up to 20 members</div>
-        <div class="price-feat"><span class="check">✓</span> Up to 5 reviewer channels</div>
-        <div class="price-feat"><span class="check">✓</span> Priority link detection</div>
-        <div class="price-feat"><span class="check">✓</span> Monthly analytics digest</div>
-        <div class="price-feat"><span class="check">✓</span> Custom bot name</div>
-        <div class="price-note">For active family groups</div>
-      </div>
-      <div class="price-card">
-        <div class="price-name" style="color:var(--amber)">Community</div>
-        <div class="price-amount">$9.99 / month</div>
-        <hr class="price-divider"/>
-        <div class="price-feat"><span class="check">✓</span> Unlimited members</div>
-        <div class="price-feat"><span class="check">✓</span> Unlimited reviewer channels</div>
-        <div class="price-feat"><span class="check">✓</span> Multi-language support</div>
-        <div class="price-feat"><span class="check">✓</span> Branded cards</div>
-        <div class="price-feat"><span class="check">✓</span> API access</div>
-        <div class="price-note">For fan communities &amp; clubs</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- CTA BAND -->
-<div class="cta-band">
-  <div class="cta-inner">
-    <h2>Ready to sort your squad?</h2>
-    <p>Add SquadPicks to your Telegram group in 30 seconds. Free forever for groups of 6.</p>
-    <div class="cta-actions">
-      <a href="/login" class="btn btn-tg">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.026 9.547c-.148.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.31l-2.95-.924c-.642-.2-.655-.642.136-.95l11.532-4.448c.537-.194 1.006.131.834.943h.53v.317z"/></svg>
-        Start with Telegram
-      </a>
-      <a href="/blog" class="btn btn-outline">Read the blog</a>
+    <div class="modal-footer">
+      <button class="modal-cancel" onclick="closeAdd()">Cancel</button>
+      <button class="modal-save" id="add-save" onclick="saveAdd()">Add to Squad</button>
     </div>
   </div>
 </div>
 
-<footer class="footer">
-  <div class="footer-logo">Squad<span>Picks</span></div>
-  <p>Your squad. Any plan. One bot.</p>
-  <div class="footer-links">
-    <a href="/">Home</a>
-    <a href="#features">Features</a>
-    <a href="#pricing">Pricing</a>
-    <a href="/blog">Blog</a>
-    <a href="/login">Login</a>
-    <a href="https://t.me/squadpicks_bot" target="_blank">Telegram Bot</a>
-  </div>
-  <p style="margin-top:1.5rem;font-size:11px;color:var(--hint)">© 2025 SquadPicks · Telegram-first · Zero friction · Any activity</p>
-</footer>
+<!-- MY SQUADS MODAL -->
+<div class="overlay" id="group-panel" onclick="if(event.target===this)closeGroupPanel()">
+  <div class="modal" style="max-width:540px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+      <h3 style="margin:0" id="squad-panel-title">My Squads</h3>
+      <button onclick="closeGroupPanel()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px">✕</button>
+    </div>
 
+    <!-- Tab bar -->
+    <div style="display:flex;gap:6px;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:10px;flex-wrap:wrap">
+      <button class="gp-tab on" onclick="gpTab('manage',this)">📋 My Squads</button>
+      <button class="gp-tab" onclick="gpTab('google',this)">🌐 New Google Squad</button>
+      <button class="gp-tab" onclick="gpTab('telegram',this)">💬 Link Telegram</button>
+    </div>
+
+    <!-- ── MANAGE SQUADS ── -->
+    <div id="gp-manage" class="gp-pane on">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Tap a squad to manage members, rename, or delete it.</p>
+      <div id="squad-list">
+        <div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ── MANAGE ONE SQUAD (detail view) ── -->
+    <div id="gp-squad-detail" class="gp-pane" style="display:none">
+      <button onclick="gpTab('manage', document.querySelector('.gp-tab'))" style="background:none;border:none;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:1rem">← Back to My Squads</button>
+
+      <!-- Squad name + rename -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.25rem">
+        <div id="detail-icon" style="font-size:22px;flex-shrink:0">👥</div>
+        <div style="flex:1;min-width:0">
+          <input id="detail-name" style="font-size:16px;font-weight:700;color:var(--text);background:transparent;border:none;outline:none;width:100%;padding:2px 0;border-bottom:1.5px dashed var(--beige3)" placeholder="Squad name"/>
+          <div id="detail-type-label" style="font-size:11px;color:var(--muted);margin-top:2px"></div>
+        </div>
+        <button id="detail-rename-btn" onclick="renameCurrentSquad()" style="background:var(--beige);border:1.5px solid var(--beige3);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;font-family:var(--font-b);flex-shrink:0">Rename</button>
+      </div>
+
+      <!-- Invite member -->
+      <div id="detail-invite-section" style="margin-bottom:1.25rem">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Invite member</div>
+        <div style="display:flex;gap:8px">
+          <input id="detail-invite-email" type="email" placeholder="friend@gmail.com" style="flex:1;background:var(--beige);border:1.5px solid var(--beige3);border-radius:var(--rsm);padding:8px 12px;color:var(--text);font-size:13px;font-family:var(--font-b);outline:none"/>
+          <button onclick="inviteToCurrentSquad()" style="background:var(--blue);color:#fff;border:none;border-radius:var(--rsm);padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-b);flex-shrink:0">Invite</button>
+        </div>
+        <div id="detail-invite-msg" style="display:none;margin-top:6px"></div>
+      </div>
+
+      <!-- Members list -->
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Members</div>
+        <div id="detail-members" style="display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:13px;color:var(--muted)">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Delete squad (web squads only) -->
+      <div id="detail-delete-section" style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
+        <button onclick="deleteCurrentSquad()" style="background:var(--red-bg);border:1px solid rgba(220,38,38,.2);border-radius:var(--rsm);padding:9px 16px;font-size:13px;font-weight:600;color:var(--red);cursor:pointer;font-family:var(--font-b);width:100%">🗑 Delete this squad</button>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center">This cannot be undone. All picks in this squad will be deleted.</p>
+      </div>
+      <div id="detail-msg" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <!-- ── NEW GOOGLE SQUAD ── -->
+    <div id="gp-google" class="gp-pane" style="display:none">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Create a squad without Telegram. Invite members by Gmail address.</p>
+      <div class="field"><label>Squad name</label><input id="gp-name" placeholder="e.g. Family Movie Night, Weekend Crew"/></div>
+      <button class="modal-save" style="width:100%" onclick="createSquad()">Create Google squad</button>
+      <div id="gp-create-msg" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <!-- ── LINK TELEGRAM ── -->
+    <div id="gp-telegram" class="gp-pane" style="display:none">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Link one or more Telegram groups where the SquadPicks bot is added. Each becomes a separate squad.</p>
+      <div class="field">
+        <label>Telegram Group ID</label>
+        <input id="gp-tg-id" placeholder="-1001234567890" type="number"/>
+        <p style="font-size:11px;color:var(--muted);margin-top:4px">Add <strong>@userinfobot</strong> to your group to find the ID. It starts with <strong>-100</strong></p>
+      </div>
+      <div class="field"><label>Group name <span style="font-weight:400;color:var(--hint)">(optional)</span></label><input id="gp-tg-name" placeholder="e.g. Family Chat"/></div>
+      <button class="modal-save" style="width:100%" onclick="linkTelegram()">Link Telegram group</button>
+      <div id="gp-tg-msg" style="display:none;margin-top:10px"></div>
+
+      <!-- Already-linked Telegram groups -->
+      <div id="linked-tg-list" style="margin-top:1.25rem;display:none">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Already linked</div>
+        <div id="linked-tg-items" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────
+const BASE = window.location.origin;
+let currentUser  = null;
+let currentGroupId = null;
+let allPicks     = [];
+let myVotes      = {};
+let planFilter   = 'all';
+let picksFilter  = 'all';
+
+const TC = {
+  movie: {emoji:'🎬', grad:'#2d1b5e', tb:'rgba(139,92,246,.9)', tt:'#fff', lbl:'Movie'},
+  show:  {emoji:'📺', grad:'#0d1f3d', tb:'rgba(96,165,250,.9)', tt:'#fff', lbl:'Show'},
+  food:  {emoji:'🍽', grad:'#2d1f00', tb:'rgba(251,191,36,.9)', tt:'#000', lbl:'Restaurant'},
+  place: {emoji:'📍', grad:'#0d2218', tb:'rgba(52,211,153,.9)', tt:'#000', lbl:'Place'},
+  event: {emoji:'🎭', grad:'#2d0d2d', tb:'rgba(244,114,182,.9)', tt:'#fff', lbl:'Event'},
+  link:  {emoji:'🔗', grad:'#1a1a2e', tb:'rgba(134,148,160,.9)', tt:'#fff', lbl:'Link'},
+};
+
+const VOTE_LABELS = {
+  movie:{seen:'Watched',want:'Want to watch',skip:'Not for me'},
+  show: {seen:'Watched',want:'Want to watch',skip:'Not for me'},
+  food: {seen:'Tried it',want:'Want to try',skip:'Skip it'},
+  place:{seen:'Been there',want:'Want to go',skip:'Not for me'},
+  event:{seen:'Attended',want:'Want to go',skip:'Not going'},
+  link: {seen:'Seen',want:'Interested',skip:'Not for me'},
+};
+
+// ── INIT ──────────────────────────────────────────────────
+(async function init() {
+  // Always check server session first
+  try {
+    const r   = await fetch(BASE + '/api/session');
+    const ses = await r.json();
+    if (!ses.ok || !ses.user) { window.location.href = '/login'; return; }
+    currentUser = ses.user;
+  } catch(e) { window.location.href = '/login'; return; }
+
+  // Populate UI identity
+  const name   = currentUser.name || 'Member';
+  const initLetter = name.charAt(0).toUpperCase();
+  document.getElementById('topnav-av').textContent = initLetter;
+  document.getElementById('drawer-user').textContent = name + ' · Google';
+  const idCard = document.getElementById('identity-card');
+  if (idCard) {
+    idCard.style.display = 'block';
+    document.getElementById('si-av').textContent   = initLetter;
+    document.getElementById('si-name').textContent = name;
+    document.getElementById('si-type').textContent = currentUser.email || 'Google account';
+  }
+
+  // Restore groupId from URL if present
+  const params = new URLSearchParams(location.search);
+  currentGroupId = params.get('groupId') || null;
+
+  // Load groups — show picker if multiple, auto-select if only one
+  await loadGroups(false);
+
+  // Load trending data
+  loadTrending();
+})();
+
+// ── SECTION NAV ───────────────────────────────────────────
+function goSection(name, btn) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.drawer-item').forEach(b => b.classList.remove('on'));
+  document.getElementById('sec-' + name).classList.add('on');
+  const dnav = document.getElementById('dnav-' + name);
+  if (dnav) dnav.classList.add('on');
+  closeDrawer();
+  if (name === 'plan') renderPlan();
+}
+
+// ── DRAWER ────────────────────────────────────────────────
+function toggleDrawer() {
+  document.getElementById('drawer').classList.toggle('open');
+  document.getElementById('drawer-overlay').classList.toggle('open');
+}
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+// ── GROUPS ────────────────────────────────────────────────
+async function loadGroups(autoSelectFirst) {
+  try {
+    const r    = await fetch(BASE + '/api/groups/mine');
+    const data = await r.json();
+    const groups = (data.groups || []);
+
+    const sel = document.getElementById('group-select');
+    if (groups.length) {
+      // Separate into Google-created and Telegram-linked
+      const webGroups = groups.filter(g =>  g.is_web_group);
+      const tgGroups  = groups.filter(g => !g.is_web_group);
+      let html = '<option value="" disabled>— Select a squad —</option>';
+      if (webGroups.length) {
+        html += `<optgroup label="🌐 Google Squads">`;
+        webGroups.forEach(g => {
+          html += `<option value="${g.id}" ${String(g.id)===String(currentGroupId)?'selected':''}>🌐 ${esc(g.title)}</option>`;
+        });
+        html += '</optgroup>';
+      }
+      if (tgGroups.length) {
+        html += `<optgroup label="💬 Telegram Groups">`;
+        tgGroups.forEach(g => {
+          html += `<option value="${g.id}" ${String(g.id)===String(currentGroupId)?'selected':''}>💬 ${esc(g.title)}</option>`;
+        });
+        html += '</optgroup>';
+      }
+      sel.innerHTML = html;
+
+      if (currentGroupId && groups.find(g => String(g.id) === String(currentGroupId))) {
+        // URL already has a valid groupId — load it directly
+        const active = groups.find(g => String(g.id) === String(currentGroupId));
+        document.getElementById('squad-title').textContent  = active.title;
+        document.getElementById('topnav-squad').textContent = active.title;
+        sel.value = String(currentGroupId);
+        await loadPicks();
+      } else if (groups.length === 1 || autoSelectFirst) {
+        // Only one group — auto-select it
+        currentGroupId = String(groups[0].id);
+        const active = groups[0];
+        document.getElementById('squad-title').textContent  = active.title;
+        document.getElementById('topnav-squad').textContent = active.title;
+        sel.value = currentGroupId;
+        history.replaceState({}, '', `/dashboard?groupId=${currentGroupId}`);
+        await loadPicks();
+      } else {
+        // Multiple groups, none selected — prompt user to pick one
+        document.getElementById('squad-title').textContent  = 'Select a squad';
+        document.getElementById('topnav-squad').textContent = '';
+        showGroupPrompt(groups);
+      }
+    } else {
+      sel.innerHTML = '<option value="">No squads yet</option>';
+      document.getElementById('squad-title').textContent  = 'No squads yet';
+      document.getElementById('picks-grid').innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">👥</div>
+          <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px">No squads yet</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Create a squad or link your Telegram group to get started</div>
+          <button onclick="openGroupPanel()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font-b)">+ Create a squad</button>
+        </div>`;
+    }
+  } catch(e) { console.error('[loadGroups]', e); }
+}
+
+// Show a prominent group-picker when user has multiple groups but none selected
+function showGroupPrompt(groups) {
+  const grid = document.getElementById('picks-grid');
+  const webGroups = groups.filter(g =>  g.is_web_group);
+  const tgGroups  = groups.filter(g => !g.is_web_group);
+
+  let html = `
+    <div class="empty" style="padding:2.5rem 1rem">
+      <div class="empty-icon">👥</div>
+      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">Choose your squad</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">Select which squad's picks to view</div>
+      <div style="display:flex;flex-direction:column;gap:10px;max-width:360px;margin:0 auto;text-align:left">`;
+
+  if (webGroups.length) {
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">🌐 Google Squads</div>`;
+    webGroups.forEach(g => {
+      html += `<button onclick="switchGroup('${g.id}')" style="display:flex;align-items:center;gap:12px;background:var(--white);border:1.5px solid var(--beige3);border-radius:12px;padding:12px 16px;cursor:pointer;font-family:var(--font-b);width:100%;transition:border-color .15s" onmouseover="this.style.borderColor='#7C3AED'" onmouseout="this.style.borderColor='var(--beige3)'">
+        <span style="font-size:22px">🌐</span>
+        <span style="font-size:14px;font-weight:600;color:var(--text)">${esc(g.title)}</span>
+        <span style="margin-left:auto;color:var(--muted);font-size:18px">›</span>
+      </button>`;
+    });
+  }
+  if (tgGroups.length) {
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:${webGroups.length?'12px':0} 0 2px">💬 Telegram Groups</div>`;
+    tgGroups.forEach(g => {
+      html += `<button onclick="switchGroup('${g.id}')" style="display:flex;align-items:center;gap:12px;background:var(--white);border:1.5px solid var(--beige3);border-radius:12px;padding:12px 16px;cursor:pointer;font-family:var(--font-b);width:100%;transition:border-color .15s" onmouseover="this.style.borderColor='#7C3AED'" onmouseout="this.style.borderColor='var(--beige3)'">
+        <span style="font-size:22px">💬</span>
+        <span style="font-size:14px;font-weight:600;color:var(--text)">${esc(g.title)}</span>
+        <span style="margin-left:auto;color:var(--muted);font-size:18px">›</span>
+      </button>`;
+    });
+  }
+  html += `</div>
+      <div style="margin-top:1.5rem">
+        <button onclick="openGroupPanel()" style="background:transparent;border:1.5px solid var(--beige3);border-radius:10px;padding:8px 18px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--font-b)">+ Add new squad</button>
+      </div>
+    </div>`;
+  grid.innerHTML = html;
+}
+
+function switchGroup(id) {
+  currentGroupId = String(id);
+  const sel = document.getElementById('group-select');
+  sel.value = currentGroupId;
+  // Find group title from select options
+  const opt = Array.from(sel.options).find(o => o.value === currentGroupId);
+  const title = (opt?.text || '').replace(/^[🌐💬]\s*/u, '').trim();
+  document.getElementById('squad-title').textContent  = title || 'Your Squad';
+  document.getElementById('topnav-squad').textContent = title || '';
+  history.pushState({}, '', `/dashboard?groupId=${currentGroupId}`);
+  loadPicks();
+}
+
+async function createSquad() {
+  const name = document.getElementById('gp-name').value.trim();
+  const msg  = document.getElementById('gp-create-msg');
+  if (!name) { showMsg(msg, 'Please enter a squad name', 'error'); return; }
+  const btn  = document.querySelector('#gp-create .modal-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
+  try {
+    const r = await fetch(BASE+'/api/groups/create', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name})
+    });
+    const d = await r.json();
+    if (d.ok && d.group) {
+      showMsg(msg, `Squad "${name}" created! 🎉`, 'ok');
+      document.getElementById('gp-name').value = '';
+      // Switch to the new group immediately
+      currentGroupId = String(d.group.id);
+      history.pushState({}, '', `/dashboard?groupId=${currentGroupId}`);
+      closeGroupPanel();
+      await loadGroups(false);   // reload dropdown, already has currentGroupId set
+      loadInviteGroups();
+      showToast(`Squad "${name}" created! Now showing its picks.`);
+    } else {
+      showMsg(msg, d.error || 'Failed to create', 'error');
+    }
+  } catch(e) { showMsg(msg, 'Error creating squad', 'error'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = 'Create squad'; } }
+}
+
+async function linkTelegram() {
+  const tgId   = document.getElementById('gp-tg-id').value.trim();
+  const tgName = document.getElementById('gp-tg-name').value.trim() || 'Telegram Group';
+  const msg    = document.getElementById('gp-tg-msg');
+  if (!tgId) { showMsg(msg, 'Please enter the Telegram Group ID', 'error'); return; }
+  const btn = document.querySelector('#gp-telegram .modal-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'Linking...'; }
+  try {
+    const r = await fetch(BASE+'/api/groups/link-telegram', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({telegramGroupId: tgId, name: tgName})
+    });
+    const d = await r.json();
+    if (d.ok && d.group) {
+      showMsg(msg, `Group "${tgName}" linked! ✅`, 'ok');
+      document.getElementById('gp-tg-id').value   = '';
+      document.getElementById('gp-tg-name').value = '';
+      // Switch to the newly linked group immediately
+      currentGroupId = String(d.group.id);
+      history.pushState({}, '', `/dashboard?groupId=${currentGroupId}`);
+      closeGroupPanel();
+      await loadGroups(false);
+      showToast(`"${tgName}" linked! Now showing its picks.`);
+    } else {
+      showMsg(msg, d.error || 'Failed to link group', 'error');
+    }
+  } catch(e) { showMsg(msg, 'Error linking group', 'error'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = 'Link group'; } }
+}
+
+// ── PICKS ─────────────────────────────────────────────────
+async function loadPicks() {
+  if (!currentGroupId) return;
+  document.getElementById('picks-grid').innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Loading picks...</div>';
+  try {
+    const r    = await fetch(`${BASE}/api/picks?groupId=${encodeURIComponent(currentGroupId)}`, {
+      headers: { 'x-telegram-init-data':'test', 'x-user-id': String(currentUser?.id||'0'), 'x-user-name': currentUser?.name||'User' }
+    });
+    const data = await r.json();
+    allPicks   = data.picks || [];
+    allPicks.forEach(p => { myVotes[p.id] = p.my_vote || ''; });
+    renderStats();
+    renderPicks();
+    renderPlan();
+  } catch(e) {
+    document.getElementById('picks-grid').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Could not load picks. <button onclick="loadPicks()" style="color:var(--blue);background:none;border:none;cursor:pointer">Retry</button></div>';
+  }
+}
+
+function renderStats() {
+  const ok = allPicks.filter(p=>p.group_ok).length;
+  const nd = allPicks.filter(p=>!myVotes[p.id]).length;
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat"><div class="stat-num">${allPicks.length}</div><div class="stat-lbl">Total</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--green)">${ok}</div><div class="stat-lbl">Group ok</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--amber)">${nd}</div><div class="stat-lbl">Need vote</div></div>`;
+}
+
+function setFilter(f, btn) {
+  picksFilter = f;
+  document.querySelectorAll('.filter-bar .fpill').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderPicks();
+}
+
+function renderPicks() {
+  const grid = document.getElementById('picks-grid');
+  let list = allPicks.filter(p => {
+    if (picksFilter==='want')  return myVotes[p.id]==='want';
+    if (picksFilter==='group') return p.group_ok;
+    if (picksFilter==='movie') return p.type==='movie';
+    if (picksFilter==='food')  return p.type==='food';
+    if (picksFilter==='place') return p.type==='place';
+    if (picksFilter==='event') return p.type==='event';
+    return true;
+  });
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty"><div class="empty-icon">🍿</div>No picks here yet!</div>';
+    return;
+  }
+  grid.innerHTML = list.map(p => {
+    const tc     = TC[p.type] || TC.link;
+    const labels = VOTE_LABELS[p.type] || VOTE_LABELS.link;
+    const seen   = (p.votes||[]).filter(v=>v.status==='seen');
+    const want   = (p.votes||[]).filter(v=>v.status==='want');
+    const skip   = (p.votes||[]).filter(v=>v.status==='skip');
+    const mv     = myVotes[p.id] || '';
+    const chips  = [
+      ...seen.map(v=>`<span class="vc vc-seen">✓ ${sn(v.first_name||'?')}</span>`),
+      ...want.map(v=>`<span class="vc vc-want">★ ${sn(v.first_name||'?')}</span>`),
+      ...skip.map(v=>`<span class="vc vc-skip">✕ ${sn(v.first_name||'?')}</span>`),
+    ].join('') || '<span style="font-size:11px;color:var(--hint);font-style:italic">No votes yet</span>';
+
+    // Thumbnail — real image or emoji
+    const thumbContent = p.image_url
+      ? `<img src="${esc(p.image_url)}" alt="" onerror="this.style.display='none'">`
+        + `<span class="card-thumb-emoji" style="display:none">${tc.emoji}</span>`
+      : `<span class="card-thumb-emoji">${tc.emoji}</span>`;
+
+    const linkBtn = p.url
+      ? `<a href="${esc(p.url)}" target="_blank" class="card-link">🔗 Open link ↗</a>`
+      : '';
+    const okBadge = p.group_ok ? `<div class="card-ok">✓ Group ok</div>` : '';
+
+    return `<div class="pick-card" id="pc-${p.id}">
+      <div class="card-thumb" style="background:${tc.grad}">
+        ${thumbContent}
+        <div class="card-thumb-overlay"></div>
+        <div class="card-thumb-info">
+          <div class="card-type-badge" style="background:${tc.tb};color:${tc.tt}">${tc.lbl}</div>
+          <div class="card-thumb-title">${esc(p.title)}</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-desc">${esc(p.description||'')}</div>
+        <div class="card-by">Added by ${esc(p.added_by_name||'someone')}</div>
+        ${linkBtn}${okBadge}
+        <div class="voters-row">${chips}<span class="vote-count">${seen.length+want.length+skip.length} voted</span></div>
+      </div>
+      <div class="vote-btns">
+        <button class="vbtn ${mv==='seen'?'on-seen':''}" onclick="castVote(${p.id},'seen')">✓ ${esc(labels.seen)}</button>
+        <button class="vbtn ${mv==='want'?'on-want':''}" onclick="castVote(${p.id},'want')">★ ${esc(labels.want)}</button>
+        <button class="vbtn ${mv==='skip'?'on-skip':''}" onclick="castVote(${p.id},'skip')">✕ ${esc(labels.skip)}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function castVote(pickId, status) {
+  try {
+    const r    = await fetch(BASE+'/api/vote', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-telegram-init-data':'test','x-user-id':String(currentUser?.id||'0'),'x-user-name':currentUser?.name||'User'},
+      body: JSON.stringify({pickId, status})
+    });
+    const data = await r.json();
+    const idx  = allPicks.findIndex(p=>p.id===pickId);
+    if (idx>=0) { allPicks[idx].votes=data.votes; allPicks[idx].my_vote=data.my_vote; allPicks[idx].group_ok=data.group_ok; }
+    myVotes[pickId] = data.my_vote||'';
+    renderStats(); renderPicks(); renderPlan();
+    showToast(data.my_vote ? 'Vote saved ✓' : 'Vote removed');
+    if (data.group_ok) setTimeout(()=>showToast('✅ Group ok!'),600);
+  } catch(e) { showToast('Vote failed — please retry'); }
+}
+
+// ── PLAN ──────────────────────────────────────────────────
+function setPlanFilter(f, btn) {
+  planFilter = f;
+  document.querySelectorAll('#sec-plan .fpill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderPlan();
+}
+
+function renderPlan() {
+  const el = document.getElementById('plan-cards');
+  const types = ['movie','show','food','place','event','link'];
+  let filtered = allPicks.filter(p => {
+    if (planFilter==='ok')      return p.group_ok && !(p.votes||[]).some(v=>v.status==='skip');
+    if (planFilter==='skip')    return (p.votes||[]).some(v=>v.status==='skip');
+    if (planFilter==='pending') return !(p.votes||[]).length;
+    if (types.includes(planFilter)) return p.type===planFilter;
+    return true;
+  });
+  if (!filtered.length) { el.innerHTML='<div class="empty"><div class="empty-icon">📋</div>Nothing here yet</div>'; return; }
+  const groups = {}; types.forEach(t=>groups[t]=[]);
+  filtered.forEach(p=>(groups[p.type]||groups.link).push(p));
+  const tn={movie:'Movies',show:'Shows',food:'Restaurants',place:'Places',event:'Events',link:'Links'};
+  let html='';
+  types.forEach(t=>{
+    if (!groups[t].length) return;
+    const tc=TC[t]||TC.link;
+    html+=`<div class="plan-group-title">${tc.emoji} ${tn[t]}<span class="plan-count">${groups[t].length}</span></div>`;
+    groups[t].forEach(p=>{
+      const v1=(p.votes||[]).filter(v=>v.status==='seen');
+      const v2=(p.votes||[]).filter(v=>v.status==='want');
+      const v3=(p.votes||[]).filter(v=>v.status==='skip');
+      const badge = p.group_ok ? '<span class="pb pb-ok">✓ Group ok</span>'
+        : v3.length ? `<span class="pb pb-skip">✕ ${v3.length} skip</span>`
+        : !p.votes?.length ? '<span class="pb pb-wait">⏳ no votes</span>' : '';
+      const chips = [
+        ...v1.map(v=>`<span class="pvc pvc-ok">✓ ${sn(v.first_name)}</span>`),
+        ...v2.map(v=>`<span class="pvc pvc-want">★ ${sn(v.first_name)}</span>`),
+        ...v3.map(v=>`<span class="pvc pvc-skip">✕ ${sn(v.first_name)}</span>`),
+      ].join('');
+      const titleEl = p.url
+        ? `<a href="${esc(p.url)}" target="_blank">${esc(p.title||'Untitled')}</a>`
+        : esc(p.title||'Untitled');
+      const thumbContent = p.image_url
+        ? `<img src="${esc(p.image_url)}" alt="" onerror="this.style.display='none'"><span class="pcard-thumb-emoji" style="display:none">${tc.emoji}</span>`
+        : `<span class="pcard-thumb-emoji">${tc.emoji}</span>`;
+      html+=`<div class="pcard">
+        <div class="pcard-thumb" style="background:${tc.grad}">${thumbContent}</div>
+        <div class="pcard-body">
+          <div class="pcard-title">${titleEl}</div>
+          <div class="pcard-meta">${esc(p.description||'')} · by ${esc(p.added_by_name||'someone')}</div>
+          <div class="pcard-badges">${badge}</div>
+          <div class="pcard-voters">${chips}</div>
+        </div></div>`;
+    });
+  });
+  el.innerHTML = html;
+}
+
+// ── ADD PICK ──────────────────────────────────────────────
+let addPickType = 'movie';
+let addFetchTimer = null;
+
+function setAddCat(btn) {
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  addPickType = btn.dataset.type;
+}
+
+function openAdd() {
+  if (!currentGroupId) { showToast('Select a squad first'); return; }
+  document.getElementById('add-modal').classList.add('open');
+  document.getElementById('add-url').focus();
+}
+function closeAdd() {
+  document.getElementById('add-modal').classList.remove('open');
+  document.getElementById('add-url').value = '';
+  document.getElementById('add-title').value = '';
+  document.getElementById('add-preview').style.display = 'none';
+}
+
+// Auto-fetch metadata when URL is pasted
+document.getElementById('add-url').addEventListener('input', function() {
+  clearTimeout(addFetchTimer);
+  const url = this.value.trim();
+  if (!url.startsWith('http')) { document.getElementById('add-preview').style.display = 'none'; return; }
+  addFetchTimer = setTimeout(() => fetchAddPreview(url), 700);
+});
+
+async function fetchAddPreview(url) {
+  try {
+    // Use the picks endpoint just to get metadata — we pass a fake group and check the response
+    const r = await fetch(BASE + '/api/meta?url=' + encodeURIComponent(url));
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.title) {
+      document.getElementById('add-title').value = d.title;
+      document.getElementById('add-title-hint').textContent = '(auto-filled from link)';
+      const prev = document.getElementById('add-preview');
+      document.getElementById('add-preview-title').textContent = d.title;
+      document.getElementById('add-preview-desc').textContent  = d.description || '';
+      const img = document.getElementById('add-preview-img');
+      if (d.imageUrl) { img.src = d.imageUrl; img.style.display = 'block'; }
+      else { img.style.display = 'none'; }
+      prev.style.display = 'flex';
+      // Auto-detect category from URL
+      const autoType = detectTypeFromUrl(url);
+      if (autoType) {
+        addPickType = autoType;
+        document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('on', b.dataset.type === autoType));
+      }
+    }
+  } catch(e) {}
+}
+
+function detectTypeFromUrl(url) {
+  const u = url.toLowerCase();
+  if (/imdb\.com|letterboxd\.com/.test(u))           return 'movie';
+  if (/netflix\.com|primevideo\.com|hotstar\.com/.test(u)) return 'show';
+  if (/yelp\.com|zomato\.com|swiggy\.com|doordash\.com|ubereats\.com/.test(u)) return 'food';
+  if (/maps\.google|goo\.gl\/maps|tripadvisor\.com/.test(u)) return 'place';
+  if (/eventbrite\.com|meetup\.com|ticketmaster\.com/.test(u)) return 'event';
+  return null;
+}
+
+async function saveAdd() {
+  const url   = document.getElementById('add-url').value.trim();
+  const title = document.getElementById('add-title').value.trim();
+  if (!url && !title) { showToast('Enter a link or title'); return; }
+  if (!currentGroupId) { showToast('Select a squad first'); return; }
+  const btn = document.getElementById('add-save');
+  btn.disabled = true; btn.textContent = 'Adding...';
+  try {
+    const r = await fetch(BASE + '/api/picks', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'x-telegram-init-data':'test',
+                 'x-user-id': String(currentUser?.id||'0'), 'x-user-name': currentUser?.name||'User',
+                 'x-chat-id': currentGroupId },
+      body: JSON.stringify({ url: url || title, groupId: currentGroupId, manualType: addPickType, manualTitle: title || undefined })
+    });
+    const data = await r.json();
+    if (data.pick) { allPicks.unshift({ ...data.pick, votes:[], my_vote:'', group_ok:false }); }
+    closeAdd();
+    picksFilter = 'all';
+    document.querySelectorAll('.filter-bar .fpill').forEach((b,i) => b.classList.toggle('on', i===0));
+    renderStats(); renderPicks(); renderPlan();
+    showToast('Pick added! 🎉');
+  } catch(e) { showToast('Could not add pick'); }
+  finally { btn.disabled = false; btn.textContent = 'Add to Squad'; }
+}
+
+// ── GROUP PANEL ───────────────────────────────────────────
+let managingGroupId   = null;
+let managingGroupIsWeb = false;
+
+function openGroupPanel(tab) {
+  closeDrawer();
+  document.getElementById('group-panel').classList.add('open');
+  gpTab(tab || 'manage', document.querySelector('#group-panel .gp-tab'));
+  if (!tab || tab === 'manage') loadSquadList();
+}
+function closeGroupPanel() { document.getElementById('group-panel').classList.remove('open'); }
+
+function gpTab(tab, btn) {
+  document.querySelectorAll('.gp-tab').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  document.querySelectorAll('.gp-pane').forEach(p => { p.classList.remove('on'); p.style.display = 'none'; });
+  const pane = document.getElementById('gp-' + tab);
+  if (pane) { pane.classList.add('on'); pane.style.display = 'block'; }
+  if (tab === 'manage')   loadSquadList();
+  if (tab === 'telegram') loadLinkedTelegramGroups();
+}
+
+// ── SQUAD LIST (manage tab) ───────────────────────────────
+async function loadSquadList() {
+  const el = document.getElementById('squad-list');
+  el.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px">Loading...</div>';
+  try {
+    const r = await fetch(BASE + '/api/groups/mine');
+    const d = await r.json();
+    const groups = d.groups || [];
+    if (!groups.length) {
+      el.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px">
+        No squads yet.<br><button onclick="gpTab('google',document.querySelectorAll('.gp-tab')[1])" style="margin-top:8px;color:var(--blue);background:none;border:none;cursor:pointer;font-weight:600;font-size:13px">+ Create your first squad</button>
+      </div>`;
+      return;
+    }
+    const webGroups = groups.filter(g =>  g.is_web_group);
+    const tgGroups  = groups.filter(g => !g.is_web_group);
+    let html = '';
+
+    if (webGroups.length) {
+      html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">🌐 Google Squads</div>`;
+      webGroups.forEach(g => {
+        html += `<div style="display:flex;align-items:center;gap:10px;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:11px 14px;margin-bottom:7px">
+          <span style="font-size:18px">🌐</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.title)}</div>
+            <div style="font-size:11px;color:var(--muted)">Google Squad</div>
+          </div>
+          <button onclick="openSquadDetail('${g.id}','${esc(g.title)}',true)" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-b)">Manage</button>
+        </div>`;
+      });
+    }
+    if (tgGroups.length) {
+      if (webGroups.length) html += `<div style="height:8px"></div>`;
+      html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">💬 Telegram Groups</div>`;
+      tgGroups.forEach(g => {
+        html += `<div style="display:flex;align-items:center;gap:10px;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:11px 14px;margin-bottom:7px">
+          <span style="font-size:18px">💬</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.title)}</div>
+            <div style="font-size:11px;color:var(--muted)">Telegram Group</div>
+          </div>
+          <button onclick="openSquadDetail('${g.id}','${esc(g.title)}',false)" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-b)">View</button>
+        </div>`;
+      });
+    }
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:.5rem">Failed to load squads</div>'; }
+}
+
+// ── SQUAD DETAIL VIEW ─────────────────────────────────────
+async function openSquadDetail(groupId, title, isWebGroup) {
+  managingGroupId    = groupId;
+  managingGroupIsWeb = isWebGroup;
+
+  document.getElementById('gp-manage').classList.remove('on');
+  document.getElementById('gp-manage').style.display = 'none';
+  const detail = document.getElementById('gp-squad-detail');
+  detail.classList.add('on'); detail.style.display = 'block';
+
+  document.getElementById('detail-name').value = title;
+  document.getElementById('detail-icon').textContent = isWebGroup ? '🌐' : '💬';
+  document.getElementById('detail-type-label').textContent = isWebGroup ? 'Google Squad' : 'Telegram Group';
+
+  // Rename and delete only available for web groups (owner-managed)
+  document.getElementById('detail-rename-btn').style.display = isWebGroup ? 'block' : 'none';
+  document.getElementById('detail-delete-section').style.display = isWebGroup ? 'block' : 'none';
+  document.getElementById('detail-invite-section').style.display = isWebGroup ? 'block' : 'none';
+
+  // Load members
+  await loadSquadMembers(groupId);
+}
+
+async function loadSquadMembers(groupId) {
+  const el = document.getElementById('detail-members');
+  el.innerHTML = '<div style="font-size:13px;color:var(--muted)">Loading members...</div>';
+  try {
+    const r = await fetch(BASE + `/api/groups/${groupId}/members`);
+    const d = await r.json();
+    const members = d.members || [];
+    if (!members.length) { el.innerHTML = '<div style="font-size:13px;color:var(--muted)">No members yet</div>'; return; }
+    el.innerHTML = members.map(m => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--beige2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--navy);flex-shrink:0">${(m.name||'?').charAt(0).toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(m.name||'Member')}</div>
+          <div style="font-size:11px;color:var(--muted)">${esc(m.email||'')} ${m.status==='invited'?'<span style="color:#D97706;font-weight:600">· Pending</span>':''}</div>
+        </div>
+        ${managingGroupIsWeb ? `<button onclick="removeMemberFromSquad('${m.memberId}')" style="background:none;border:1px solid rgba(220,38,38,.2);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--red);cursor:pointer;font-family:var(--font-b)">Remove</button>` : ''}
+      </div>`).join('');
+  } catch(e) { el.innerHTML = '<div style="font-size:13px;color:var(--red)">Failed to load members</div>'; }
+}
+
+async function renameCurrentSquad() {
+  const name = document.getElementById('detail-name').value.trim();
+  const msg  = document.getElementById('detail-msg');
+  if (!name) { showMsg(msg, 'Enter a name', 'error'); return; }
+  try {
+    const r = await fetch(BASE + `/api/groups/${managingGroupId}/rename`, {
+      method: 'PATCH', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ name })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showMsg(msg, 'Renamed! ✅', 'ok');
+      await loadGroups(false);
+    } else { showMsg(msg, d.error || 'Failed to rename', 'error'); }
+  } catch(e) { showMsg(msg, 'Error renaming squad', 'error'); }
+}
+
+async function deleteCurrentSquad() {
+  const msg = document.getElementById('detail-msg');
+  if (!confirm('Delete this squad? All its picks will also be deleted. This cannot be undone.')) return;
+  try {
+    const r = await fetch(BASE + `/api/groups/${managingGroupId}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.ok) {
+      closeGroupPanel();
+      // If we were viewing this group, clear it
+      if (String(currentGroupId) === String(managingGroupId)) {
+        currentGroupId = null;
+        history.replaceState({}, '', '/dashboard');
+      }
+      await loadGroups(false);
+      showToast('Squad deleted');
+    } else { showMsg(msg, d.error || 'Failed to delete', 'error'); }
+  } catch(e) { showMsg(msg, 'Error deleting squad', 'error'); }
+}
+
+async function removeMemberFromSquad(memberId) {
+  if (!confirm('Remove this member from the squad?')) return;
+  try {
+    const r = await fetch(BASE + `/api/groups/${managingGroupId}/members/${memberId}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.ok) { await loadSquadMembers(managingGroupId); showToast('Member removed'); }
+    else showToast(d.error || 'Could not remove member');
+  } catch(e) { showToast('Error removing member'); }
+}
+
+async function inviteToCurrentSquad() {
+  const email = document.getElementById('detail-invite-email').value.trim();
+  const msg   = document.getElementById('detail-invite-msg');
+  if (!email || !/\S+@\S+\.\S+/.test(email)) { showMsg(msg, 'Enter a valid email', 'error'); return; }
+  try {
+    const r = await fetch(BASE + '/api/groups/invite', {
+      method: 'POST', headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ groupId: managingGroupId, email })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showMsg(msg, `${email} invited ✅`, 'ok');
+      document.getElementById('detail-invite-email').value = '';
+      await loadSquadMembers(managingGroupId);
+    } else { showMsg(msg, d.error || 'Could not invite', 'error'); }
+  } catch(e) { showMsg(msg, 'Error sending invite', 'error'); }
+}
+
+// ── ALREADY-LINKED TELEGRAM GROUPS ───────────────────────
+async function loadLinkedTelegramGroups() {
+  try {
+    const r = await fetch(BASE + '/api/groups/mine');
+    const d = await r.json();
+    const tgGroups = (d.groups || []).filter(g => !g.is_web_group);
+    const listEl = document.getElementById('linked-tg-list');
+    const itemsEl = document.getElementById('linked-tg-items');
+    if (!tgGroups.length) { listEl.style.display = 'none'; return; }
+    listEl.style.display = 'block';
+    itemsEl.innerHTML = tgGroups.map(g => `
+      <div style="display:flex;align-items:center;gap:10px;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:9px 12px">
+        <span>💬</span>
+        <div style="flex:1;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.title)}</div>
+        <div style="font-size:10px;color:var(--muted);white-space:nowrap">${g.id}</div>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+async function createSquad() {
+  const name = document.getElementById('gp-name').value.trim();
+  const msg  = document.getElementById('gp-create-msg');
+  if (!name) { showMsg(msg, 'Please enter a squad name', 'error'); return; }
+  const btn = document.querySelector('#gp-google .modal-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
+  try {
+    const r = await fetch(BASE + '/api/groups/create', {
+      method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ name })
+    });
+    const d = await r.json();
+    if (d.ok && d.group) {
+      showMsg(msg, `Squad "${name}" created! 🎉`, 'ok');
+      document.getElementById('gp-name').value = '';
+      currentGroupId = String(d.group.id);
+      history.pushState({}, '', `/dashboard?groupId=${currentGroupId}`);
+      closeGroupPanel();
+      await loadGroups(false);
+      showToast(`"${name}" created! Now showing its picks.`);
+    } else { showMsg(msg, d.error || 'Failed to create', 'error'); }
+  } catch(e) { showMsg(msg, 'Error creating squad', 'error'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = 'Create Google squad'; } }
+}
+
+async function linkTelegram() {
+  const tgId   = document.getElementById('gp-tg-id').value.trim();
+  const tgName = document.getElementById('gp-tg-name').value.trim() || 'Telegram Group';
+  const msg    = document.getElementById('gp-tg-msg');
+  if (!tgId) { showMsg(msg, 'Please enter the Telegram Group ID', 'error'); return; }
+  const btn = document.querySelector('#gp-telegram .modal-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'Linking...'; }
+  try {
+    const r = await fetch(BASE + '/api/groups/link-telegram', {
+      method: 'POST', headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ telegramGroupId: tgId, name: tgName })
+    });
+    const d = await r.json();
+    if (d.ok && d.group) {
+      showMsg(msg, `"${tgName}" linked! ✅`, 'ok');
+      document.getElementById('gp-tg-id').value = '';
+      document.getElementById('gp-tg-name').value = '';
+      currentGroupId = String(d.group.id);
+      history.pushState({}, '', `/dashboard?groupId=${currentGroupId}`);
+      await loadGroups(false);
+      await loadLinkedTelegramGroups();
+      showToast(`"${tgName}" linked!`);
+    } else { showMsg(msg, d.error || 'Failed to link group', 'error'); }
+  } catch(e) { showMsg(msg, 'Error linking group', 'error'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = 'Link Telegram group'; } }
+}
+
+async function inviteMember() {
+  // Legacy — now handled by inviteToCurrentSquad
+  const groupId = currentGroupId;
+  const email   = document.getElementById('gp-inv-email')?.value?.trim();
+  const msg     = document.getElementById('gp-inv-msg');
+  if (!groupId || !email) return;
+  try {
+    const r = await fetch(BASE + '/api/groups/invite', {
+      method: 'POST', headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ groupId, email })
+    });
+    const d = await r.json();
+    if (d.ok) showMsg(msg, `${email} invited ✅`, 'ok');
+    else showMsg(msg, d.error || 'Could not invite', 'error');
+  } catch(e) { showMsg(msg, 'Error', 'error'); }
+}
+
+async function loadInviteGroups() {} // no-op — replaced by squad detail view
+
+function showMsg(el, text, type) {
+  el.textContent = text; el.style.display = 'block';
+  el.style.cssText = `display:block;font-size:13px;padding:8px 12px;border-radius:8px;margin-top:8px;
+    color:${type==='ok'?'#166534':'#DC2626'};background:${type==='ok'?'#F0FDF4':'#FEF2F2'};
+    border:1px solid ${type==='ok'?'#BBF7D0':'#FECACA'}`;
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+// ── TRENDING ──────────────────────────────────────────────
+var IMDB_FB = [
+  {title:'The Shawshank Redemption',year:'1994',rating:'9.3',genre:'Drama',imdb_url:'https://www.imdb.com/title/tt0111161/'},
+  {title:'The Dark Knight',year:'2008',rating:'9.0',genre:'Action',imdb_url:'https://www.imdb.com/title/tt0468569/'},
+  {title:'Inception',year:'2010',rating:'8.8',genre:'Sci-fi',imdb_url:'https://www.imdb.com/title/tt1375666/'},
+  {title:'Interstellar',year:'2014',rating:'8.7',genre:'Sci-fi',imdb_url:'https://www.imdb.com/title/tt0816692/'},
+  {title:'Parasite',year:'2019',rating:'8.5',genre:'Thriller',imdb_url:'https://www.imdb.com/title/tt6751668/'},
+];
+var STREAM_FB = {
+  netflix:[
+    {title:'Adolescence',score:'4.8',genre:'British Drama',badge:'N',badgeColor:'#E50914',url:'https://www.netflix.com/search?q=Adolescence'},
+    {title:'Stranger Things S5',score:'4.9',genre:'Sci-fi Horror',badge:'N',badgeColor:'#E50914',url:'https://www.netflix.com/search?q=Stranger+Things'},
+    {title:'Squid Game S3',score:'4.6',genre:'Korean Thriller',badge:'N',badgeColor:'#E50914',url:'https://www.netflix.com/search?q=Squid+Game'},
+    {title:'Kota Factory S3',score:'4.7',genre:'Hindi Drama',badge:'N',badgeColor:'#E50914',url:'https://www.netflix.com/search?q=Kota+Factory'},
+  ],
+  prime:[
+    {title:'Panchayat S4',score:'4.9',genre:'Hindi Comedy',badge:'P',badgeColor:'#00A8E0',url:'https://www.primevideo.com/search?phrase=Panchayat'},
+    {title:'The Boys S5',score:'4.7',genre:'Superhero Dark',badge:'P',badgeColor:'#00A8E0',url:'https://www.primevideo.com/search?phrase=The+Boys'},
+    {title:'Fallout S2',score:'4.8',genre:'Post-apocalyptic',badge:'P',badgeColor:'#00A8E0',url:'https://www.primevideo.com/search?phrase=Fallout'},
+    {title:'Reacher S3',score:'4.5',genre:'Action Thriller',badge:'P',badgeColor:'#00A8E0',url:'https://www.primevideo.com/search?phrase=Reacher'},
+  ]
+};
+var FOOD_DATA = [
+  {title:"Vij's Restaurant",emoji:'🍛',desc:'Indian · West Broadway · $$$',score:'4.8'},
+  {title:'Ask for Luigi',emoji:'🍝',desc:'Italian · Coal Harbour · $$$',score:'4.7'},
+  {title:'Phnom Penh',emoji:'🍜',desc:'Cambodian · Downtown · $$',score:'4.6'},
+  {title:'Miku Restaurant',emoji:'🍣',desc:'Aburi Sushi · Downtown · $$$$',score:'4.5'},
+  {title:'Savio Volpe',emoji:'🍕',desc:'Italian · Fraserhood · $$$',score:'4.5'},
+];
+var EVENT_DATA = [
+  {title:'Vancouver Diwali Festival',emoji:'🪔',desc:'Oct 25 · Surrey Central · Free'},
+  {title:'AR Rahman Live',emoji:'🎵',desc:'Rogers Arena · Nov 2 · From $85'},
+  {title:'YVR Food Fest',emoji:'🍲',desc:'Nov 8-10 · PNE Forum · $15'},
+  {title:'Night Market Surrey',emoji:'🏮',desc:'Oct 18-20 · Surrey Pavilion · Free'},
+  {title:'Bhangra Showdown',emoji:'💃',desc:'Oct 26 · Westcoast Ballroom'},
+];
+
+function setTrendCat(cat,btn) {
+  document.querySelectorAll('.tcb-btn').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
+  document.querySelectorAll('.trend-cat-section').forEach(s=>s.classList.toggle('on',s.id==='tcat-'+cat));
+}
+
+function loadTrending() {
+  // Netflix + Prime
+  fetch(BASE+'/api/trending/streaming')
+    .then(r=>r.json())
+    .then(data=>{
+      const nf = (data.netflix&&data.netflix.length)?data.netflix:STREAM_FB.netflix;
+      const pv = (data.prime&&data.prime.length)?data.prime:STREAM_FB.prime;
+      renderStreamRow('tr-netflix', nf, 'nf-live');
+      renderStreamRow('tr-prime',   pv, 'pv-live');
+      if (data.source==='db') {
+        if (nf.length) document.getElementById('nf-live').style.display='inline';
+        if (pv.length) document.getElementById('pv-live').style.display='inline';
+      }
+    }).catch(()=>{ renderStreamRow('tr-netflix',STREAM_FB.netflix,'nf-live'); renderStreamRow('tr-prime',STREAM_FB.prime,'pv-live'); });
+  // IMDb
+  fetch(BASE+'/api/trending/imdb?category=top_movies')
+    .then(r=>r.json())
+    .then(data=>{
+      const items=(data.data&&data.data.length)?data.data:IMDB_FB;
+      renderImdbRow('tr-imdb', items);
+      if (data.data&&data.data.length) document.getElementById('imdb-live').style.display='inline';
+    }).catch(()=>renderImdbRow('tr-imdb',IMDB_FB));
+  // Static food & events
+  renderWideRow('tr-food',   FOOD_DATA);
+  renderWideRow('tr-events', EVENT_DATA);
+}
+
+function renderStreamRow(elId, items, liveId) {
+  var el = document.getElementById(elId); if(!el)return;
+  var html = '<div class="trend-row">';
+  items.slice(0,10).forEach(function(it,i){
+    var bc = it.badgeColor||'#888';
+    var imgContent = it.image_url
+      ? `<img src="${esc(it.image_url)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`
+      : '📺';
+    html += `<div class="tc-poster"><div class="tc-poster-img" style="background:#1a0a2e">${imgContent}
+      <div class="tc-stream-badge" style="background:${bc}">${esc(it.badge||'')}</div>
+      <div class="tc-rank-badge">#${i+1}</div>
+      ${it.score?`<div class="tc-score">⭐ ${esc(it.score)}</div>`:''}
+    </div><div class="tc-poster-body">
+      <div class="tc-poster-title">${esc(it.title)}</div>
+      <div class="tc-poster-meta">${esc(it.genre||'')}</div>
+    </div><div class="tc-poster-actions">
+      <button class="tc-pa-btn" onclick="addTrendPick('${esc(it.title)}','show')" style="color:var(--blue)">+ Add</button>
+      ${it.url?`<button class="tc-pa-btn" onclick="window.open('${esc(it.url)}','_blank')" style="color:${bc}">▶ Watch</button>`:''}
+    </div></div>`;
+  });
+  el.innerHTML = html + '</div>';
+}
+
+function renderImdbRow(elId, items) {
+  var el = document.getElementById(elId); if(!el)return;
+  var html = '<div class="trend-row">';
+  items.slice(0,10).forEach(function(it,i){
+    var imgContent = it.image_url
+      ? `<img src="${esc(it.image_url)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`
+      : '🎬';
+    html += `<div class="tc-poster"><div class="tc-poster-img" style="background:#1a0a2e">${imgContent}
+      <div class="tc-stream-badge" style="background:#F5C518;color:#000;font-weight:900;font-size:7px">IMDb</div>
+      <div class="tc-rank-badge">#${i+1}</div>
+      ${it.rating?`<div class="tc-score">⭐ ${esc(it.rating)}</div>`:''}
+    </div><div class="tc-poster-body">
+      <div class="tc-poster-title">${esc(it.title)}</div>
+      <div class="tc-poster-meta">${esc(it.genre||it.year||'')}</div>
+    </div><div class="tc-poster-actions">
+      <button class="tc-pa-btn" onclick="addTrendPick('${esc(it.title)}','movie')" style="color:var(--blue)">+ Add</button>
+      ${it.imdb_url?`<button class="tc-pa-btn" onclick="window.open('${esc(it.imdb_url)}','_blank')" style="color:#b7950b">IMDb</button>`:''}
+    </div></div>`;
+  });
+  el.innerHTML = html + '</div>';
+}
+
+function renderWideRow(elId, items) {
+  var el = document.getElementById(elId); if(!el)return;
+  el.innerHTML = items.slice(0,10).map(function(it,i){
+    return `<div class="tc-wide">
+      <div class="tc-wide-img">${it.emoji||'🎭'}</div>
+      <div class="tc-wide-body">
+        <div class="tc-wide-title">${esc(it.title)}</div>
+        <div class="tc-wide-meta">${esc(it.desc||it.description||'')}</div>
+        ${it.score?`<div style="font-size:9px;color:var(--amber);font-weight:700">⭐ ${esc(it.score)}</div>`:''}
+      </div>
+      <div class="tc-poster-actions">
+        <button class="tc-pa-btn" onclick="addTrendPick('${esc(it.title)}','${elId.includes('food')?'food':'event'}')" style="color:var(--blue)">+ Add</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addTrendPick(title, type) {
+  if (!currentGroupId) { showToast('Select a squad first'); return; }
+  document.getElementById('add-url').value = title;
+  openAdd();
+  showToast(`"${title}" ready to add`);
+}
+
+// ── SIGN OUT ──────────────────────────────────────────────
+async function doSignOut() {
+  try { await fetch(BASE+'/api/auth/logout',{method:'POST'}); } catch(e){}
+  localStorage.removeItem('tg_user');
+  window.location.href = '/login';
+}
+
+// ── UTILS ─────────────────────────────────────────────────
+function sn(n){ return String(n||'?').trim().slice(0,4); }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+let _tt;
+function showToast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(()=>t.classList.remove('show'),2300);
+}
+document.getElementById('add-url').addEventListener('keydown',e=>{ if(e.key==='Enter') saveAdd(); });
+</script>
 </body>
 </html>
