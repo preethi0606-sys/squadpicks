@@ -77,76 +77,79 @@ function extractImdbId(url) {
   return m ? m[1] : null;
 }
 
-// ─── FETCH IMDB METADATA ───────────────────────────────────
+// ─── TMDB LOOKUP ───────────────────────────────────────────
+// Used by fetchMeta for IMDB URLs, and by the Netflix scraper for poster enrichment.
+// Requires TMDB_API_KEY env var (free read-access token from themoviedb.org/settings/api).
+
+async function fetchTmdbByImdbId(imdbId) {
+  if (!process.env.TMDB_API_KEY) return null;
+  try {
+    const fetch = (...a) => import('node-fetch').then(m => m.default(...a));
+    const r = await fetch(
+      `https://api.themoviedb.org/3/find/${imdbId}?external_source=imdb_id`,
+      {
+        headers: { 'Authorization': `Bearer ${process.env.TMDB_API_KEY}`, 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(8000)
+      }
+    );
+    if (!r.ok) { console.warn('[TMDB] HTTP', r.status); return null; }
+    const d = await r.json();
+    const item = (d.movie_results && d.movie_results[0]) || (d.tv_results && d.tv_results[0]);
+    if (!item) { console.warn('[TMDB] No result for', imdbId); return null; }
+
+    const title  = item.title || item.name || '';
+    const year   = (item.release_date || item.first_air_date || '').slice(0, 4);
+    const rating = item.vote_average ? `⭐ ${item.vote_average.toFixed(1)}` : '';
+    const imgUrl = item.poster_path  ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : '';
+    const desc   = [item.overview?.slice(0, 150), year && `(${year})`, rating].filter(Boolean).join(' · ');
+
+    console.log('[TMDB] OK:', title, '| poster:', imgUrl ? 'yes' : 'no');
+    return { title, description: desc, imageUrl: imgUrl, sourceUrl: null };
+  } catch (e) {
+    console.warn('[TMDB] Error:', e.message);
+    return null;
+  }
+}
+
+// Search TMDB by title — used when we only have a title (no IMDB ID)
+async function fetchTmdbByTitle(title, type = 'multi') {
+  if (!process.env.TMDB_API_KEY || !title) return null;
+  try {
+    const fetch = (...a) => import('node-fetch').then(m => m.default(...a));
+    const q = encodeURIComponent(title.trim());
+    const r = await fetch(
+      `https://api.themoviedb.org/3/search/${type}?query=${q}&include_adult=false&language=en-US&page=1`,
+      {
+        headers: { 'Authorization': `Bearer ${process.env.TMDB_API_KEY}`, 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(8000)
+      }
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    const item = d.results && d.results[0];
+    if (!item) return null;
+    return item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ─── FETCH IMDB/MOVIE METADATA ─────────────────────────────
 // Strategy order:
-//   1. OMDB API       — needs OMDB_API_KEY env var (free 1000/day at omdbapi.com)
-//   2. TMDB API       — needs TMDB_API_KEY env var (free, unlimited at themoviedb.org)
-//   3. Cheerio scrape — unreliable from cloud IPs, kept as last resort
-// Always falls back to titleFromUrl() if all strategies fail.
+//   1. TMDB API (by IMDB ID)  — needs TMDB_API_KEY, reliable, good images
+//   2. Cheerio scrape          — last resort, often blocked from cloud IPs
 
 async function fetchImdbMeta(url) {
   const imdbId = extractImdbId(url);
   const fetch  = (...a) => import('node-fetch').then(m => m.default(...a));
 
-  // ── Strategy 1: OMDB API ──────────────────────────────────
-  if (imdbId && process.env.OMDB_API_KEY) {
-    try {
-      const r = await fetch(
-        `https://www.omdbapi.com/?i=${imdbId}&apikey=${process.env.OMDB_API_KEY}`,
-        { signal: AbortSignal.timeout(8000) }
-      );
-      const d = await r.json();
-      if (d.Response === 'True' && d.Title) {
-        const descParts = [];
-        if (d.Plot   && d.Plot   !== 'N/A') descParts.push(d.Plot.slice(0, 150));
-        if (d.Year   && d.Year   !== 'N/A') descParts.push(`(${d.Year})`);
-        if (d.imdbRating && d.imdbRating !== 'N/A') descParts.push(`⭐ ${d.imdbRating}`);
-        if (d.Genre  && d.Genre  !== 'N/A') descParts.push(d.Genre.split(',')[0].trim());
-        console.log('[OMDB] OK:', d.Title);
-        return {
-          title:       d.Title,
-          description: descParts.join(' · '),
-          imageUrl:    d.Poster !== 'N/A' ? d.Poster : '',
-          sourceUrl:   url,
-        };
-      }
-      console.warn('[OMDB] No result:', d.Error || 'unknown');
-    } catch(e) {
-      console.warn('[OMDB] Error:', e.message);
-    }
+  // ── Strategy 1: TMDB by IMDB ID ──────────────────────────
+  if (imdbId) {
+    const tmdb = await fetchTmdbByImdbId(imdbId);
+    if (tmdb && tmdb.title) return { ...tmdb, sourceUrl: url };
   }
 
-  // ── Strategy 2: TMDB API (find by IMDB ID) ────────────────
-  if (imdbId && process.env.TMDB_API_KEY) {
-    try {
-      // TMDB's /find endpoint resolves an IMDB ID to a TMDB record
-      const r = await fetch(
-        `https://api.themoviedb.org/3/find/${imdbId}?external_source=imdb_id`,
-        {
-          headers: { 'Authorization': `Bearer ${process.env.TMDB_API_KEY}`, 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(8000)
-        }
-      );
-      const d = await r.json();
-      // Results can be in movie_results or tv_results
-      const item = (d.movie_results && d.movie_results[0]) || (d.tv_results && d.tv_results[0]);
-      if (item && (item.title || item.name)) {
-        const title   = item.title || item.name;
-        const year    = (item.release_date || item.first_air_date || '').slice(0, 4);
-        const rating  = item.vote_average ? `⭐ ${item.vote_average.toFixed(1)}` : '';
-        const imgPath = item.poster_path;
-        const imgUrl  = imgPath ? `https://image.tmdb.org/t/p/w500${imgPath}` : '';
-        const desc    = [item.overview?.slice(0, 150), year ? `(${year})` : '', rating].filter(Boolean).join(' · ');
-        console.log('[TMDB] OK:', title);
-        return { title, description: desc, imageUrl: imgUrl, sourceUrl: url };
-      }
-      console.warn('[TMDB] No result for', imdbId);
-    } catch(e) {
-      console.warn('[TMDB] Error:', e.message);
-    }
-  }
-
-  // ── Strategy 3: Cheerio scrape (last resort — often blocked by Cloudflare) ──
+  // ── Strategy 2: Cheerio scrape (last resort) ──────────────
   try {
     const cheerio = require('cheerio');
     const res = await fetch(url, {
@@ -161,33 +164,27 @@ async function fetchImdbMeta(url) {
       signal:   AbortSignal.timeout(12000),
     });
 
-    if (!res.ok) {
-      console.warn('[fetchImdbMeta] Scrape blocked: HTTP', res.status);
-      return null;
-    }
+    if (!res.ok) { console.warn('[fetchImdbMeta] Scrape blocked: HTTP', res.status); return null; }
 
     const html = await res.text();
-
-    // Quick check — if Cloudflare challenge page, bail early
     if (html.includes('cf-browser-verification') || html.includes('Just a moment') || html.length < 5000) {
-      console.warn('[fetchImdbMeta] Cloudflare challenge detected, scrape blocked');
+      console.warn('[fetchImdbMeta] Cloudflare challenge detected');
       return null;
     }
 
     const $ = cheerio.load(html);
     let title = '', image = '', description = '', year = '', rating = '';
 
-    // JSON-LD (most reliable when full page is served)
     $('script[type="application/ld+json"]').each((_, el) => {
       try {
         const data = JSON.parse($(el).html() || '');
-        const valid = ['Movie','TVSeries','TVEpisode','TVMovie','VideoGame','Short'];
+        const valid = ['Movie','TVSeries','TVEpisode','TVMovie','Short'];
         if (valid.includes(data['@type'])) {
           title       = title       || data.name || '';
           if (!image) {
-            if (typeof data.image === 'string')      image = data.image;
-            else if (Array.isArray(data.image))      image = data.image[0]?.url || data.image[0] || '';
-            else if (data.image?.url)                image = data.image.url;
+            if (typeof data.image === 'string')    image = data.image;
+            else if (Array.isArray(data.image))    image = data.image[0]?.url || data.image[0] || '';
+            else if (data.image?.url)              image = data.image.url;
           }
           description = description || data.description || '';
           year        = year        || String(data.datePublished || '').slice(0, 4);
@@ -196,18 +193,14 @@ async function fetchImdbMeta(url) {
       } catch(e) {}
     });
 
-    // OG / meta tags fallback
     if (!title) title = ($('meta[property="og:title"]').attr('content') || $('title').text() || '').replace(/\s*[-|]\s*IMDb\s*$/i, '').trim();
     if (!image) image = $('meta[property="og:image"]').attr('content') || $('meta[name="twitter:image"]').attr('content') || '';
     if (!description) description = $('meta[property="og:description"]').attr('content') || '';
 
-    if (!title) {
-      console.warn('[fetchImdbMeta] Scrape returned page but no title found');
-      return null;
-    }
+    if (!title) { console.warn('[fetchImdbMeta] No title found in scraped page'); return null; }
 
-    const descParts = [description.slice(0, 150), year ? `(${year})` : '', rating ? `⭐ ${rating}` : ''].filter(Boolean);
-    console.log('[fetchImdbMeta] Scrape OK:', title, '| image:', image ? 'yes' : 'no');
+    const descParts = [description.slice(0, 150), year && `(${year})`, rating && `⭐ ${rating}`].filter(Boolean);
+    console.log('[fetchImdbMeta] Scraped OK:', title);
     return { title: title.trim(), description: descParts.join(' · '), imageUrl: image, sourceUrl: url };
   } catch (err) {
     console.error('[fetchImdbMeta] Scrape error:', err.message);
@@ -218,7 +211,7 @@ async function fetchImdbMeta(url) {
 // ─── FETCH METADATA FROM ANY URL ───────────────────────────
 
 async function fetchMeta(url) {
-  // IMDB: use dedicated fetcher (OMDB API first, then scrape)
+  // IMDB: use dedicated fetcher (TMDB first, then cheerio scrape)
   if (/imdb\.com\/(title|name|film)/.test(url)) {
     const imdbMeta = await fetchImdbMeta(url);
     if (imdbMeta && imdbMeta.title) return imdbMeta;
@@ -466,6 +459,7 @@ function truncate(str, len) {
 
 module.exports = {
   detectType, fetchMeta, extractUrls,
+  fetchTmdbByTitle, fetchTmdbByImdbId,
   typeLabel, formatCard, formatSummary,
   formatDigest, formatFilmiCraftCard,
   buildVoteKeyboard, buildSummaryKeyboard,

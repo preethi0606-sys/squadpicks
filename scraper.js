@@ -1,303 +1,256 @@
-// scraper.js — Weekly Thursday cron: Netflix, Prime Video, IMDb
-// Runs every Thursday at 2:00 AM IST (20:30 UTC Wednesday)
-// Stores results in Supabase trending tables, refreshes each week
+// scraper.js — Weekly cron: Netflix (XLSX), Prime Video, IMDb
+// Netflix cron: every Monday 10:00 UTC (Netflix publishes Top 10 on Tuesdays, XLSX updates Mon/Tue)
+// Full scrape:  every Thursday 20:30 UTC = Friday 2:00 AM IST
 'use strict';
 
 const cron    = require('node-cron');
+const XLSX    = require('xlsx');
 const fetch   = (...args) => import('node-fetch').then(m => m.default(...args));
 const cheerio = require('cheerio');
 const db      = require('./db');
+const { fetchTmdbByTitle } = require('./links');
 
-// ── Browser-like headers to avoid bot blocking ────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ── Browser headers ───────────────────────────────────────────────────────────
 const HEADERS = {
-  'User-Agent':                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Accept':                    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-  'Accept-Language':           'en-US,en;q=0.9',
-  'Accept-Encoding':           'gzip, deflate, br',
-  'Cache-Control':             'no-cache',
-  'Pragma':                    'no-cache',
-  'Sec-Fetch-Dest':            'document',
-  'Sec-Fetch-Mode':            'navigate',
-  'Sec-Fetch-Site':            'none',
-  'Upgrade-Insecure-Requests': '1'
+  'User-Agent':      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Cache-Control':   'no-cache',
 };
 
-async function safeFetch(url, retries = 2) {
+async function safeFetch(url, retries = 2, extraHeaders = {}) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const ctrl   = new AbortController();
-      const timer  = setTimeout(() => ctrl.abort(), 25000);
-      const res    = await fetch(url, { headers: HEADERS, signal: ctrl.signal, redirect: 'follow' });
+      const ctrl  = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 30000);
+      const res   = await fetch(url, { headers: { ...HEADERS, ...extraHeaders }, signal: ctrl.signal, redirect: 'follow' });
       clearTimeout(timer);
       if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-      return await res.text();
+      return res;
     } catch (err) {
-      console.warn(`[Scraper] Attempt ${attempt+1} failed: ${err.message}`);
+      console.warn(`[Scraper] Attempt ${attempt + 1} failed: ${err.message}`);
       if (attempt < retries) await sleep(3000 * (attempt + 1));
     }
   }
   return null;
 }
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+// ── TMDB poster lookup — thin wrapper around shared fetchTmdbByTitle ──────────
+// type: 'movie' | 'show' | 'multi'
+async function tmdbPoster(title, type = 'multi') {
+  return fetchTmdbByTitle(title, type === 'show' ? 'tv' : type === 'movie' ? 'movie' : 'multi');
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NETFLIX TOP 10 — https://www.netflix.com/tudum/top10/{region}
+// NETFLIX TOP 10 — Official XLSX from Netflix Tudum
 //
-// Netflix Tudum pages are Next.js apps. The page HTML contains a
-// <script id="__NEXT_DATA__"> tag with all the page props as JSON.
-// We parse that JSON to extract the ranked title list.
+// Netflix publishes a global XLSX every week at:
+// https://www.netflix.com/tudum/top10/data/all-weeks-global.xlsx
 //
-// Fallback: parse the visible HTML table/list which Netflix also renders
-// server-side for SEO.
+// Sheet structure (most-recent sheet or "all-weeks" sheet):
+//   Columns: week_as_of | country | category | weekly_rank | show_title |
+//            cumulative_weeks_in_top_10 | is_staggered_launch | ...
+//
+// We download this file, parse the most recent week for Canada, US, India,
+// then enrich each row with a TMDB poster image.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const NETFLIX_REGIONS = [
-  { region: 'canada', url: 'https://www.netflix.com/tudum/top10/canada' },
-  { region: 'us',     url: 'https://www.netflix.com/tudum/top10/united-states' },
-  { region: 'india',  url: 'https://www.netflix.com/tudum/top10/india' }
-];
+const NETFLIX_XLSX_URL = 'https://www.netflix.com/tudum/top10/data/all-weeks-global.xlsx';
+const NETFLIX_COUNTRIES = new Set(['canada', 'united states', 'india']);
+const NETFLIX_COUNTRY_TO_REGION = {
+  'canada':        'canada',
+  'united states': 'us',
+  'india':         'india'
+};
 
-async function scrapeNetflixRegion({ region, url }) {
-  console.log(`[Netflix] Scraping ${region} from ${url}`);
-  const html = await safeFetch(url);
-  if (!html) { console.warn(`[Netflix] No HTML for ${region}`); return []; }
+async function scrapeNetflixXlsx() {
+  console.log('[Netflix] Downloading XLSX from', NETFLIX_XLSX_URL);
+  const res = await safeFetch(NETFLIX_XLSX_URL, 2, { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/octet-stream, */*' });
+  if (!res) { console.warn('[Netflix] Could not download XLSX'); return; }
 
-  const $ = cheerio.load(html);
-  const results = [];
+  const arrayBuf = await res.arrayBuffer();
+  const buffer   = Buffer.from(arrayBuf);
+  console.log('[Netflix] XLSX downloaded, size:', buffer.length, 'bytes');
 
-  // ── Method 1: __NEXT_DATA__ JSON (most reliable) ──────────────────────────
-  const nextScript = $('script#__NEXT_DATA__').html() ||
-                     $('script[type="application/json"]').first().html() || '';
-  if (nextScript) {
-    try {
-      const pageData = JSON.parse(nextScript);
-      // Walk the props tree — Netflix stores rows under
-      // props.pageProps.pageData or similar nested paths
-      const titles = findNetflixTitles(pageData);
-      titles.forEach((item, i) => {
-        if (results.length >= 10) return;
-        const t = cleanTitle(item.title || item.name || item.titleText || '');
-        if (!t) return;
-        results.push({
-          rank:        item.rank || (i + 1),
-          title:       t,
-          type:        normaliseType(item.type || item.contentType || ''),
-          genre:       extractGenre(item),
-          image_url:   extractNetflixImage(item),
-          netflix_url: buildNetflixUrl(item, t),
-          region
-        });
-      });
-    } catch (e) {
-      console.warn(`[Netflix] __NEXT_DATA__ parse error for ${region}: ${e.message}`);
+  let workbook;
+  try {
+    workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+  } catch (e) {
+    console.error('[Netflix] Failed to parse XLSX:', e.message);
+    return;
+  }
+
+  // Use the first sheet (usually the most current / all-weeks-global)
+  const sheetName = workbook.SheetNames[0];
+  const sheet     = workbook.Sheets[sheetName];
+  const rows      = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+  console.log(`[Netflix] XLSX sheet "${sheetName}": ${rows.length} rows`);
+  if (!rows.length) { console.warn('[Netflix] XLSX has no rows'); return; }
+
+  // ── Detect column names ───────────────────────────────────────────────────
+  // Netflix has changed column names over time; detect robustly
+  const sampleRow = rows[0];
+  const keys      = Object.keys(sampleRow).map(k => k.toLowerCase().trim());
+  console.log('[Netflix] Columns detected:', keys.join(', '));
+
+  function findCol(candidates) {
+    for (const c of candidates) {
+      const found = Object.keys(sampleRow).find(k => k.toLowerCase().trim() === c.toLowerCase());
+      if (found) return found;
+    }
+    return null;
+  }
+
+  const colWeek     = findCol(['week', 'week_as_of', 'as_of_date', 'week_of', 'weekas of', 'week as of']);
+  const colCountry  = findCol(['country_name', 'country', 'region', 'territory']);
+  const colCategory = findCol(['category', 'content_type', 'type', 'show_type']);
+  const colRank     = findCol(['weekly_rank', 'rank', 'weekly rank']);
+  const colTitle    = findCol(['show_title', 'title', 'series_title', 'film_title', 'show title']);
+
+  if (!colCountry || !colTitle || !colRank) {
+    console.error('[Netflix] Cannot find required columns in XLSX. Keys found:', keys.join(', '));
+    return;
+  }
+
+  console.log(`[Netflix] Using columns: week="${colWeek}" country="${colCountry}" rank="${colRank}" title="${colTitle}" category="${colCategory}"`);
+
+  // ── Find the most recent week in the data ────────────────────────────────
+  let latestWeek = null;
+  if (colWeek) {
+    const weeks = rows
+      .map(r => r[colWeek])
+      .filter(Boolean)
+      .map(w => {
+        // Handle both Date objects and strings like "2025-04-20"
+        if (w instanceof Date) return w;
+        const d = new Date(w);
+        return isNaN(d.getTime()) ? null : d;
+      })
+      .filter(Boolean);
+    if (weeks.length) {
+      latestWeek = new Date(Math.max(...weeks.map(d => d.getTime())));
+      console.log('[Netflix] Most recent week in XLSX:', latestWeek.toISOString().slice(0, 10));
     }
   }
 
-  // ── Method 2: look for any script with rankingTitle / titleText ───────────
-  if (!results.length) {
-    $('script').each((_, el) => {
-      if (results.length >= 10) return;
-      const src = $(el).html() || '';
-      if (src.length < 100) return;
-      if (!src.includes('rankingTitle') && !src.includes('titleText') && !src.includes('top10')) return;
-      try {
-        // Extract the first sizeable JSON object
-        const match = src.match(/\{[\s\S]{500,}\}/);
-        if (!match) return;
-        const obj = JSON.parse(match[0]);
-        const titles = findNetflixTitles(obj);
-        titles.forEach((item, i) => {
-          if (results.length >= 10) return;
-          const t = cleanTitle(item.title || item.name || item.titleText || '');
-          if (!t) return;
-          results.push({
-            rank:        item.rank || (i + 1),
-            title:       t,
-            type:        normaliseType(item.type || ''),
-            genre:       extractGenre(item),
-            image_url:   extractNetflixImage(item),
-            netflix_url: buildNetflixUrl(item, t),
-            region
-          });
-        });
-      } catch (_) {}
+  // ── Filter rows: latest week + our 3 countries ───────────────────────────
+  const filtered = rows.filter(row => {
+    const country = String(row[colCountry] || '').toLowerCase().trim();
+    if (!NETFLIX_COUNTRIES.has(country)) return false;
+    if (latestWeek && colWeek) {
+      const rowWeek = row[colWeek] instanceof Date ? row[colWeek] : new Date(row[colWeek]);
+      if (!isNaN(rowWeek.getTime())) {
+        // Allow rows from the latest week only (within ±2 days tolerance)
+        const diff = Math.abs(rowWeek.getTime() - latestWeek.getTime());
+        if (diff > 2 * 24 * 60 * 60 * 1000) return false;
+      }
+    }
+    return true;
+  });
+
+  console.log(`[Netflix] ${filtered.length} rows after filtering for CA/US/IN latest week`);
+
+  if (!filtered.length) {
+    console.warn('[Netflix] No rows found for Canada/US/India in most recent week — trying all weeks, taking most recent per country');
+    // Fallback: take top 10 most recent rows per country
+    const byCountry = {};
+    rows.forEach(row => {
+      const country = String(row[colCountry] || '').toLowerCase().trim();
+      if (!NETFLIX_COUNTRIES.has(country)) return;
+      if (!byCountry[country]) byCountry[country] = [];
+      byCountry[country].push(row);
+    });
+    Object.keys(byCountry).forEach(c => {
+      byCountry[c].slice(-30).forEach(r => filtered.push(r));
     });
   }
 
-  // ── Method 3: HTML table fallback (Netflix renders a table for SEO) ───────
-  if (!results.length) {
-    // Netflix Tudum top 10 tables have a rank column and a title column
-    $('tr').each((_, row) => {
-      if (results.length >= 10) return;
-      const cells = $(row).find('td');
-      if (cells.length < 2) return;
-      const rankTxt  = $(cells[0]).text().trim();
-      const rank     = parseInt(rankTxt);
-      if (!rank || rank < 1 || rank > 10) return;
-      // Title is usually in cell 1 or 2
-      let title = '';
-      cells.each((ci, cell) => {
-        if (title) return;
-        const t = $(cell).find('a, h2, h3, strong, [class*="title"]').first().text().trim()
-               || $(cell).text().trim();
-        if (t && t.length > 1 && t.length < 120 && !/^\d+$/.test(t)) title = t;
-      });
-      if (!title) return;
-      // Image from the row or nearby
-      const img = $(row).find('img').first().attr('src') || null;
-      const href = $(row).find('a').first().attr('href') || '';
-      results.push({
-        rank,
-        title:       cleanTitle(title),
-        type:        'show',
-        genre:       null,
-        image_url:   img,
-        netflix_url: href.startsWith('http') ? href : href ? ('https://www.netflix.com' + href)
-                     : `https://www.netflix.com/search?q=${encodeURIComponent(title)}`,
-        region
-      });
+  // ── Group by country → top 10 by rank ────────────────────────────────────
+  const byCountry = {};
+  filtered.forEach(row => {
+    const country  = String(row[colCountry] || '').toLowerCase().trim();
+    const region   = NETFLIX_COUNTRY_TO_REGION[country];
+    if (!region) return;
+    if (!byCountry[region]) byCountry[region] = [];
+    byCountry[region].push({
+      rank:     parseInt(row[colRank]) || 99,
+      title:    String(row[colTitle] || '').trim(),
+      type:     normaliseCategory(colCategory ? String(row[colCategory] || '') : ''),
+      region
     });
-  }
+  });
 
-  // ── Method 4: List items with rank markers ─────────────────────────────────
-  if (!results.length) {
-    const selectors = [
-      '[class*="top10-title"]', '[class*="RankTitle"]', '[class*="rank"] h3',
-      '[data-testid*="title"]', 'article h2', 'article h3', 'li h2', 'li h3'
-    ];
-    for (const sel of selectors) {
-      if (results.length >= 5) break;
-      $(sel).slice(0, 10).each((i, el) => {
-        const t = $(el).text().trim();
-        if (!t || t.length < 2 || t.length > 120 || /^\d+$/.test(t)) return;
-        const img  = $(el).closest('article, li, div').find('img').first().attr('src') || null;
-        const href = $(el).closest('a').attr('href') || $(el).find('a').first().attr('href') || '';
-        results.push({
-          rank:        i + 1,
-          title:       cleanTitle(t),
-          type:        'show',
-          genre:       null,
-          image_url:   img,
-          netflix_url: href ? (href.startsWith('http') ? href : 'https://www.netflix.com' + href)
-                             : `https://www.netflix.com/search?q=${encodeURIComponent(t)}`,
-          region
-        });
-      });
+  // ── For each region: sort by rank, take top 10, enrich with TMDB poster ──
+  for (const region of Object.keys(byCountry)) {
+    const sorted = byCountry[region]
+      .filter(r => r.title && r.title.length > 1)
+      .sort((a, b) => a.rank - b.rank);
+
+    // Deduplicate by title
+    const seen  = new Set();
+    const top10 = sorted.filter(r => {
+      const key = r.title.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 10);
+
+    console.log(`[Netflix] ${region}: ${top10.length} titles — enriching with TMDB posters...`);
+
+    const enriched = [];
+    for (let i = 0; i < top10.length; i++) {
+      const item = top10[i];
+      item.rank = i + 1;
+      // Get TMDB poster — rate-limit: 300ms between requests
+      const poster = await tmdbPoster(item.title, item.type);
+      item.image_url  = poster || null;
+      item.netflix_url = `https://www.netflix.com/search?q=${encodeURIComponent(item.title)}`;
+      item.badge      = 'N';
+      item.badge_color = '#E50914';
+      enriched.push(item);
+      if (i < top10.length - 1) await sleep(300);
+    }
+
+    if (enriched.length) {
+      await db.upsertTrendingNetflix(enriched);
+      console.log(`[Netflix] ${region}: saved ${enriched.length} rows to DB`);
     }
   }
-
-  const deduped = dedup(results).slice(0, 10);
-  deduped.forEach((r, i) => { r.rank = i + 1; });
-  console.log(`[Netflix] ${region}: ${deduped.length} titles`);
-  return deduped;
 }
 
-// Walk nested JSON looking for Netflix title objects
-function findNetflixTitles(obj, depth = 0) {
-  if (depth > 10 || !obj || typeof obj !== 'object') return [];
-  const results = [];
-  if (Array.isArray(obj)) {
-    for (const item of obj) results.push(...findNetflixTitles(item, depth + 1));
-    return results;
-  }
-  // Netflix title objects have rankingTitle or titleText + rank/rankNum
-  const hasTitle = typeof obj.rankingTitle === 'string' || typeof obj.titleText === 'string' || typeof obj.title === 'string';
-  const hasRank  = typeof obj.rank === 'number' || typeof obj.rankNum === 'number' || typeof obj.position === 'number';
-  if (hasTitle) {
-    const entry = {
-      title:     obj.rankingTitle || obj.titleText || obj.title || obj.name,
-      rank:      obj.rank || obj.rankNum || obj.position || null,
-      type:      obj.type || obj.contentType || obj.titleType || null,
-      genreList: obj.genreList || obj.genres || null,
-      // Images
-      boxart:    obj.boxArt || obj.boxart || null,
-      image:     (obj.images && (obj.images.boxArt || obj.images.poster)) || obj.imageUrl || null,
-      // Netflix direct link
-      href:      obj.href || obj.watchUrl || obj.url || null,
-      titleId:   obj.titleId || obj.id || null
-    };
-    results.push(entry);
-    if (results.length >= 10 && hasRank) return results;
-  }
-  // Recurse into known key names
-  const keys = ['items', 'titles', 'ranks', 'weeklyTop10', 'top10', 'topTen', 'list',
-                 'data', 'result', 'pageProps', 'props', 'payload', 'rows', 'cards',
-                 'topTitles', 'tvTopTitles', 'filmTopTitles'];
-  for (const key of keys) {
-    if (obj[key]) results.push(...findNetflixTitles(obj[key], depth + 1));
-  }
-  return results;
-}
-
-function extractNetflixImage(item) {
-  if (!item) return null;
-  if (item.boxart?.url)  return item.boxart.url;
-  if (item.image?.url)   return item.image.url;
-  if (typeof item.boxart === 'string') return item.boxart;
-  if (typeof item.image  === 'string') return item.image;
-  if (item.imageUrl)     return item.imageUrl;
-  return null;
-}
-
-function buildNetflixUrl(item, title) {
-  if (item.href) return item.href.startsWith('http') ? item.href : 'https://www.netflix.com' + item.href;
-  if (item.watchUrl) return item.watchUrl;
-  if (item.titleId) return `https://www.netflix.com/watch/${item.titleId}`;
-  return `https://www.netflix.com/search?q=${encodeURIComponent(title)}`;
-}
-
-function extractGenre(item) {
-  if (!item) return null;
-  if (Array.isArray(item.genreList)) return item.genreList.slice(0, 2).map(g => (typeof g === 'string' ? g : g.name || '')).filter(Boolean).join(', ');
-  if (Array.isArray(item.genres))    return item.genres.slice(0, 2).map(g => (typeof g === 'string' ? g : g.name || '')).filter(Boolean).join(', ');
-  if (typeof item.genre === 'string') return item.genre;
-  return null;
-}
-
-async function scrapeAllNetflix() {
-  for (const cfg of NETFLIX_REGIONS) {
-    try {
-      const rows = await scrapeNetflixRegion(cfg);
-      if (rows.length) await db.upsertTrendingNetflix(rows);
-      else console.warn(`[Netflix] 0 results for ${cfg.region} — keeping existing data`);
-    } catch (e) { console.error(`[Netflix] ${cfg.region} error:`, e.message); }
-    await sleep(2000);
-  }
+function normaliseCategory(cat) {
+  cat = String(cat).toLowerCase();
+  if (/film|movie/.test(cat)) return 'movie';
+  if (/tv|show|series/.test(cat)) return 'show';
+  return 'show'; // Netflix default
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PRIME VIDEO TOP 10 — Canada only
-// URL: https://www.primevideo.com/collection/SVODTop10
-//
-// Prime Video renders a grid of title cards under a "Top 10 in Canada" heading.
-// We need the INDIVIDUAL TITLES under that heading, NOT the heading itself.
-// The page embeds state JSON and also server-renders title cards.
+// PRIME VIDEO TOP 10 — Canada (web scrape fallback)
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function scrapePrimeCanada() {
   const url = 'https://www.primevideo.com/collection/SVODTop10';
-  console.log(`[Prime] Scraping Canada from ${url}`);
-  const html = await safeFetch(url);
-  if (!html) { console.warn('[Prime] No HTML'); return []; }
-
-  const $ = cheerio.load(html);
+  console.log('[Prime] Scraping Canada from', url);
+  const res = await safeFetch(url);
+  if (!res) { console.warn('[Prime] No response'); return []; }
+  const html = await res.text();
+  const $    = cheerio.load(html);
   const results = [];
 
-  // ── Method 1: Embedded state JSON ─────────────────────────────────────────
+  // Method 1: embedded state JSON
   $('script').each((_, el) => {
     if (results.length >= 10) return;
     const src = $(el).html() || '';
     if (src.length < 200) return;
-    // Prime embeds catalog data in window.__STORE__ or similar
-    const jsonPatterns = [
+    const patterns = [
       /"catalogItems"\s*:\s*(\[[\s\S]{100,}\])/,
-      /"heroCarousel"\s*:\s*(\{[\s\S]{100,}\})/,
-      /window\.__STORE__\s*=\s*(\{[\s\S]{100,}\});/,
-      /__INITIAL_DATA__\s*=\s*(\{[\s\S]{100,}\});/
+      /window\.__STORE__\s*=\s*(\{[\s\S]{100,}\});/
     ];
-    for (const pattern of jsonPatterns) {
-      if (results.length >= 10) break;
+    for (const pattern of patterns) {
       try {
         const match = src.match(pattern);
         if (!match) continue;
@@ -305,181 +258,104 @@ async function scrapePrimeCanada() {
         extractPrimeTitles(obj).forEach(item => {
           if (results.length >= 10) return;
           const t = cleanTitle(item.title || '');
-          if (!t || t.length < 2) return;
-          // Skip headings like "Top 10 in Canada"
-          if (/^top\s*10/i.test(t) || /in\s+canada/i.test(t) || /in\s+india/i.test(t)) return;
-          results.push({
-            rank:      item.rank || (results.length + 1),
-            title:     t,
-            type:      normaliseType(item.type || ''),
-            genre:     item.genre || null,
-            image_url: item.image || null,
-            prime_url: item.url || `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(t)}`,
-            region:    'ca'
-          });
+          if (!t || /^top\s*10/i.test(t)) return;
+          results.push({ rank: results.length + 1, title: t, type: 'show', genre: item.genre || null, image_url: item.image || null, prime_url: item.url || null, region: 'ca' });
         });
       } catch (_) {}
     }
   });
 
-  // ── Method 2: HTML title cards ─────────────────────────────────────────────
+  // Method 2: HTML card selectors
   if (results.length < 5) {
-    // Prime renders cards with title text and images
-    // Each card usually has a nested structure like: div > img + div > span (title)
-    const titleSelectors = [
-      '[data-automation-id="title"]',
-      '[class*="_titleText_"]',
-      '[class*="DmTitleLink"]',
-      '[class*="aok-overflow-hidden"] span',
-      '[class*="TitleCard"] span',
-      '[class*="title-text"]',
-      'span[class*="title"]'
-    ];
-    for (const sel of titleSelectors) {
+    const selectors = ['[data-automation-id="title"]', '[class*="_titleText_"]', '[class*="title-text"]'];
+    for (const sel of selectors) {
       if (results.length >= 10) break;
       $(sel).each((_, el) => {
         if (results.length >= 10) return;
         const t = $(el).text().trim();
-        if (!t || t.length < 2 || t.length > 120) return;
-        if (/^\d+$/.test(t)) return; // skip pure numbers
-        // Skip section headings
-        if (/^top\s*10/i.test(t) || /in\s+canada/i.test(t) || /prime\s+video/i.test(t)) return;
-        const card = $(el).closest('[class*="Card"], [class*="card"], li, article');
-        const img  = card.find('img').first().attr('src')
-                  || card.find('img').first().attr('data-src') || null;
-        const href = card.find('a').first().attr('href') || '';
-        const fullUrl = href.startsWith('http') ? href
-                      : href ? 'https://www.primevideo.com' + href
-                      : `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(t)}`;
-        results.push({
-          rank:      results.length + 1,
-          title:     cleanTitle(t),
-          type:      'show',
-          genre:     null,
-          image_url: img,
-          prime_url: fullUrl,
-          region:    'ca'
-        });
+        if (!t || t.length < 2 || t.length > 120 || /^top\s*10/i.test(t) || /^\d+$/.test(t)) return;
+        const card   = $(el).closest('[class*="Card"], [class*="card"], article, li');
+        const img    = card.find('img').first().attr('src') || null;
+        const href   = card.find('a').first().attr('href') || '';
+        const primeUrl = href ? (href.startsWith('http') ? href : 'https://www.primevideo.com' + href) : null;
+        results.push({ rank: results.length + 1, title: cleanTitle(t), type: 'show', genre: null, image_url: img, prime_url: primeUrl, region: 'ca' });
       });
     }
   }
 
-  // ── Method 3: Any numbered list ───────────────────────────────────────────
-  if (results.length < 5) {
-    $('[class*="rank"], [class*="position"]').each((_, el) => {
-      if (results.length >= 10) return;
-      const rankTxt = $(el).text().trim();
-      const rank    = parseInt(rankTxt);
-      if (!rank || rank > 10) return;
-      const container = $(el).closest('li, article, [class*="item"]');
-      const titleEl   = container.find('h2, h3, [class*="title"]').first();
-      const t = titleEl.text().trim() || container.find('span').first().text().trim();
-      if (!t || t.length < 2 || /^top\s*10/i.test(t)) return;
-      const img  = container.find('img').first().attr('src') || null;
-      const href = container.find('a').first().attr('href') || '';
-      results.push({
-        rank,
-        title:     cleanTitle(t),
-        type:      'show',
-        genre:     null,
-        image_url: img,
-        prime_url: href ? (href.startsWith('http') ? href : 'https://www.primevideo.com' + href)
-                        : `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(t)}`,
-        region:    'ca'
-      });
-    });
-  }
-
-  const deduped = dedup(results).filter(r => {
-    // Final filter: remove headings that slipped through
-    return !/^top\s*10/i.test(r.title) && !/in\s+canada/i.test(r.title) && r.title.length > 2;
-  }).slice(0, 10);
+  const deduped = dedup(results).slice(0, 10);
   deduped.forEach((r, i) => { r.rank = i + 1; });
   console.log(`[Prime] ca: ${deduped.length} titles`);
   return deduped;
 }
 
-function extractPrimeTitles(obj, depth = 0) {
-  if (depth > 8 || !obj || typeof obj !== 'object') return [];
-  const results = [];
-  if (Array.isArray(obj)) {
-    for (const item of obj) results.push(...extractPrimeTitles(item, depth + 1));
-    return results;
+function extractPrimeTitles(obj, depth = 0, out = []) {
+  if (depth > 8 || !obj || typeof obj !== 'object' || out.length >= 10) return out;
+  if (Array.isArray(obj)) { obj.forEach(i => extractPrimeTitles(i, depth + 1, out)); return out; }
+  const t = obj.title || obj.titleText || obj.label || '';
+  if (t && t.length > 1 && t.length < 120 && !/^top\s*10/i.test(t)) {
+    out.push({ title: t, type: obj.type || 'show', genre: obj.genre || null, image: obj.image || obj.imageUrl || null, url: obj.href || obj.url || null });
   }
-  // A Prime title object has title + asin or id
-  const hasTitle = typeof obj.title === 'string' && obj.title.length > 1 && obj.title.length < 120;
-  const hasId    = obj.asin || obj.gti || obj.id;
-  if (hasTitle && hasId) {
-    results.push({
-      title: obj.title,
-      rank:  obj.rank || obj.position || null,
-      type:  obj.contentType || obj.titleType || null,
-      genre: Array.isArray(obj.genres) ? obj.genres[0] : (obj.genre || null),
-      image: obj.image?.src || obj.imageSrc || obj.coverImageUrl || null,
-      url:   obj.url || (obj.asin ? `https://www.primevideo.com/dp/${obj.asin}` : null)
-    });
-  }
-  const descend = ['items', 'titles', 'entries', 'catalogItems', 'collections',
-                   'data', 'result', 'payload', 'props', 'rows', 'cards', 'content'];
-  for (const key of descend) {
-    if (obj[key]) results.push(...extractPrimeTitles(obj[key], depth + 1));
-  }
-  return results;
+  ['items','titles','catalog','cards','content','carouselItems','titleCards'].forEach(k => {
+    if (obj[k]) extractPrimeTitles(obj[k], depth + 1, out);
+  });
+  return out;
 }
 
 async function scrapeAllPrime() {
   try {
     const rows = await scrapePrimeCanada();
-    if (rows.length) await db.upsertTrendingPrime(rows);
-    else console.warn('[Prime] 0 results for ca — keeping existing data');
+    if (rows.length) {
+      // Enrich with TMDB posters
+      for (let i = 0; i < rows.length; i++) {
+        if (!rows[i].image_url) {
+          rows[i].image_url = await tmdbPoster(rows[i].title, rows[i].type);
+          if (i < rows.length - 1) await sleep(300);
+        }
+      }
+      await db.upsertTrendingPrime(rows);
+    } else {
+      console.warn('[Prime] 0 results — keeping existing data');
+    }
   } catch (e) { console.error('[Prime] error:', e.message); }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMDb — Homepage + Chart pages
-//
-// IMDb chart pages (top 250, top TV) render their lists server-side in a
-// <ul class="ipc-metadata-list"> with structured list items.
-// The homepage has fan-picks widgets.
+// IMDB TOP PICKS — web scrape
 // ─────────────────────────────────────────────────────────────────────────────
 
 const IMDB_SOURCES = [
-  { category: 'fan_picks',  url: 'https://www.imdb.com/'             },
-  { category: 'top_movies', url: 'https://www.imdb.com/chart/top/'   },
-  { category: 'top_shows',  url: 'https://www.imdb.com/chart/toptv/' }
+  { url: 'https://www.imdb.com/chart/top/', category: 'top_movies', label: 'IMDb Top 250' },
+  { url: 'https://www.imdb.com/chart/tvmeter/', category: 'popular_shows', label: 'IMDb Popular Shows' },
+  { url: 'https://www.imdb.com/chart/moviemeter/', category: 'popular_movies', label: 'IMDb Popular Movies' },
 ];
 
-async function scrapeImdbSource({ category, url }) {
-  console.log(`[IMDb] Scraping ${category} from ${url}`);
-  const html = await safeFetch(url);
-  if (!html) { console.warn(`[IMDb] No HTML for ${category}`); return []; }
-
-  const $ = cheerio.load(html);
+async function scrapeImdbSource({ url, category, label }) {
+  console.log(`[IMDb] Scraping ${label}`);
+  const res = await safeFetch(url);
+  if (!res) { console.warn(`[IMDb] No response for ${label}`); return []; }
+  const html    = await res.text();
+  const $       = cheerio.load(html);
   const results = [];
 
-  // ── Method 1: JSON-LD structured data (IMDb embeds this for SEO) ──────────
+  // JSON-LD list items
   $('script[type="application/ld+json"]').each((_, el) => {
-    if (results.length >= 10) return;
     try {
-      const obj = JSON.parse($(el).html() || '{}');
+      const obj   = JSON.parse($(el).html() || '{}');
       const items = obj.item || obj.itemListElement || [];
       (Array.isArray(items) ? items : []).forEach((item, i) => {
         if (results.length >= 10) return;
         const name   = item.name || item.item?.name || '';
         const href   = item.url  || item.item?.url  || '';
-        const rating = item.aggregateRating?.ratingValue
-                    || item.item?.aggregateRating?.ratingValue || null;
-        const img    = item.image || item.item?.image || null;
-        if (!name || name.length < 1) return;
+        const rating = item.aggregateRating?.ratingValue || item.item?.aggregateRating?.ratingValue || null;
+        if (!name) return;
         results.push({
           rank:      i + 1,
           title:     cleanTitle(name),
           type:      category.includes('show') ? 'show' : 'movie',
-          year:      item.datePublished?.slice(0,4) || item.item?.datePublished?.slice(0,4) || null,
+          year:      item.datePublished?.slice(0,4) || null,
           rating:    rating ? String(parseFloat(rating).toFixed(1)) : null,
-          votes:     null,
-          genre:     Array.isArray(item.genre) ? item.genre.join(', ') : (item.genre || null),
-          image_url: typeof img === 'string' ? img : (img?.url || null),
+          image_url: null, // enriched by TMDB below
           imdb_url:  href.startsWith('http') ? href.split('?')[0] : href ? 'https://www.imdb.com' + href.split('?')[0] : null,
           category
         });
@@ -487,88 +363,38 @@ async function scrapeImdbSource({ category, url }) {
     } catch (_) {}
   });
 
-  // ── Method 2: IMDb chart list (ipc-metadata-list items) ───────────────────
+  // Fallback: IMDb chart list items
   if (!results.length) {
-    // IMDb chart pages use a <ul class="ipc-metadata-list"> with <li> items
     $('li.ipc-metadata-list-summary-item, li[class*="cli-parent"]').each((i, el) => {
       if (results.length >= 10) return;
-      const titleEl  = $(el).find('[class*="titleColumn"] a, [class*="title"] a, h3.ipc-title__text').first();
-      const title    = titleEl.text().trim().replace(/^\d+\.\s*/, '');
-      const href     = titleEl.attr('href') || $(el).find('a').first().attr('href') || '';
-      const rating   = $(el).find('[class*="ipc-rating-star--imdb"], [class*="ratingNumber"]').first()
-                       .text().trim().replace(/[^0-9.]/g,'').slice(0,4);
-      const year     = $(el).find('[class*="secondaryInfo"], span[class*="year"]').first().text().replace(/[()]/g,'').trim();
-      const img      = $(el).find('img').first().attr('src') || null;
-
-      if (!title || title.length < 2 || title.length > 120) return;
+      const titleEl = $(el).find('[class*="titleColumn"] a, h3.ipc-title__text').first();
+      const title   = titleEl.text().trim().replace(/^\d+\.\s*/, '');
+      const href    = titleEl.attr('href') || $(el).find('a').first().attr('href') || '';
+      const rating  = $(el).find('[class*="ipc-rating-star"]').first().text().trim().replace(/[^0-9.]/g,'').slice(0,4);
+      if (!title || title.length < 2) return;
       results.push({
         rank:      i + 1,
         title:     cleanTitle(title),
         type:      category.includes('show') ? 'show' : 'movie',
-        year:      year || null,
-        rating:    rating || null,
-        votes:     null,
-        genre:     null,
-        image_url: img,
+        year:      null, rating: rating || null, image_url: null,
         imdb_url:  href ? 'https://www.imdb.com' + href.split('?')[0] : null,
         category
       });
     });
   }
 
-  // ── Method 3: IMDb homepage — fan picks widget ───────────────────────────
-  if (!results.length && category === 'fan_picks') {
-    // IMDb homepage has multiple carousels. Look for title cards.
-    $('[data-testid="title-card"], [class*="TitleCard"], [class*="ipc-sub-grid-item"]').each((i, el) => {
-      if (results.length >= 10) return;
-      const title    = $(el).find('[class*="title"], [class*="titleText"], h3, h4').first().text().trim();
-      const href     = $(el).find('a').first().attr('href') || '';
-      const rating   = $(el).find('[class*="rating"], [class*="star"]').first().text().trim().replace(/[^0-9.]/g,'').slice(0,4);
-      const img      = $(el).find('img').first().attr('src') || null;
+  const top10 = dedup(results).slice(0, 10);
+  top10.forEach((r, i) => { r.rank = i + 1; });
 
-      if (!title || title.length < 2 || title.length > 120 || /^\d+$/.test(title)) return;
-      results.push({
-        rank:      i + 1,
-        title:     cleanTitle(title),
-        type:      'movie',
-        year:      null,
-        rating:    rating || null,
-        votes:     null,
-        genre:     null,
-        image_url: img,
-        imdb_url:  href ? 'https://www.imdb.com' + href.split('?')[0] : `https://www.imdb.com/search/title/?title=${encodeURIComponent(title)}`,
-        category
-      });
-    });
+  // Enrich with TMDB posters
+  console.log(`[IMDb] ${label}: ${top10.length} titles — enriching with TMDB...`);
+  for (let i = 0; i < top10.length; i++) {
+    top10[i].image_url = await tmdbPoster(top10[i].title, top10[i].type);
+    if (i < top10.length - 1) await sleep(300);
   }
 
-  // ── Method 4: simple link parsing for chart pages ─────────────────────────
-  if (!results.length) {
-    $('a[href*="/title/tt"]').each((_, el) => {
-      if (results.length >= 10) return;
-      const title = $(el).text().trim().replace(/^\d+\.\s*/, '');
-      const href  = $(el).attr('href') || '';
-      if (!title || title.length < 2 || title.length > 120) return;
-      const img = $(el).closest('li, tr, div').find('img').first().attr('src') || null;
-      results.push({
-        rank:      results.length + 1,
-        title:     cleanTitle(title),
-        type:      category.includes('show') ? 'show' : 'movie',
-        year:      null,
-        rating:    null,
-        votes:     null,
-        genre:     null,
-        image_url: img,
-        imdb_url:  'https://www.imdb.com' + href.split('?')[0],
-        category
-      });
-    });
-  }
-
-  const deduped = dedup(results).slice(0, 10);
-  deduped.forEach((r, i) => { r.rank = i + 1; });
-  console.log(`[IMDb] ${category}: ${deduped.length} titles`);
-  return deduped;
+  console.log(`[IMDb] ${label}: ${top10.filter(r => r.image_url).length}/${top10.length} with TMDB poster`);
+  return top10;
 }
 
 async function scrapeAllImdb() {
@@ -589,22 +415,10 @@ async function scrapeAllImdb() {
 function cleanTitle(t) {
   return String(t || '')
     .replace(/\s+/g, ' ')
-    .replace(/^\d+[\.\)]\s*/,'')       // remove leading "1. " or "1) "
-    .replace(/\(TV (Series|Mini.Series|Movie)\)/gi,'')
-    .replace(/^\s*[\u2013\u2014-]\s*/,'')  // remove leading dash
+    .replace(/^\d+[\.\)]\s*/, '')
+    .replace(/\(TV (Series|Mini.Series|Movie)\)/gi, '')
+    .replace(/^\s*[\u2013\u2014-]\s*/, '')
     .trim();
-}
-
-function normaliseType(t) {
-  t = String(t || '').toLowerCase();
-  if (/movie|film/.test(t)) return 'movie';
-  if (/show|series|tv|episode/.test(t)) return 'show';
-  return 'show'; // default for streaming
-}
-
-function guessType(title) {
-  if (/\bS\d+\b|Season \d|Episode \d|\bSeries\b/i.test(title)) return 'show';
-  return 'movie';
 }
 
 function dedup(arr) {
@@ -618,43 +432,66 @@ function dedup(arr) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MAIN SCRAPE RUN
+// MAIN SCRAPE RUNS
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function runAllScrapers() {
-  console.log('[Scraper] Starting weekly scrape run...');
+async function runNetflixScrape() {
+  console.log('[Scraper] Starting Netflix XLSX scrape...');
   const t0 = Date.now();
-  await scrapeAllNetflix();
+  await scrapeNetflixXlsx();
+  console.log(`[Scraper] Netflix done in ${((Date.now()-t0)/1000).toFixed(1)}s`);
+}
+
+async function runAllScrapers() {
+  console.log('[Scraper] Starting full weekly scrape...');
+  const t0 = Date.now();
+  await scrapeNetflixXlsx();
   await scrapeAllPrime();
   await scrapeAllImdb();
-  console.log(`[Scraper] Done in ${((Date.now()-t0)/1000).toFixed(1)}s`);
+  console.log(`[Scraper] Full scrape done in ${((Date.now()-t0)/1000).toFixed(1)}s`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CRON — every Thursday 20:30 UTC = Friday 2:00 AM IST
+// CRON SCHEDULE
+//   Netflix XLSX: every Monday 10:00 UTC (Netflix publishes new data Mon/Tue)
+//   Full scrape:  every Thursday 20:30 UTC = Friday 2:00 AM IST
 // ─────────────────────────────────────────────────────────────────────────────
 
 function startScraperCron() {
-  cron.schedule('30 20 * * 3', async () => {
-    console.log('[Scraper] Thursday cron fired');
-    try { await runAllScrapers(); }
-    catch (e) { console.error('[Scraper] cron error:', e.message); }
+  if (!process.env.TMDB_API_KEY) {
+    console.warn('[Scraper] ⚠️  TMDB_API_KEY not set — Netflix/IMDb poster images will be blank.');
+    console.warn('[Scraper]    Get a free Read Access Token at https://www.themoviedb.org/settings/api');
+  }
+  // Netflix-only cron: every Monday at 10:00 UTC
+  cron.schedule('0 10 * * 1', async () => {
+    console.log('[Scraper] Monday cron: Netflix XLSX');
+    try { await runNetflixScrape(); }
+    catch (e) { console.error('[Scraper] Netflix cron error:', e.message); }
   }, { timezone: 'UTC' });
 
-  console.log('[Scraper] Cron scheduled: Thu 20:30 UTC (= Fri 2:00 AM IST)');
+  // Full scrape cron: every Thursday 20:30 UTC
+  cron.schedule('30 20 * * 3', async () => {
+    console.log('[Scraper] Thursday cron: full scrape');
+    try { await runAllScrapers(); }
+    catch (e) { console.error('[Scraper] Full scrape cron error:', e.message); }
+  }, { timezone: 'UTC' });
+
+  console.log('[Scraper] Crons scheduled:');
+  console.log('  Monday    10:00 UTC — Netflix XLSX + TMDB enrichment');
+  console.log('  Thursday  20:30 UTC — Full scrape (Netflix + Prime + IMDb)');
 
   // Auto-run on first deploy if DB is empty
   setTimeout(async () => {
     try {
       const existing = await db.getLatestNetflixTop10('canada');
-      if (!existing.length) {
-        console.log('[Scraper] Empty DB — running initial scrape now...');
+      if (!existing || !existing.length) {
+        console.log('[Scraper] Empty DB — running initial scrape...');
         await runAllScrapers();
       } else {
-        console.log(`[Scraper] DB has ${existing.length} Netflix rows — skipping initial scrape`);
+        console.log(`[Scraper] DB already has ${existing.length} Netflix rows — skipping initial scrape`);
       }
     } catch (e) { console.error('[Scraper] Initial check error:', e.message); }
   }, 12000);
 }
 
-module.exports = { startScraperCron, runAllScrapers };
+module.exports = { startScraperCron, runAllScrapers, runNetflixScrape };

@@ -114,7 +114,7 @@ async function handleLink(bot, msg, url, from) {
   // Show typing indicator while we fetch metadata
   try { await bot.sendChatAction(chatId, 'typing'); } catch(e) {}
 
-  // Fetch metadata — IMDB uses OMDB API first, then cheerio scrape
+  // Fetch metadata — IMDB uses TMDB API first, then cheerio scrape as fallback
   // All other URLs use open-graph-scraper
   const meta = await fetchMeta(url);
   const type = detectType(url, meta);

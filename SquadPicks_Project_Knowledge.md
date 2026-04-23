@@ -674,3 +674,151 @@ OMDB_API_KEY=your_free_key_here
 Get a free key (1,000 calls/day) at: https://www.omdbapi.com/apikey.aspx
 
 Without this key, Strategy 2 (cheerio scrape) is used, which works on some IPs but may fail on Railway. **Setting `OMDB_API_KEY` is strongly recommended.**
+
+---
+
+## 17. v3.0 — TMDB Integration + Netflix XLSX Scraper (April 2026)
+
+### OMDB removed
+All OMDB API references removed from `links.js`. TMDB is now the sole external movie/TV metadata source.
+
+### TMDB as movie database (`links.js`)
+Two exported helper functions:
+- **`fetchTmdbByImdbId(imdbId)`** — calls `GET /3/find/{imdbId}?external_source=imdb_id`. Returns title, description (plot + year + rating), poster URL (`w500` size). Used when bot receives an IMDB URL.
+- **`fetchTmdbByTitle(title, type)`** — calls `/3/search/multi`, `/3/search/movie`, or `/3/search/tv`. Returns just the poster URL. Used by the Netflix/IMDb scrapers for enrichment.
+
+`fetchImdbMeta()` strategy order is now:
+1. TMDB by IMDB ID (if `TMDB_API_KEY` set)
+2. Cheerio scrape (last resort, often blocked by Cloudflare from Railway)
+
+### Netflix XLSX scraper (`scraper.js`)
+Replaces the unreliable web scraping of Netflix Tudum pages with the official Netflix public data file:
+
+**Source URL:** `https://www.netflix.com/tudum/top10/data/all-weeks-global.xlsx`
+
+**How it works:**
+1. Downloads the XLSX file as a binary buffer using `node-fetch`
+2. Parses with the `xlsx` npm package (`XLSX.read` + `sheet_to_json`)
+3. Detects column names dynamically (Netflix has changed column names: `show_title`, `title`, `country_name`, `country`, `weekly_rank`, `rank`, `category` etc.)
+4. Finds the most recent week in the `week_as_of` column
+5. Filters for Canada, United States, India only
+6. Groups by region → deduplicates → takes top 10 by `weekly_rank`
+7. Enriches each title with a TMDB poster via `tmdbPoster(title, type)` with 300ms rate-limit delay between requests
+8. Upserts to `trending_netflix` table with `badge: 'N'`, `badge_color: '#E50914'`
+
+**Regions stored:** `canada`, `us`, `india`
+
+**New package:** `xlsx` v0.18.5 added to `package.json`
+
+### Two cron schedules
+| Schedule | UTC | Purpose |
+|----------|-----|---------|
+| Every Monday 10:00 UTC | `0 10 * * 1` | Netflix XLSX download + TMDB enrichment only |
+| Every Thursday 20:30 UTC | `30 20 * * 3` | Full scrape: Netflix + Prime + IMDb |
+
+Netflix publishes new Top 10 data every Tuesday — the Monday cron runs ahead of that to catch late Tuesday updates. The Thursday full scrape re-runs Netflix in case any Monday data was missed.
+
+### Prime Video and IMDb — TMDB enrichment added
+Both scrapers now call `tmdbPoster(title, type)` for any row that has no `image_url` after scraping. 300ms between TMDB requests to stay within rate limits.
+
+### Required Railway env var
+```
+TMDB_API_KEY=eyJ...   (the long Read Access Token from themoviedb.org/settings/api)
+```
+Without this, poster images will be missing for all scraped content and IMDB links sent to the bot.
+
+### `runNetflixScrape()` exported
+`scraper.js` now exports `runNetflixScrape` in addition to `runAllScrapers`. The manual trigger endpoint `POST /api/admin/scrape` can be updated to accept a `?type=netflix` param to trigger only Netflix.
+
+---
+
+## 17. v3.0 — TMDB as Movie DB, Netflix XLSX Cron (April 2026)
+
+### OMDB removed
+All references to `OMDB_API_KEY` and `omdbapi.com` have been removed from the codebase. TMDB is now the sole movie metadata API.
+
+### TMDB is now the canonical movie database
+**Used for two things:**
+1. **IMDB link metadata** (`links.js`) — when someone pastes an IMDB URL in Telegram, the bot calls TMDB's `/find/{imdbId}?external_source=imdb_id` endpoint to get the movie title, poster image, year, and rating. No scraping needed, no IP blocking.
+2. **Netflix poster enrichment** (`scraper.js`) — after parsing the Netflix XLSX, each title is searched in TMDB to get a high-quality poster image.
+
+**Helper functions in `links.js` (also used by `scraper.js`):**
+- `fetchTmdbByImdbId(imdbId)` — looks up a title by its IMDB `tt` ID via TMDB's `/find` endpoint
+- `fetchTmdbByTitle(title, type)` — searches TMDB by title string (used for Netflix titles and cheerio scrape fallback)
+- Both are exported and imported in `scraper.js`
+
+**Required Railway env var:**
+```
+TMDB_API_KEY=eyJ...   (long JWT — use "API Read Access Token" not the short API key)
+```
+Get it free at: https://www.themoviedb.org/settings/api
+
+### Netflix XLSX cron
+**What changed:** Replaced the brittle cheerio/Next.js scraper for Netflix with the official Netflix Top 10 XLSX data file.
+
+**Source:** `https://www.netflix.com/tudum/top10/data/all-weeks-global.xlsx`
+
+Netflix publishes this file publicly every week. It contains every country's Top 10 by week. The scraper:
+1. Downloads the XLSX as a buffer
+2. Parses it using the `xlsx` package (already in `package.json`)
+3. Detects column names robustly (Netflix has changed them over time)
+4. Finds the most recent week in the data
+5. Filters to **Canada**, **United States**, and **India** only
+6. Takes the top 10 by `weekly_rank` for each country
+7. Calls `tmdbPoster(title, type)` for each title to get a TMDB poster image (rate-limited: 300ms between calls)
+8. Upserts to `trending_netflix` table with `region = 'canada'|'us'|'india'`
+
+**Cron schedules:**
+| Schedule | Cron | What runs |
+|----------|------|-----------|
+| Monday 10:00 UTC | `0 10 * * 1` | Netflix XLSX only (`runNetflixScrape`) |
+| Thursday 20:30 UTC | `30 20 * * 3` | Full scrape: Netflix + Prime + IMDb (`runAllScrapers`) |
+
+Netflix publishes new data on Tuesdays. The Monday cron ensures we capture it shortly after. The Thursday cron also re-runs Netflix as part of the full scrape.
+
+**Column detection:** The scraper uses `findCol()` to match against multiple known column names, making it resilient to Netflix renaming columns. If required columns are missing entirely, it logs the detected column names and exits cleanly.
+
+**TMDB rate limit:** TMDB free tier allows 40 requests per 10 seconds. We add 300ms between poster lookups (≈3 req/s) which is well within limits.
+
+---
+
+## 17. v3.0 — TMDB as primary movie database, Netflix XLSX cron (April 2026)
+
+### OMDB removed
+- All OMDB references removed from `links.js`, `scraper.js`, `server.js`, `.env.example`
+- `OMDB_API_KEY` env var no longer needed — remove it from Railway if set
+- TMDB is now the sole source for movie/show metadata and poster images
+
+### TMDB integration (links.js)
+Two functions exported:
+- `fetchTmdbByImdbId(imdbId)` — resolves an IMDB `tt` ID via TMDB's `/find` endpoint → returns full metadata (title, description, year, rating, poster URL)
+- `fetchTmdbByTitle(title, type)` — searches TMDB by title → returns poster URL. `type` must be `'movie'`, `'tv'`, or `'multi'`
+
+**fetchMeta flow for IMDB URLs:**
+1. Extract `tt` ID from URL with `extractImdbId()`
+2. Call `fetchTmdbByImdbId()` — gets rich metadata + poster in one call
+3. Fallback: cheerio scrape of the IMDB page (works only on non-blocked IPs)
+4. Last resort: `titleFromUrl()` — returns `"Movie on IMDB"` with no image
+
+### Netflix XLSX cron (scraper.js)
+- Downloads `https://www.netflix.com/tudum/top10/data/all-weeks-global.xlsx` every **Monday at 10:00 UTC**
+- Parses with `xlsx` npm package using `XLSX.read(buffer, { type: 'buffer', cellDates: true })`
+- **Fixed:** `res.buffer()` → `res.arrayBuffer()` + `Buffer.from()` — required for node-fetch v3 (ESM). The old `buffer()` method doesn't exist in v3 and caused silent XLSX download failures
+- Filters rows to **Canada, United States, India** only for the most recent week
+- Groups by region → sorts by rank → deduplicates → takes top 10 per region
+- Enriches each title with TMDB poster: calls `tmdbPoster(title, type)` with 300ms between requests (TMDB rate limit: 40 req/10s)
+- Stores to `trending_netflix` table via `db.upsertTrendingNetflix(rows)`
+- Cron also runs as part of the full Thursday scrape
+- Auto-runs on first deploy if `trending_netflix` table is empty
+
+### scraper.js TMDB consolidation
+- Removed the duplicate inline `tmdbPoster` function that reimplemented TMDB search
+- Now uses `fetchTmdbByTitle` from `links.js` via a thin wrapper: `tmdbPoster(title, type)` maps `'show'→'tv'`, `'movie'→'movie'`, else `'multi'`
+- Startup warning logged if `TMDB_API_KEY` is not set
+
+### Required env var
+```
+TMDB_API_KEY=eyJ...   # TMDB Read Access Token (v4 auth) — NOT the short API key
+```
+Get at: https://www.themoviedb.org/settings/api → "API Read Access Token (v4 auth)"
+The token starts with `eyJ` and is ~200 chars long. Free, no credit card.
