@@ -1,4 +1,9 @@
 // links.js — Link detection, metadata fetching, card formatting
+// Primary movie/show database: TMDB (themoviedb.org)
+// YouTube: oEmbed API (no key needed)
+// Google Maps: redirect-follow + place name extraction
+'use strict';
+
 const ogs = require('open-graph-scraper');
 
 // ─── DETECT LINK TYPE FROM URL ─────────────────────────────
@@ -6,64 +11,70 @@ const ogs = require('open-graph-scraper');
 function detectType(url, meta = {}) {
   const u = url.toLowerCase();
 
-  // Movies & Shows
-  if (/imdb\.com\/(title|name)/.test(u))        return 'movie';
-  if (/letterboxd\.com/.test(u))                 return 'movie';
-  if (/rottentomatoes\.com/.test(u))             return 'movie';
-  if (/justwatch\.com/.test(u))                  return 'show';
-  if (/netflix\.com/.test(u))                    return 'show';
-  if (/primevideo\.com/.test(u))                 return 'show';
-  if (/hotstar\.com/.test(u))                    return 'show';
-  if (/sonyliv\.com/.test(u))                    return 'show';
+  // Movies & Shows — TMDB as primary, IMDB still detected (resolved via TMDB)
+  if (/themoviedb\.org\/movie/.test(u))              return 'movie';
+  if (/themoviedb\.org\/tv/.test(u))                 return 'show';
+  if (/letterboxd\.com/.test(u))                     return 'movie';
+  if (/rottentomatoes\.com/.test(u))                 return 'movie';
+  if (/justwatch\.com/.test(u))                      return 'show';
+  if (/netflix\.com/.test(u))                        return 'show';
+  if (/primevideo\.com/.test(u))                     return 'show';
+  if (/hotstar\.com/.test(u))                        return 'show';
+  if (/sonyliv\.com/.test(u))                        return 'show';
+  if (/imdb\.com/.test(u))                           return 'movie';
 
-  // Food & Restaurants
-  if (/yelp\.com/.test(u))                       return 'food';
-  if (/zomato\.com/.test(u))                     return 'food';
-  if (/swiggy\.com/.test(u))                     return 'food';
-  if (/opentable\.com/.test(u))                  return 'food';
-  if (/doordash\.com/.test(u))                   return 'food';
-  if (/ubereats\.com/.test(u))                   return 'food';
+  // YouTube
+  if (/youtube\.com\/watch|youtu\.be\//.test(u))     return 'video';
+  if (/youtube\.com\/(shorts|live)/.test(u))         return 'video';
 
-  // Places & Attractions
-  if (/maps\.google|goo\.gl\/maps|maps\.app\.goo\.gl/.test(u)) return 'place';
-  if (/tripadvisor\.com/.test(u))                return 'place';
-  if (/airbnb\.com\/experiences/.test(u))        return 'place';
+  // Food
+  if (/yelp\.com/.test(u))                           return 'food';
+  if (/zomato\.com/.test(u))                         return 'food';
+  if (/swiggy\.com/.test(u))                         return 'food';
+  if (/opentable\.com/.test(u))                      return 'food';
+  if (/doordash\.com/.test(u))                       return 'food';
+  if (/ubereats\.com/.test(u))                       return 'food';
+
+  // Places — all Google Maps URL patterns
+  if (/maps\.app\.goo\.gl/.test(u))                  return 'place';
+  if (/maps\.google\.com/.test(u))                   return 'place';
+  if (/goo\.gl\/maps/.test(u))                       return 'place';
+  if (/tripadvisor\.com/.test(u))                    return 'place';
+  if (/airbnb\.com\/experiences/.test(u))            return 'place';
 
   // Events
-  if (/eventbrite\.com/.test(u))                 return 'event';
-  if (/bookmyshow\.com/.test(u))                 return 'event';
-  if (/meetup\.com/.test(u))                     return 'event';
-  if (/ticketmaster\.com/.test(u))               return 'event';
+  if (/eventbrite\.com/.test(u))                     return 'event';
+  if (/bookmyshow\.com/.test(u))                     return 'event';
+  if (/meetup\.com/.test(u))                         return 'event';
+  if (/ticketmaster\.com/.test(u))                   return 'event';
 
-  // YouTube (trailers / reviews)
-  if (/youtube\.com|youtu\.be/.test(u))          return 'video';
-
-  return 'link'; // fallback
+  return 'link';
 }
 
-// ─── SMART TITLE FALLBACK FROM URL ────────────────────────
+// ─── SMART TITLE FALLBACK ──────────────────────────────────
 
 function titleFromUrl(url) {
   try {
-    const u = new URL(url);
+    const u    = new URL(url);
     const host = u.hostname.replace(/^www\./, '');
     const path = u.pathname;
-    if (/imdb\.com/.test(host))        return 'Movie on IMDB';
-    if (/letterboxd\.com/.test(host))  return 'Movie on Letterboxd';
-    if (/maps\.google|maps\.app\.goo\.gl/.test(url)) return 'Google Maps location';
-    if (/zomato\.com/.test(host))      return 'Restaurant on Zomato';
-    if (/yelp\.com/.test(host))        return 'Restaurant on Yelp';
-    if (/swiggy\.com/.test(host))      return 'Restaurant on Swiggy';
-    if (/eventbrite\.com/.test(host))  return 'Event on Eventbrite';
-    if (/bookmyshow\.com/.test(host))  return 'Event on BookMyShow';
-    if (/tripadvisor\.com/.test(host)) return 'Place on TripAdvisor';
-    if (/youtube\.com|youtu\.be/.test(host)) return 'YouTube video';
-    if (/netflix\.com/.test(host))     return 'Netflix title';
-    if (/hotstar\.com/.test(host))     return 'Hotstar title';
-    if (/primevideo\.com/.test(host))  return 'Prime Video title';
+    if (/themoviedb\.org/.test(host))                  return 'Title on TMDB';
+    if (/letterboxd\.com/.test(host))                  return 'Movie on Letterboxd';
+    if (/maps\.app\.goo\.gl|maps\.google/.test(url))   return 'Google Maps location';
+    if (/zomato\.com/.test(host))                      return 'Restaurant on Zomato';
+    if (/yelp\.com/.test(host))                        return 'Restaurant on Yelp';
+    if (/swiggy\.com/.test(host))                      return 'Restaurant on Swiggy';
+    if (/eventbrite\.com/.test(host))                  return 'Event on Eventbrite';
+    if (/bookmyshow\.com/.test(host))                  return 'Event on BookMyShow';
+    if (/tripadvisor\.com/.test(host))                 return 'Place on TripAdvisor';
+    if (/youtube\.com|youtu\.be/.test(host))           return 'YouTube video';
+    if (/netflix\.com/.test(host))                     return 'Netflix title';
+    if (/hotstar\.com/.test(host))                     return 'Hotstar title';
+    if (/primevideo\.com/.test(host))                  return 'Prime Video title';
+    if (/imdb\.com/.test(host))                        return 'Movie (via TMDB)';
     const segments = path.split('/').filter(Boolean);
     if (segments.length) {
-      const last = segments[segments.length - 1];
+      const last    = segments[segments.length - 1];
       const cleaned = last.replace(/[-_]/g, ' ').replace(/\.\w+$/, '').replace(/\b\w/g, c => c.toUpperCase()).trim();
       if (cleaned.length > 2 && cleaned.length < 80) return cleaned;
     }
@@ -71,31 +82,135 @@ function titleFromUrl(url) {
   } catch (e) { return url; }
 }
 
-// ─── IMDB ID EXTRACTOR ─────────────────────────────────────
-function extractImdbId(url) {
-  const m = url.match(/imdb\.com\/title\/(tt\d+)/i);
-  return m ? m[1] : null;
+// ─── SHARED FETCH HELPER ───────────────────────────────────
+
+const nodeFetch = (...a) => import('node-fetch').then(m => m.default(...a));
+const tmdbHeaders = () => ({ 'Authorization': `Bearer ${process.env.TMDB_API_KEY}`, 'Accept': 'application/json' });
+
+// ─── YOUTUBE oEMBED ────────────────────────────────────────
+// Free, no API key needed. Always works for public videos.
+
+async function fetchYoutubeMeta(url) {
+  try {
+    const endpoint = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    const r = await nodeFetch(endpoint, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) { console.warn('[YouTube oEmbed] HTTP', r.status); return null; }
+    const d = await r.json();
+    if (!d.title) return null;
+    console.log('[YouTube oEmbed] OK:', d.title);
+    return {
+      title:       d.title,
+      description: d.author_name ? `by ${d.author_name}` : '',
+      imageUrl:    d.thumbnail_url || '',
+      sourceUrl:   url,
+    };
+  } catch (e) {
+    console.warn('[YouTube oEmbed] Error:', e.message);
+    return null;
+  }
 }
 
-// ─── TMDB LOOKUP ───────────────────────────────────────────
-// Used by fetchMeta for IMDB URLs, and by the Netflix scraper for poster enrichment.
-// Requires TMDB_API_KEY env var (free read-access token from themoviedb.org/settings/api).
+// ─── GOOGLE MAPS — short link expander ─────────────────────
+// maps.app.goo.gl is a short URL that redirects to a full Maps URL.
+// We follow the redirect and extract the place name from the path.
+
+async function fetchGoogleMapsMeta(url) {
+  try {
+    const r = await nodeFetch(url, {
+      redirect: 'follow',
+      headers: {
+        'User-Agent':      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const finalUrl = r.url;
+    console.log('[GMaps] Resolved URL:', finalUrl.slice(0, 120));
+
+    let placeName = '';
+
+    // Pattern 1: /maps/place/Place+Name/@lat,lng
+    const m1 = finalUrl.match(/\/maps\/(?:place|search)\/([^/@?&#]+)/i);
+    if (m1) placeName = decodeURIComponent(m1[1].replace(/\+/g, ' ')).trim();
+
+    // Pattern 2: ?q=Place+Name
+    if (!placeName) {
+      const m2 = finalUrl.match(/[?&]q=([^&&#]+)/i);
+      if (m2) placeName = decodeURIComponent(m2[1].replace(/\+/g, ' ')).trim();
+    }
+
+    // Pattern 3: scrape og:title from page HTML
+    if (!placeName && r.ok) {
+      const html  = await r.text();
+      const ogMatch = html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i)
+                   || html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:title"/i);
+      if (ogMatch) placeName = ogMatch[1].replace(/\s*[-–|]\s*Google Maps\s*$/i, '').trim();
+    }
+
+    if (!placeName) {
+      return { title: 'Google Maps location', description: 'View on Google Maps', imageUrl: '', sourceUrl: url };
+    }
+
+    console.log('[GMaps] Place name:', placeName);
+    return {
+      title:       placeName,
+      description: 'View on Google Maps',
+      imageUrl:    '',   // no image without Maps API key — emoji fallback used
+      sourceUrl:   url,
+    };
+  } catch (e) {
+    console.warn('[GMaps] Error:', e.message);
+    return { title: 'Google Maps location', description: 'View on Google Maps', imageUrl: '', sourceUrl: url };
+  }
+}
+
+// ─── TMDB LOOKUP BY TMDB URL ────────────────────────────────
+
+async function fetchTmdbByUrl(url) {
+  if (!process.env.TMDB_API_KEY) return null;
+  try {
+    const movieM = url.match(/themoviedb\.org\/movie\/(\d+)/i);
+    const tvM    = url.match(/themoviedb\.org\/tv\/(\d+)/i);
+    const id   = (movieM && movieM[1]) || (tvM && tvM[1]);
+    const type = movieM ? 'movie' : 'tv';
+    if (!id) return null;
+
+    const r = await nodeFetch(
+      `https://api.themoviedb.org/3/${type}/${id}?language=en-US`,
+      { headers: tmdbHeaders(), signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+
+    const title  = d.title || d.name || '';
+    const year   = (d.release_date || d.first_air_date || '').slice(0, 4);
+    const rating = d.vote_average ? `⭐ ${d.vote_average.toFixed(1)}` : '';
+    const genres = (d.genres || []).slice(0, 2).map(g => g.name).join(', ');
+    const imgUrl = d.poster_path ? `https://image.tmdb.org/t/p/w500${d.poster_path}` : '';
+    const desc   = [d.overview?.slice(0, 150), year && `(${year})`, rating, genres].filter(Boolean).join(' · ');
+
+    console.log('[TMDB URL] OK:', title);
+    return { title, description: desc, imageUrl: imgUrl, sourceUrl: url };
+  } catch (e) {
+    console.warn('[TMDB URL] Error:', e.message);
+    return null;
+  }
+}
+
+// ─── TMDB LOOKUP BY IMDB ID ────────────────────────────────
 
 async function fetchTmdbByImdbId(imdbId) {
   if (!process.env.TMDB_API_KEY) return null;
   try {
-    const fetch = (...a) => import('node-fetch').then(m => m.default(...a));
-    const r = await fetch(
+    const r = await nodeFetch(
       `https://api.themoviedb.org/3/find/${imdbId}?external_source=imdb_id`,
-      {
-        headers: { 'Authorization': `Bearer ${process.env.TMDB_API_KEY}`, 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(8000)
-      }
+      { headers: tmdbHeaders(), signal: AbortSignal.timeout(8000) }
     );
-    if (!r.ok) { console.warn('[TMDB] HTTP', r.status); return null; }
-    const d = await r.json();
+    if (!r.ok) { console.warn('[TMDB/IMDB] HTTP', r.status); return null; }
+    const d    = await r.json();
     const item = (d.movie_results && d.movie_results[0]) || (d.tv_results && d.tv_results[0]);
-    if (!item) { console.warn('[TMDB] No result for', imdbId); return null; }
+    if (!item) { console.warn('[TMDB/IMDB] No result for', imdbId); return null; }
 
     const title  = item.title || item.name || '';
     const year   = (item.release_date || item.first_air_date || '').slice(0, 4);
@@ -103,107 +218,32 @@ async function fetchTmdbByImdbId(imdbId) {
     const imgUrl = item.poster_path  ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : '';
     const desc   = [item.overview?.slice(0, 150), year && `(${year})`, rating].filter(Boolean).join(' · ');
 
-    console.log('[TMDB] OK:', title, '| poster:', imgUrl ? 'yes' : 'no');
+    console.log('[TMDB/IMDB] OK:', title, '| poster:', imgUrl ? 'yes' : 'no');
     return { title, description: desc, imageUrl: imgUrl, sourceUrl: null };
   } catch (e) {
-    console.warn('[TMDB] Error:', e.message);
+    console.warn('[TMDB/IMDB] Error:', e.message);
     return null;
   }
 }
 
-// Search TMDB by title — used when we only have a title (no IMDB ID)
+// ─── TMDB SEARCH BY TITLE ──────────────────────────────────
+// type: 'movie' | 'tv' | 'multi'
+// Returns poster URL — used by scrapers for bulk enrichment
+
 async function fetchTmdbByTitle(title, type = 'multi') {
   if (!process.env.TMDB_API_KEY || !title) return null;
   try {
-    const fetch = (...a) => import('node-fetch').then(m => m.default(...a));
     const q = encodeURIComponent(title.trim());
-    const r = await fetch(
+    const r = await nodeFetch(
       `https://api.themoviedb.org/3/search/${type}?query=${q}&include_adult=false&language=en-US&page=1`,
-      {
-        headers: { 'Authorization': `Bearer ${process.env.TMDB_API_KEY}`, 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(8000)
-      }
+      { headers: tmdbHeaders(), signal: AbortSignal.timeout(8000) }
     );
     if (!r.ok) return null;
-    const d = await r.json();
+    const d    = await r.json();
     const item = d.results && d.results[0];
-    if (!item) return null;
-    return item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null;
+    if (!item || !item.poster_path) return null;
+    return `https://image.tmdb.org/t/p/w500${item.poster_path}`;
   } catch (e) {
-    return null;
-  }
-}
-
-// ─── FETCH IMDB/MOVIE METADATA ─────────────────────────────
-// Strategy order:
-//   1. TMDB API (by IMDB ID)  — needs TMDB_API_KEY, reliable, good images
-//   2. Cheerio scrape          — last resort, often blocked from cloud IPs
-
-async function fetchImdbMeta(url) {
-  const imdbId = extractImdbId(url);
-  const fetch  = (...a) => import('node-fetch').then(m => m.default(...a));
-
-  // ── Strategy 1: TMDB by IMDB ID ──────────────────────────
-  if (imdbId) {
-    const tmdb = await fetchTmdbByImdbId(imdbId);
-    if (tmdb && tmdb.title) return { ...tmdb, sourceUrl: url };
-  }
-
-  // ── Strategy 2: Cheerio scrape (last resort) ──────────────
-  try {
-    const cheerio = require('cheerio');
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent':      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-        'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Cache-Control':   'no-cache',
-        'Referer':         'https://www.google.com/',
-      },
-      redirect: 'follow',
-      signal:   AbortSignal.timeout(12000),
-    });
-
-    if (!res.ok) { console.warn('[fetchImdbMeta] Scrape blocked: HTTP', res.status); return null; }
-
-    const html = await res.text();
-    if (html.includes('cf-browser-verification') || html.includes('Just a moment') || html.length < 5000) {
-      console.warn('[fetchImdbMeta] Cloudflare challenge detected');
-      return null;
-    }
-
-    const $ = cheerio.load(html);
-    let title = '', image = '', description = '', year = '', rating = '';
-
-    $('script[type="application/ld+json"]').each((_, el) => {
-      try {
-        const data = JSON.parse($(el).html() || '');
-        const valid = ['Movie','TVSeries','TVEpisode','TVMovie','Short'];
-        if (valid.includes(data['@type'])) {
-          title       = title       || data.name || '';
-          if (!image) {
-            if (typeof data.image === 'string')    image = data.image;
-            else if (Array.isArray(data.image))    image = data.image[0]?.url || data.image[0] || '';
-            else if (data.image?.url)              image = data.image.url;
-          }
-          description = description || data.description || '';
-          year        = year        || String(data.datePublished || '').slice(0, 4);
-          rating      = rating      || String(data.aggregateRating?.ratingValue || '');
-        }
-      } catch(e) {}
-    });
-
-    if (!title) title = ($('meta[property="og:title"]').attr('content') || $('title').text() || '').replace(/\s*[-|]\s*IMDb\s*$/i, '').trim();
-    if (!image) image = $('meta[property="og:image"]').attr('content') || $('meta[name="twitter:image"]').attr('content') || '';
-    if (!description) description = $('meta[property="og:description"]').attr('content') || '';
-
-    if (!title) { console.warn('[fetchImdbMeta] No title found in scraped page'); return null; }
-
-    const descParts = [description.slice(0, 150), year && `(${year})`, rating && `⭐ ${rating}`].filter(Boolean);
-    console.log('[fetchImdbMeta] Scraped OK:', title);
-    return { title: title.trim(), description: descParts.join(' · '), imageUrl: image, sourceUrl: url };
-  } catch (err) {
-    console.error('[fetchImdbMeta] Scrape error:', err.message);
     return null;
   }
 }
@@ -211,15 +251,36 @@ async function fetchImdbMeta(url) {
 // ─── FETCH METADATA FROM ANY URL ───────────────────────────
 
 async function fetchMeta(url) {
-  // IMDB: use dedicated fetcher (TMDB first, then cheerio scrape)
-  if (/imdb\.com\/(title|name|film)/.test(url)) {
-    const imdbMeta = await fetchImdbMeta(url);
-    if (imdbMeta && imdbMeta.title) return imdbMeta;
-    console.warn('[fetchMeta] All IMDB strategies failed, using URL fallback');
-    return { title: titleFromUrl(url), description: '', imageUrl: '', sourceUrl: url };
+  const u = url.toLowerCase();
+
+  // YouTube: oEmbed API — reliable, no key needed
+  if (/youtube\.com\/watch|youtu\.be\/|youtube\.com\/(shorts|live)/.test(u)) {
+    const meta = await fetchYoutubeMeta(url);
+    if (meta) return meta;
   }
 
-  // All other URLs: use open-graph-scraper
+  // Google Maps: follow redirect and extract place name
+  if (/maps\.app\.goo\.gl|goo\.gl\/maps|maps\.google\.com/.test(u)) {
+    return fetchGoogleMapsMeta(url);
+  }
+
+  // TMDB direct URL: fetch by ID
+  if (/themoviedb\.org\/(movie|tv)\/\d+/.test(u)) {
+    const meta = await fetchTmdbByUrl(url);
+    if (meta) return meta;
+  }
+
+  // IMDB URL: resolve via TMDB using the tt ID
+  if (/imdb\.com\/(title|name)/.test(u)) {
+    const imdbId = url.match(/imdb\.com\/title\/(tt\d+)/i)?.[1];
+    if (imdbId && process.env.TMDB_API_KEY) {
+      const tmdb = await fetchTmdbByImdbId(imdbId);
+      if (tmdb && tmdb.title) return { ...tmdb, sourceUrl: url };
+    }
+    console.warn('[fetchMeta] IMDB URL — TMDB lookup failed or no key');
+  }
+
+  // All other URLs: open-graph-scraper
   try {
     const { result } = await ogs({
       url,
@@ -234,7 +295,7 @@ async function fetchMeta(url) {
     const title = result.ogTitle || result.twitterTitle || result.dcTitle || '';
     if (title) {
       return {
-        title:       title.replace(/\s*[-|]\s*IMDb\s*$/i, '').trim(),
+        title:       title.trim(),
         description: result.ogDescription || result.twitterDescription || '',
         imageUrl:    result.ogImage?.[0]?.url || '',
         sourceUrl:   url,
@@ -242,19 +303,18 @@ async function fetchMeta(url) {
     }
     throw new Error('no title in ogs result');
   } catch (err) {
-    console.error('fetchMeta fallback for:', url, '-', err.message || err);
+    console.warn('[fetchMeta] ogs failed for:', url.slice(0, 60), '-', err.message);
     return { title: titleFromUrl(url), description: '', imageUrl: '', sourceUrl: url };
   }
 }
 
-// ─── EXTRACT URL FROM MESSAGE ───────────────────────────────
+// ─── EXTRACT URLS FROM TEXT ─────────────────────────────────
 
 function extractUrls(text) {
-  const regex = /https?:\/\/[^\s]+/gi;
-  return text.match(regex) || [];
+  return (text.match(/https?:\/\/[^\s]+/gi) || []);
 }
 
-// ─── TYPE LABELS & ICONS ───────────────────────────────────
+// ─── TYPE LABELS ───────────────────────────────────────────
 
 const TYPE_LABELS = {
   movie: '🎬 Movie',
@@ -266,29 +326,20 @@ const TYPE_LABELS = {
   link:  '🔗 Link',
 };
 
-function typeLabel(type) {
-  return TYPE_LABELS[type] || '🔗 Link';
-}
+function typeLabel(type) { return TYPE_LABELS[type] || '🔗 Link'; }
 
 // ─── FORMAT PICK CARD (Telegram HTML) ──────────────────────
 
 function formatCard(pick, votes) {
-  const seen  = votes.filter(v => v.status === 'seen').map(v => v.first_name || v.username || 'Someone');
-  const want  = votes.filter(v => v.status === 'want').map(v => v.first_name || v.username || 'Someone');
-  const skip  = votes.filter(v => v.status === 'skip').map(v => v.first_name || v.username || 'Someone');
-  const allVoted = seen.length + want.length + skip.length;
-  const groupOk  = skip.length === 0 && allVoted > 0;
+  const seen = votes.filter(v => v.status === 'seen').map(v => v.first_name || v.username || 'Someone');
+  const want = votes.filter(v => v.status === 'want').map(v => v.first_name || v.username || 'Someone');
+  const skip = votes.filter(v => v.status === 'skip').map(v => v.first_name || v.username || 'Someone');
+  const groupOk = skip.length === 0 && (seen.length + want.length + skip.length) > 0;
 
-  let text = '';
-
-  // Header
-  text += `<b>${typeLabel(pick.type)}  |  ${escHtml(pick.title)}</b>\n`;
-  if (pick.description) {
-    text += `<i>${escHtml(truncate(pick.description, 100))}</i>\n`;
-  }
+  let text = `<b>${typeLabel(pick.type)}  |  ${escHtml(pick.title)}</b>\n`;
+  if (pick.description) text += `<i>${escHtml(truncate(pick.description, 100))}</i>\n`;
   text += '\n';
 
-  // Filmi Craft review strip
   if (pick.reviewer_name) {
     text += `📺 <b>${escHtml(pick.reviewer_name)}</b>`;
     if (pick.reviewer_score) text += `  ⭐ <b>${escHtml(pick.reviewer_score)}</b>`;
@@ -296,57 +347,39 @@ function formatCard(pick, votes) {
     text += '\n\n';
   }
 
-  // Votes
-  if (seen.length)  text += `✅ <b>Seen/Been:</b> ${escHtml(seen.join(', '))}\n`;
-  if (want.length)  text += `⭐ <b>Want to:</b>   ${escHtml(want.join(', '))}\n`;
-  if (skip.length)  text += `❌ <b>Not for me:</b> ${escHtml(skip.join(', '))}\n`;
-  if (!seen.length && !want.length && !skip.length) {
-    text += `<i>No votes yet — be the first!</i>\n`;
-  }
-
-  // Group ok badge
-  if (groupOk) {
-    text += `\n✅ <b>Group ok — everyone can do this together!</b>`;
-  }
-
-  // Added by
+  if (seen.length) text += `✅ <b>Seen/Been:</b> ${escHtml(seen.join(', '))}\n`;
+  if (want.length) text += `⭐ <b>Want to:</b>   ${escHtml(want.join(', '))}\n`;
+  if (skip.length) text += `❌ <b>Not for me:</b> ${escHtml(skip.join(', '))}\n`;
+  if (!seen.length && !want.length && !skip.length) text += `<i>No votes yet — be the first!</i>\n`;
+  if (groupOk) text += `\n✅ <b>Group ok — everyone can do this together!</b>`;
   text += `\n\n<i>Added by ${escHtml(pick.added_by_name || 'someone')} · via SquadPicks</i>`;
-
   return text;
 }
 
 // ─── FORMAT SUMMARY ────────────────────────────────────────
 
 function formatSummary(picks, allVotes) {
-  const groupOk  = [];
-  const hasSkip  = [];
-  const pending  = [];
-
+  const groupOk = [], hasSkip = [], pending = [];
   for (const pick of picks) {
     const pv = allVotes.filter(v => v.pick_id === pick.id);
-    const skips = pv.filter(v => v.status === 'skip');
-    const total  = pv.length;
-    if (skips.length > 0) hasSkip.push({ pick, votes: pv });
-    else if (total > 0)   groupOk.push({ pick, votes: pv });
-    else                  pending.push({ pick });
+    if (pv.filter(v => v.status === 'skip').length) hasSkip.push({ pick, votes: pv });
+    else if (pv.length) groupOk.push({ pick, votes: pv });
+    else pending.push({ pick });
   }
-
   let text = `📊 <b>SquadPicks Summary</b>\n\n`;
-
   if (groupOk.length) {
     text += `✅ <b>Group can do together (${groupOk.length})</b>\n`;
     groupOk.forEach(({ pick, votes }) => {
-      const want = votes.filter(v => v.status === 'want').length;
-      const seen = votes.filter(v => v.status === 'seen').length;
       text += `  • ${escHtml(pick.title)}`;
       if (pick.reviewer_score) text += ` · ⭐${pick.reviewer_score}`;
+      const want = votes.filter(v => v.status === 'want').length;
+      const seen = votes.filter(v => v.status === 'seen').length;
       if (want) text += ` · ${want} want`;
       if (seen) text += ` · ${seen} seen`;
       text += '\n';
     });
     text += '\n';
   }
-
   if (hasSkip.length) {
     text += `⚠️ <b>Someone said not for me (${hasSkip.length})</b>\n`;
     hasSkip.forEach(({ pick, votes }) => {
@@ -355,19 +388,12 @@ function formatSummary(picks, allVotes) {
     });
     text += '\n';
   }
-
   if (pending.length) {
     text += `⏳ <b>No votes yet (${pending.length})</b>\n`;
-    pending.forEach(({ pick }) => {
-      text += `  • ${escHtml(pick.title)}\n`;
-    });
+    pending.forEach(({ pick }) => { text += `  • ${escHtml(pick.title)}\n`; });
     text += '\n';
   }
-
-  if (!picks.length) {
-    text += `<i>No picks yet! Paste any link in this chat to get started.</i>`;
-  }
-
+  if (!picks.length) text += `<i>No picks yet! Paste any link to get started.</i>`;
   text += `\n<i>Type /pending to see what YOU still need to vote on.</i>`;
   return text;
 }
@@ -375,17 +401,14 @@ function formatSummary(picks, allVotes) {
 // ─── FORMAT WEEKLY DIGEST ──────────────────────────────────
 
 function formatDigest(newPicks, fcPicks, pendingCount) {
-  let text = `📅 <b>SquadPicks — Weekly Digest</b>\n`;
-  text += `<i>Here's what happened in your group this week</i>\n\n`;
-
+  let text = `📅 <b>SquadPicks — Weekly Digest</b>\n<i>Here's what happened this week</i>\n\n`;
   if (newPicks.length) {
-    text += `🆕 <b>New picks this week (${newPicks.length})</b>\n`;
+    text += `🆕 <b>New picks (${newPicks.length})</b>\n`;
     newPicks.slice(0, 8).forEach(p => {
       text += `  ${typeLabel(p.type).split(' ')[0]} ${escHtml(p.title)} · by ${escHtml(p.added_by_name || 'someone')}\n`;
     });
     text += '\n';
   }
-
   if (fcPicks.length) {
     text += `📺 <b>Filmi Craft reviewed this week</b>\n`;
     fcPicks.forEach(p => {
@@ -395,29 +418,21 @@ function formatDigest(newPicks, fcPicks, pendingCount) {
     });
     text += '\n';
   }
-
   if (pendingCount > 0) {
-    text += `⏳ <b>You still need to vote on ${pendingCount} pick${pendingCount > 1 ? 's' : ''}</b>\n`;
-    text += `Type /pending to see them.\n\n`;
+    text += `⏳ <b>${pendingCount} pick${pendingCount > 1 ? 's' : ''} waiting for your vote</b>\nType /pending to see them.\n\n`;
   }
-
   text += `<i>Have a great week from SquadPicks! 🎬🍜📍</i>`;
   return text;
 }
 
-// ─── FORMAT FILMI CRAFT CARD ───────────────────────────────
+function formatFilmiCraftCard(pick, votes) { return formatCard(pick, votes); }
 
-function formatFilmiCraftCard(pick, votes) {
-  return formatCard(pick, votes);
-}
-
-// ─── KEYBOARD BUILDERS ─────────────────────────────────────
+// ─── KEYBOARDS ─────────────────────────────────────────────
 
 function buildVoteKeyboard(pickId, groupId) {
-  const botUsername = process.env.BOT_USERNAME       || 'squadpicks_bot';
+  const botUsername = process.env.BOT_USERNAME        || 'squadpicks_bot';
   const shortName   = process.env.MINI_APP_SHORT_NAME || 'Squadpicks';
   const startParam  = groupId ? `?startapp=${groupId}` : '';
-  const miniAppUrl  = `https://t.me/${botUsername}/${shortName}${startParam}`;
   return {
     inline_keyboard: [
       [
@@ -425,9 +440,7 @@ function buildVoteKeyboard(pickId, groupId) {
         { text: '⭐ Want to',    callback_data: `vote_${pickId}_want` },
         { text: '❌ Not for me', callback_data: `vote_${pickId}_skip` },
       ],
-      [
-        { text: '🚀 Open in SquadPicks', url: miniAppUrl }
-      ]
+      [{ text: '🚀 Open in SquadPicks', url: `https://t.me/${botUsername}/${shortName}${startParam}` }]
     ]
   };
 }
@@ -435,9 +448,9 @@ function buildVoteKeyboard(pickId, groupId) {
 function buildSummaryKeyboard() {
   return {
     inline_keyboard: [[
-      { text: '📋 Pending',   callback_data: 'cmd_pending' },
-      { text: '📺 FC Picks',  callback_data: 'cmd_fcpicks' },
-      { text: '💡 Suggest',   callback_data: 'cmd_suggest' },
+      { text: '📋 Pending',  callback_data: 'cmd_pending' },
+      { text: '📺 FC Picks', callback_data: 'cmd_fcpicks' },
+      { text: '💡 Suggest',  callback_data: 'cmd_suggest' },
     ]]
   };
 }
@@ -446,10 +459,7 @@ function buildSummaryKeyboard() {
 
 function escHtml(str) {
   if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function truncate(str, len) {
