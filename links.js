@@ -260,9 +260,40 @@ async function fetchTmdbByTitle(title, type = 'multi') {
 }
 
 // ─── FACEBOOK SHARE URL HANDLER ────────────────────────────
-// facebook.com/share/r/CODE is a short redirect URL.
-// We follow the redirect chain, then try OGS on the final URL.
-// If that fails (login wall), we extract what we can from the URL.
+// facebook.com/share/r/CODE is a short redirect link.
+// We follow it using facebookexternalhit UA, scrape OG tags from the resolved page.
+
+function decodeFbHtml(str) {
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#x27;/g, "'");
+}
+
+function cleanFbTitle(raw) {
+  if (!raw) return '';
+  const decoded = decodeFbHtml(raw).trim();
+  // Facebook OG titles often look like:
+  //   "1.2K likes · Some Venue Name" (dot separator)
+  //   "Some Post Title | Facebook"   (pipe separator with Facebook suffix)
+  //   "3.4K followers, 1.1K following, 200 posts - See Instagram photos..."
+  // Strategy: if there's a pipe/bullet/· separator, take the LAST segment
+  // (the meaningful name is always after the stats/counts)
+  const parts = decoded.split(/\s*[|·•]\s*/);
+  if (parts.length >= 2) {
+    // Take the last non-empty segment, strip trailing "Facebook"/"Instagram" etc.
+    const meaningful = parts[parts.length - 1]
+      .replace(/\s*[-–|]\s*(Facebook|Instagram|Twitter|TikTok)\s*$/i, '')
+      .trim();
+    if (meaningful.length > 2) return meaningful;
+  }
+  // If no separator: strip trailing "| Facebook" or "- Facebook"
+  return decoded.replace(/\s*[-–|]\s*(Facebook|Instagram|Twitter|TikTok)\s*$/i, '').trim();
+}
 
 async function fetchFacebookMeta(url) {
   try {
@@ -270,36 +301,39 @@ async function fetchFacebookMeta(url) {
       redirect: 'follow',
       headers: {
         'User-Agent':      'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+        'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
       },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(12000),
     });
-    const finalUrl  = r.url;
-    const html      = await r.text();
+    const finalUrl = r.url;
+    const html     = await r.text();
 
-    // Try OG tags from the resolved page
-    const titleMatch = html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i)
-                    || html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:title"/i);
-    const imgMatch   = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i)
-                    || html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:image"/i);
-    const descMatch  = html.match(/<meta[^>]+property="og:description"[^>]+content="([^"]+)"/i)
-                    || html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:description"/i);
-
-    const title = titleMatch ? titleMatch[1].replace(/\s*[|·-]\s*Facebook\s*$/i, '').trim() : '';
-    const imgUrl = imgMatch  ? imgMatch[1]  : '';
-    const desc   = descMatch ? descMatch[1] : '';
-
-    if (title) {
-      console.log('[Facebook] Resolved:', title);
-      return { title, description: desc, imageUrl: imgUrl, sourceUrl: finalUrl || url };
+    // Extract OG meta tags — try both attribute orderings
+    function extractMeta(prop) {
+      const m = html.match(new RegExp(`<meta[^>]+property="${prop}"[^>]+content="([^"]+)"`, 'i'))
+             || html.match(new RegExp(`<meta[^>]+content="([^"]+)"[^>]+property="${prop}"`, 'i'));
+      return m ? decodeFbHtml(m[1]) : '';
     }
 
-    // Fallback: extract from URL structure
-    console.warn('[Facebook] Could not extract OG tags — using URL fallback');
-    return { title: 'Shared on Facebook', description: 'View on Facebook', imageUrl: '', sourceUrl: url };
+    const rawTitle = extractMeta('og:title');
+    const rawDesc  = extractMeta('og:description');
+    const rawImg   = extractMeta('og:image');
+
+    const title = cleanFbTitle(rawTitle);
+    const desc  = rawDesc ? rawDesc.replace(/\s+/g, ' ').slice(0, 100) : '';
+    const img   = rawImg || '';
+
+    if (title) {
+      console.log('[Facebook] Resolved:', title, '| image:', img ? 'yes' : 'no');
+      return { title, description: desc, imageUrl: img, sourceUrl: finalUrl || url };
+    }
+
+    console.warn('[Facebook] No OG title found — using fallback');
+    return { title: 'Facebook post', description: 'View on Facebook', imageUrl: img, sourceUrl: finalUrl || url };
   } catch (e) {
     console.warn('[Facebook] Error:', e.message);
-    return { title: 'Shared on Facebook', description: 'View on Facebook', imageUrl: '', sourceUrl: url };
+    return { title: 'Facebook post', description: 'View on Facebook', imageUrl: '', sourceUrl: url };
   }
 }
 

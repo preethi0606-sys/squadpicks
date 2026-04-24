@@ -163,3 +163,45 @@ ALTER TABLE group_members ALTER COLUMN user_id DROP NOT NULL;
 -- Unique on (group_id, email) so we can upsert invites by email
 CREATE UNIQUE INDEX IF NOT EXISTS idx_group_members_group_email
   ON group_members(group_id, email) WHERE email IS NOT NULL;
+
+-- ─── v3.2 ADDITIONS ──────────────────────────────────────────────────────────
+-- Run these if upgrading from any earlier version
+
+-- trending_places table with tripadvisor_url
+CREATE TABLE IF NOT EXISTS trending_places (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  rank INT, title TEXT, description TEXT, image_url TEXT,
+  url TEXT,                        -- Google Maps link
+  tripadvisor_url TEXT,            -- Direct TripAdvisor page or search URL
+  region TEXT, type TEXT DEFAULT 'place',
+  week_of DATE, fetched_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(title, region, week_of)
+);
+ALTER TABLE trending_places ADD COLUMN IF NOT EXISTS tripadvisor_url TEXT;
+
+-- trending_events table with category
+CREATE TABLE IF NOT EXISTS trending_events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  rank INT, title TEXT, description TEXT, image_url TEXT, url TEXT,
+  region TEXT, type TEXT DEFAULT 'event', category TEXT DEFAULT 'concerts',
+  week_of DATE, fetched_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(title, region, week_of)
+);
+ALTER TABLE trending_events ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'concerts';
+
+-- Prime Video columns
+ALTER TABLE trending_prime ADD COLUMN IF NOT EXISTS prime_url TEXT;
+ALTER TABLE trending_prime ADD COLUMN IF NOT EXISTS tmdb_url TEXT;
+ALTER TABLE trending_prime ADD COLUMN IF NOT EXISTS badge TEXT DEFAULT 'P';
+ALTER TABLE trending_prime ADD COLUMN IF NOT EXISTS badge_color TEXT DEFAULT '#00A8E0';
+ALTER TABLE trending_prime ADD COLUMN IF NOT EXISTS score TEXT;
+
+-- TMDB trending columns
+ALTER TABLE trending_imdb ADD COLUMN IF NOT EXISTS tmdb_url TEXT;
+
+-- Clear stale data to force re-scrape with correct schema
+-- UNCOMMENT AND RUN these manually when upgrading:
+-- TRUNCATE trending_places;
+-- TRUNCATE trending_prime;
+-- TRUNCATE trending_imdb;
+-- TRUNCATE trending_events;

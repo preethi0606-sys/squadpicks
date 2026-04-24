@@ -201,16 +201,8 @@ app.post('/api/picks', telegramAuth, async (req, res) => {
     if (!url || !chatId) return res.status(400).json({ error: 'url and groupId required' });
     await db.ensureGroup(chatId, groupTitle || 'SquadPicks Group');
 
-    // Check if this URL was already added to this group
-    const existing = await db.getPickByUrl(chatId, url);
-    if (existing) {
-      return res.status(409).json({
-        ok: false,
-        duplicate: true,
-        error: `"${existing.title}" was already added to this squad${existing.added_by_name ? ' by ' + existing.added_by_name : ''}.`,
-        pick: existing
-      });
-    }
+    // Fetch metadata first so we know the resolved URL
+    let meta;
     if (manualTitle && manualImageUrl) {
       meta = { title: manualTitle, description: '', imageUrl: manualImageUrl, sourceUrl: url };
     } else {
@@ -219,6 +211,23 @@ app.post('/api/picks', telegramAuth, async (req, res) => {
 
     const type  = manualType  || links.detectType(url, meta);
     const title = manualTitle || meta.title;
+
+    // Duplicate check: compare both the original input URL AND the resolved sourceUrl
+    const urlsToCheck = [url, meta.sourceUrl].filter(Boolean).filter((u, i, arr) => arr.indexOf(u) === i);
+    let existing = null;
+    for (const checkUrl of urlsToCheck) {
+      existing = await db.getPickByUrl(chatId, checkUrl);
+      if (existing) break;
+    }
+    if (existing) {
+      return res.status(409).json({
+        ok: false,
+        duplicate: true,
+        error: `"${existing.title}" was already added to this squad${existing.added_by_name ? ' by ' + existing.added_by_name : ''}.`,
+        pick: existing
+      });
+    }
+
     const pick = await db.savePick({
       groupId: chatId, type, title,
       description:  meta.description || '',

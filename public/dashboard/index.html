@@ -657,7 +657,15 @@ function goSection(name, btn) {
   if (dnav) dnav.classList.add('on');
   closeDrawer();
   if (name === 'dashboard') loadDashboard();
-  if (name === 'picks')     { if (currentGroupId) loadPicks(); }
+  if (name === 'picks') {
+    if (currentGroupId) {
+      loadPicks();
+    } else {
+      // No group selected yet — show a helpful prompt instead of crashing
+      const grid = document.getElementById('picks-grid');
+      if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px">Choose a squad first</div><div style="font-size:13px;color:var(--muted);margin-bottom:16px">Use the group selector in the header to pick a squad, or go to Dashboard to see all picks.</div><button onclick="goSection(\'dashboard\',document.getElementById(\'dnav-dashboard\'))" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font-b)">Go to Dashboard</button></div>';
+    }
+  }
 }
 
 // ── DRAWER ────────────────────────────────────────────────
@@ -1037,20 +1045,33 @@ async function castDashVote(pickId, status) {
 
 // ── PICKS ─────────────────────────────────────────────────
 async function loadPicks() {
-  if (!currentGroupId) return;
-  document.getElementById('picks-grid').innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Loading picks...</div>';
+  if (!currentGroupId) {
+    const grid = document.getElementById('picks-grid');
+    if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">👥</div>Select a squad to see picks</div>';
+    return;
+  }
+  const grid = document.getElementById('picks-grid');
+  if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Loading picks...</div>';
   try {
-    const r    = await fetch(`${BASE}/api/picks?groupId=${encodeURIComponent(currentGroupId)}`, {
-      headers: { 'x-telegram-init-data':'test', 'x-user-id': String(currentUser?.id||'0'), 'x-user-name': currentUser?.name||'User' }
+    const r = await fetch(`${BASE}/api/picks?groupId=${encodeURIComponent(currentGroupId)}`, {
+      headers: {
+        'x-telegram-init-data': 'test',
+        'x-user-id':   String(currentUser?.id  || '0'),
+        'x-user-name': currentUser?.name || 'User',
+        'x-chat-id':   String(currentGroupId),
+      }
     });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
-    allPicks   = data.picks || [];
+    allPicks = data.picks || [];
     allPicks.forEach(p => { myVotes[p.id] = p.my_vote || ''; });
     renderStats();
     renderPicks();
-    renderPlan();
+    // sync to dashboard if it's loaded
+    if (document.getElementById('sec-dashboard')?.classList.contains('on')) loadDashboard();
   } catch(e) {
-    document.getElementById('picks-grid').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Could not load picks. <button onclick="loadPicks()" style="color:var(--blue);background:none;border:none;cursor:pointer">Retry</button></div>';
+    console.error('[loadPicks]', e);
+    if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Could not load picks. <button onclick="loadPicks()" style="color:var(--blue);background:none;border:none;cursor:pointer;font-family:var(--font-b);font-weight:600;font-size:13px">Retry</button></div>';
   }
 }
 

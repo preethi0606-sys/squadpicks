@@ -397,28 +397,30 @@ const PLACES_CURATED = [
   },
 ];
 
-// TripAdvisor nearby search by lat/lng
-// Docs: https://tripadvisor-content-api.readme.io/reference/searchforlocations
+// TripAdvisor Content API — used when TRIPADVISOR_API_KEY is set.
+// Without the key, curated static data with Wikimedia images is used.
 async function fetchPlacesTripAdvisor(lat, lng, region) {
   const key = process.env.TRIPADVISOR_API_KEY;
   if (!key) return null;
   try {
-    const url =
+    const searchUrl =
       `https://api.content.tripadvisor.com/api/v1/location/nearby_search` +
       `?latLong=${lat},${lng}` +
       `&category=attractions` +
       `&radius=50&radiusUnit=km` +
       `&language=en&key=${key}`;
-    const res = await safeFetch(url, { headers: { 'Accept': 'application/json', 'Referer': 'https://squadpicks.app' } });
+    const res = await safeFetch(searchUrl, {
+      headers: { 'Accept': 'application/json', 'Referer': 'https://squadpicks.app' }
+    });
     if (!res) return null;
-    const d = await res.json();
+    const d    = await res.json();
     const locs = (d.data || []).slice(0, 10);
     if (!locs.length) return null;
 
-    // Fetch photo for each location (TripAdvisor requires separate photo call)
     const enriched = [];
     for (const loc of locs) {
       let imgUrl = null;
+      // Fetch one photo per location
       try {
         const photoRes = await safeFetch(
           `https://api.content.tripadvisor.com/api/v1/location/${loc.location_id}/photos?language=en&limit=1&key=${key}`,
@@ -426,23 +428,29 @@ async function fetchPlacesTripAdvisor(lat, lng, region) {
         );
         if (photoRes) {
           const pd = await photoRes.json();
-          imgUrl = pd.data?.[0]?.images?.medium?.url || pd.data?.[0]?.images?.small?.url || null;
+          imgUrl = pd.data?.[0]?.images?.large?.url
+                || pd.data?.[0]?.images?.medium?.url
+                || pd.data?.[0]?.images?.small?.url
+                || null;
         }
       } catch(_) {}
 
+      const city = loc.address_obj?.city || loc.address_obj?.state || '';
       enriched.push({
-        title:       loc.name,
-        description: [loc.address_obj?.city, loc.address_obj?.country].filter(Boolean).join(' · '),
-        image_url:   imgUrl,
-        url:         `https://maps.google.com/?q=${encodeURIComponent(loc.name + ' ' + (loc.address_obj?.city || ''))}`,
+        title:           loc.name,
+        description:     [city, loc.address_obj?.country].filter(Boolean).join(' · '),
+        image_url:       imgUrl,
+        url:             `https://maps.google.com/?q=${encodeURIComponent(loc.name + (city ? ' ' + city : ''))}`,
+        tripadvisor_url: `https://www.tripadvisor.com/Attraction_Review-g-d${loc.location_id}`,
         region,
-        type:        'place',
+        type:            'place',
       });
-      await sleep(200); // TripAdvisor rate limit
+      await sleep(200);
     }
+    console.log(`[TripAdvisor] ${region}: ${enriched.filter(e=>e.image_url).length}/${enriched.length} have images`);
     return enriched;
   } catch (e) {
-    console.warn('[Places TripAdvisor] Error:', e.message);
+    console.warn('[TripAdvisor] Error:', e.message);
     return null;
   }
 }
@@ -474,8 +482,13 @@ async function fetchPlaces() {
           console.log(`[Places] ${region.name}: No TRIPADVISOR_API_KEY — using curated static data with images`);
         }
         rows = region.items.map(p => ({
-          title: p.title, description: p.description, image_url: p.image_url || null,
-          url: p.url, region: region.name, type: 'place',
+          title:           p.title,
+          description:     p.description,
+          image_url:       p.image_url || null,
+          url:             p.url,
+          tripadvisor_url: p.tripadvisor_url || `https://www.tripadvisor.com/Search?q=${encodeURIComponent(p.title)}`,
+          region:          region.name,
+          type:            'place',
         }));
       }
 

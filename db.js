@@ -195,14 +195,29 @@ async function addGroupMemberByEmail({ groupId, userId, email }) {
 }
 
 async function getPickByUrl(groupId, url) {
+  // Normalize URL for comparison: strip trailing slash, lowercase protocol+host
+  function normalizeUrl(u) {
+    try {
+      const parsed = new URL(u);
+      return parsed.href.replace(/\/$/, '');
+    } catch(e) { return u; }
+  }
+  const normalized = normalizeUrl(url);
+
+  // Check the stored url column (which may be sourceUrl) AND original url
   const { data, error } = await supabase
     .from('picks')
-    .select('id, title, added_by_name, created_at')
+    .select('id, title, added_by_name, created_at, url')
     .eq('group_id', groupId)
-    .eq('url', url)
-    .maybeSingle();
-  if (error) return null;
-  return data;
+    .limit(50);          // fetch recent picks for this group and check client-side
+  if (error || !data) return null;
+
+  // Check if any stored URL matches our input (forward or reverse redirect)
+  for (const row of data) {
+    const storedNorm = normalizeUrl(row.url || '');
+    if (storedNorm === normalized || row.url === url) return row;
+  }
+  return null;
 }
 
 async function updatePickMessageId(pickId, messageId) {
