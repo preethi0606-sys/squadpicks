@@ -121,8 +121,17 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
 .trend-sec-hdr{font-size:13px;font-weight:700;color:var(--text2);margin:1rem 0 .5rem;display:flex;align-items:center;gap:8px}
 .tsh-tag{font-size:9px;font-weight:800;padding:2px 7px;border-radius:10px;color:#fff;letter-spacing:.04em}
 .tsh-live{font-size:9px;font-weight:700;color:#059669}
-.trend-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
-.trend-row::-webkit-scrollbar{display:none}
+.trend-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;
+  /* Show a thin scrollbar so users know it's scrollable */
+  scrollbar-width:thin;scrollbar-color:var(--beige3) transparent}
+.trend-row::-webkit-scrollbar{height:4px}
+.trend-row::-webkit-scrollbar-track{background:transparent}
+.trend-row::-webkit-scrollbar-thumb{background:var(--beige3);border-radius:2px}
+.trend-row::-webkit-scrollbar-thumb:hover{background:var(--blue2)}
+/* Wrap .trend-row in a container with a right-fade hint */
+.trend-scroll-wrap{position:relative;overflow:hidden}
+.trend-scroll-wrap::after{content:'';position:absolute;top:0;right:0;bottom:12px;width:40px;
+  background:linear-gradient(to left,var(--beige),transparent);pointer-events:none;z-index:2}
 /* Responsive grid for places — wraps on mobile */
 .places-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;padding-bottom:4px}
 /* Event category sections */
@@ -1281,11 +1290,19 @@ async function saveAdd() {
       body: JSON.stringify({ url: url || title, groupId: currentGroupId, manualType: addPickType, manualTitle: title || undefined })
     });
     const data = await r.json();
-    if (data.pick) { allPicks.unshift({ ...data.pick, votes:[], my_vote:'', group_ok:false }); }
+    if (r.status === 409 || data.duplicate) {
+      showToast('⚠️ ' + (data.error || 'Already in this squad!'));
+      return; // keep modal open so user can change URL
+    }
+    if (data.pick) {
+      allPicks.unshift({ ...data.pick, votes: [{user_id: String(currentUser?.id||'0'), status:'want', first_name: currentUser?.name||'You'}], my_vote:'want', group_ok:false });
+      myVotes[data.pick.id] = 'want';
+    }
     closeAdd();
     picksFilter = 'all';
-    document.querySelectorAll('.filter-bar .fpill').forEach((b,i) => b.classList.toggle('on', i===0));
-    renderStats(); renderPicks(); renderPlan();
+    document.querySelectorAll('#sec-picks .filter-bar .fpill').forEach((b,i) => b.classList.toggle('on', i===0));
+    renderStats(); renderPicks();
+    loadDashboard();
     showToast('Pick added! 🎉');
   } catch(e) { showToast('Could not add pick'); }
   finally { btn.disabled = false; btn.textContent = 'Add to Squad'; }
@@ -1782,7 +1799,7 @@ function fetchEventsNearby(lat, lng, region) {
 function renderStreamRow(elId, items, badgeColor, badgeLetter, fallbackEmoji) {
   var el = document.getElementById(elId); if (!el) return;
   if (!items || !items.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem">No data available</div>'; return; }
-  var html = '<div class="trend-row">';
+  var html = '<div class="trend-scroll-wrap"><div class="trend-row">';
   items.slice(0, 10).forEach(function(it, i) {
     var bc       = it.badge_color || it.badgeColor || badgeColor || '#888';
     var watchUrl = it.url || it.netflix_url || it.prime_url || '';
@@ -1806,13 +1823,13 @@ function renderStreamRow(elId, items, badgeColor, badgeLetter, fallbackEmoji) {
       + (watchUrl ? '<button class="tc-pa-btn" onclick="window.open(\'' + esc(watchUrl) + '\',\'_blank\')" style="color:' + bc + '">&#9654;</button>' : '')
       + '</div></div>';
   });
-  el.innerHTML = html + '</div>';
+  el.innerHTML = html + '</div></div>'; // close trend-row + trend-scroll-wrap
 }
 
 function renderTmdbRow(elId, items) {
   var el = document.getElementById(elId); if (!el) return;
   if (!items || !items.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem">No data available — run scraper to populate</div>'; return; }
-  var html = '<div class="trend-row">';
+  var html = '<div class="trend-scroll-wrap"><div class="trend-row">';
   items.slice(0, 10).forEach(function(it, i) {
     var tid = storeTrendItem(it);
     var imgHtml = it.image_url
@@ -1834,7 +1851,7 @@ function renderTmdbRow(elId, items) {
       + (it.tmdb_url ? '<button class="tc-pa-btn" onclick="window.open(\'' + esc(it.tmdb_url) + '\',\'_blank\')" style="color:#01b4e4">TMDB</button>' : '')
       + '</div></div>';
   });
-  el.innerHTML = html + '</div>';
+  el.innerHTML = html + '</div></div>';
 }
 
 // Places: responsive CSS grid (wraps, max 5 per row on desktop, 2 on mobile)
@@ -1845,8 +1862,11 @@ function renderPlacesGrid(elId, items) {
   items.slice(0, 10).forEach(function(it) {
     var tid = storeTrendItem(it);
     var imgHtml = it.image_url
-      ? '<img src="' + esc(it.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
+      ? '<img src="' + esc(it.image_url) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'
+        + '<span style="font-size:36px;display:none">&#128205;</span>'
       : '<span style="font-size:36px">&#128205;</span>';
+    var mapsUrl = it.url || ('https://maps.google.com/?q=' + encodeURIComponent(it.title));
+    var taUrl   = it.tripadvisor_url || ('https://www.tripadvisor.com/Search?q=' + encodeURIComponent(it.title));
     html += '<div class="tc-wide">'
       + '<div class="tc-wide-img">' + imgHtml + '</div>'
       + '<div class="tc-wide-body">'
@@ -1855,7 +1875,8 @@ function renderPlacesGrid(elId, items) {
       + '</div>'
       + '<div class="tc-poster-actions">'
       + '<button class="tc-pa-btn" onclick="addTrendPickDirect(\'' + tid + '\')" style="color:var(--blue)">+ Add</button>'
-      + (it.url ? '<button class="tc-pa-btn" onclick="window.open(\'' + esc(it.url) + '\',\'_blank\')" style="color:var(--muted)">&#8599;</button>' : '')
+      + '<button class="tc-pa-btn" onclick="window.open(\'' + esc(mapsUrl) + '\',\'_blank\')" style="color:#1DA462" title="Google Maps">&#128205;</button>'
+      + '<button class="tc-pa-btn" onclick="window.open(\'' + esc(taUrl) + '\',\'_blank\')" style="color:#34E0A1" title="TripAdvisor">&#9733;</button>'
       + '</div></div>';
   });
   el.innerHTML = html + '</div>';
@@ -1956,6 +1977,10 @@ async function addTrendPickDirect(itemId) {
       })
     });
     var data = await r.json();
+    if (r.status === 409 || data.duplicate) {
+      showToast('⚠️ ' + (data.error || 'Already in this squad!'));
+      return;
+    }
     if (data.pick) {
       var newPick = Object.assign({}, data.pick, { votes: [], my_vote: '', group_ok: false });
       // Ensure image_url is set (sometimes DB row has null if save had issue)

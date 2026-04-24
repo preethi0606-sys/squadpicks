@@ -27,11 +27,16 @@ function detectType(url, meta = {}) {
   if (/youtube\.com\/watch|youtu\.be\//.test(u))     return 'video';
   if (/youtube\.com\/(shorts|live)/.test(u))         return 'video';
 
-  // Social media — Facebook and Instagram
+  // Social media — Facebook (all URL patterns including share/r/ short links)
   if (/facebook\.com\/(events|pages\/.*\/events)/.test(u)) return 'event';
-  if (/facebook\.com/.test(u))                       return 'link';
-  if (/instagram\.com\/(reel|reels|tv)/.test(u))    return 'video';
-  if (/instagram\.com/.test(u))                      return 'link';
+  if (/facebook\.com\/share\//.test(u))                    return 'link';  // share short links
+  if (/fb\.com\/|fb\.me\//.test(u))                        return 'link';  // other FB short links
+  if (/facebook\.com/.test(u))                             return 'link';
+  if (/instagram\.com\/(reel|reels|tv)/.test(u))           return 'video';
+  if (/instagram\.com/.test(u))                            return 'link';
+  if (/threads\.net/.test(u))                              return 'link';
+  if (/twitter\.com|x\.com/.test(u))                       return 'link';
+  if (/tiktok\.com/.test(u))                               return 'video';
 
   // Food
   if (/yelp\.com/.test(u))                           return 'food';
@@ -254,6 +259,80 @@ async function fetchTmdbByTitle(title, type = 'multi') {
   }
 }
 
+// ─── FACEBOOK SHARE URL HANDLER ────────────────────────────
+// facebook.com/share/r/CODE is a short redirect URL.
+// We follow the redirect chain, then try OGS on the final URL.
+// If that fails (login wall), we extract what we can from the URL.
+
+async function fetchFacebookMeta(url) {
+  try {
+    const r = await nodeFetch(url, {
+      redirect: 'follow',
+      headers: {
+        'User-Agent':      'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    const finalUrl  = r.url;
+    const html      = await r.text();
+
+    // Try OG tags from the resolved page
+    const titleMatch = html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i)
+                    || html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:title"/i);
+    const imgMatch   = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i)
+                    || html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:image"/i);
+    const descMatch  = html.match(/<meta[^>]+property="og:description"[^>]+content="([^"]+)"/i)
+                    || html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:description"/i);
+
+    const title = titleMatch ? titleMatch[1].replace(/\s*[|·-]\s*Facebook\s*$/i, '').trim() : '';
+    const imgUrl = imgMatch  ? imgMatch[1]  : '';
+    const desc   = descMatch ? descMatch[1] : '';
+
+    if (title) {
+      console.log('[Facebook] Resolved:', title);
+      return { title, description: desc, imageUrl: imgUrl, sourceUrl: finalUrl || url };
+    }
+
+    // Fallback: extract from URL structure
+    console.warn('[Facebook] Could not extract OG tags — using URL fallback');
+    return { title: 'Shared on Facebook', description: 'View on Facebook', imageUrl: '', sourceUrl: url };
+  } catch (e) {
+    console.warn('[Facebook] Error:', e.message);
+    return { title: 'Shared on Facebook', description: 'View on Facebook', imageUrl: '', sourceUrl: url };
+  }
+}
+
+// ─── SOCIAL MEDIA OGS HANDLER ──────────────────────────────
+// For Instagram, TikTok, Twitter/X — try OGS with social bot UA
+
+async function fetchSocialMeta(url) {
+  try {
+    const { result } = await ogs({
+      url,
+      timeout: 10000,
+      fetchOptions: {
+        headers: {
+          'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+          'Accept-Language': 'en-US,en;q=0.9',
+        }
+      }
+    });
+    const title = result.ogTitle || result.twitterTitle || '';
+    if (title) {
+      return {
+        title:       title.trim(),
+        description: result.ogDescription || result.twitterDescription || '',
+        imageUrl:    result.ogImage?.[0]?.url || '',
+        sourceUrl:   url,
+      };
+    }
+  } catch(e) {}
+  // Fallback with a descriptive title based on host
+  const host = (() => { try { return new URL(url).hostname.replace('www.',''); } catch(e){ return 'social media'; } })();
+  return { title: `Post on ${host}`, description: 'View on ' + host, imageUrl: '', sourceUrl: url };
+}
+
 // ─── FETCH METADATA FROM ANY URL ───────────────────────────
 
 async function fetchMeta(url) {
@@ -286,7 +365,15 @@ async function fetchMeta(url) {
     console.warn('[fetchMeta] IMDB URL — TMDB lookup failed or no key');
   }
 
-  // All other URLs: open-graph-scraper
+  // Facebook share URLs (facebook.com/share/r/... etc) — follow redirect then scrape OG
+  if (/facebook\.com\/share\/|fb\.com\/|fb\.me\//.test(u)) {
+    return fetchFacebookMeta(url);
+  }
+
+  // All other Facebook/Instagram/TikTok/Twitter URLs — try OGS with mobile UA
+  if (/facebook\.com|instagram\.com|threads\.net|twitter\.com|x\.com|tiktok\.com/.test(u)) {
+    return fetchSocialMeta(url);
+  }
   try {
     const { result } = await ogs({
       url,

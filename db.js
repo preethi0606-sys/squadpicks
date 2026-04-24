@@ -194,6 +194,17 @@ async function addGroupMemberByEmail({ groupId, userId, email }) {
   if (error) console.error('addGroupMemberByEmail insert error:', error.message);
 }
 
+async function getPickByUrl(groupId, url) {
+  const { data, error } = await supabase
+    .from('picks')
+    .select('id, title, added_by_name, created_at')
+    .eq('group_id', groupId)
+    .eq('url', url)
+    .maybeSingle();
+  if (error) return null;
+  return data;
+}
+
 async function updatePickMessageId(pickId, messageId) {
   await supabase.from('picks').update({ message_id: messageId }).eq('id', pickId);
 }
@@ -374,7 +385,7 @@ async function removeGroupMember(memberId, groupId, requestingOwnerId) {
 
 module.exports = {
   ensureGroup, getAllGroups, getUserGroups,
-  savePick, updatePickMessageId, getPick, getGroupPicks,
+  savePick, getPickByUrl, updatePickMessageId, getPick, getGroupPicks,
   getRecentFilmiCraftPicks,
   upsertVote, deleteVote, getVote, getVotesForPick,
   getVotesForPicks, getUserPendingPicks,

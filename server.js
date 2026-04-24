@@ -201,7 +201,16 @@ app.post('/api/picks', telegramAuth, async (req, res) => {
     if (!url || !chatId) return res.status(400).json({ error: 'url and groupId required' });
     await db.ensureGroup(chatId, groupTitle || 'SquadPicks Group');
 
-    let meta;
+    // Check if this URL was already added to this group
+    const existing = await db.getPickByUrl(chatId, url);
+    if (existing) {
+      return res.status(409).json({
+        ok: false,
+        duplicate: true,
+        error: `"${existing.title}" was already added to this squad${existing.added_by_name ? ' by ' + existing.added_by_name : ''}.`,
+        pick: existing
+      });
+    }
     if (manualTitle && manualImageUrl) {
       meta = { title: manualTitle, description: '', imageUrl: manualImageUrl, sourceUrl: url };
     } else {
@@ -292,13 +301,16 @@ app.get('/api/fcpicks', telegramAuth, async (req, res) => {
 // ─── API: TRENDING — STREAMING (split Netflix + Prime) ─────
 app.get('/api/trending/streaming', async (req, res) => {
   try {
-    const region      = req.query.region || 'canada';
-    const primeRegion = (region === 'canada') ? 'ca' : (region === 'india') ? 'in' : 'ca';
+    const region = req.query.region || 'canada';
     const db = getDb();
 
-    // Try DB first — try multiple region variants to handle data inserted under different keys
-    const netflixRegions = region === 'canada' ? ['canada', 'ca', 'us'] : [region];
-    const primeRegions   = primeRegion === 'ca'  ? ['ca', 'canada']     : [primeRegion];
+    // Netflix: try region variants
+    const netflixRegions = ['canada', 'us', 'ca', 'india'].includes(region)
+      ? (region === 'india' ? ['india'] : ['canada', 'ca', 'us'])
+      : [region];
+
+    // Prime: scraper ALWAYS stores as 'us' — always fetch 'us' first
+    const primeRegions = ['us', 'canada', 'ca'];
 
     let netflix = [], prime = [];
     for (const r of netflixRegions) {
@@ -312,18 +324,18 @@ app.get('/api/trending/streaming', async (req, res) => {
 
     const hasDbData = (netflix.length + prime.length) > 0;
     if (hasDbData) {
-      const nfTagged = netflix.map(r => ({ ...r, source:'netflix', badge:'N', badgeColor:'#E50914',
+      const nfTagged = netflix.map(r => ({ ...r, source:'netflix', badge:'N', badge_color:'#E50914',
         url: r.netflix_url || `https://www.netflix.com/search?q=${encodeURIComponent(r.title)}` }));
-      const pvTagged = prime.map(r => ({ ...r, source:'prime', badge:'P', badgeColor:'#00A8E0',
-        url: r.prime_url   || `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(r.title)}` }));
+      const pvTagged = prime.map(r => ({ ...r, source:'prime', badge:'P', badge_color:'#00A8E0',
+        url: r.prime_url || `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(r.title)}` }));
       return res.json({ ok:true, netflix: nfTagged, prime: pvTagged, source:'db', ts: new Date().toISOString() });
     }
 
-    // No DB data yet — use fallback static data
+    // No DB data yet — use fallback static data from streaming.js
     const { getStreamingTop10 } = require('./streaming');
     const data = await getStreamingTop10(region);
-    const nf = (data.netflix || []).map(r => ({ ...r, source:'netflix', badge:'N', badgeColor:'#E50914' }));
-    const pv = (data.prime   || data.all || []).map(r => ({ ...r, source:'prime', badge:'P', badgeColor:'#00A8E0' }));
+    const nf = (data.netflix || []).map(r => ({ ...r, source:'netflix', badge:'N', badge_color:'#E50914' }));
+    const pv = (data.prime   || data.all || []).map(r => ({ ...r, source:'prime', badge:'P', badge_color:'#00A8E0' }));
     res.json({ ok:true, netflix: nf, prime: pv, source:'fallback', ts: new Date().toISOString() });
   } catch (e) {
     console.error('[GET /trending/streaming]', e.message);
