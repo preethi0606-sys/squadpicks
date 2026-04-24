@@ -339,25 +339,17 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
       <!-- Events -->
       <div class="trend-cat-section" id="tcat-events">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem;flex-wrap:wrap">
-          <div class="trend-sec-hdr" style="margin:0">🎭 Upcoming Events <span class="tsh-tag" style="background:#F05537">Ticketmaster</span></div>
-          <select id="events-region-sel" onchange="loadEvents(this.value)" style="background:var(--beige);border:1.5px solid var(--beige3);border-radius:8px;padding:4px 10px;font-size:12px;color:var(--text);font-family:var(--font-b);outline:none;cursor:pointer">
-            <option value="canada">🇨🇦 Canada</option>
-            <option value="us">🇺🇸 United States</option>
-            <option value="india">🇮🇳 India</option>
-          </select>
+          <div class="trend-sec-hdr" style="margin:0">🎭 Events Near You <span class="tsh-tag" style="background:#F05537">Ticketmaster</span></div>
+          <span id="events-location-label" style="font-size:11px;color:var(--muted)">Detecting location...</span>
         </div>
-        <div id="tr-events"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
+        <div id="tr-events"><div class="trend-loading"><div class="trend-spin"></div>Loading events...</div></div>
       </div>
 
       <!-- Places -->
       <div class="trend-cat-section" id="tcat-places">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem;flex-wrap:wrap">
           <div class="trend-sec-hdr" style="margin:0">📍 Top Places to Visit</div>
-          <select id="places-region-sel" onchange="loadPlaces(this.value)" style="background:var(--beige);border:1.5px solid var(--beige3);border-radius:8px;padding:4px 10px;font-size:12px;color:var(--text);font-family:var(--font-b);outline:none;cursor:pointer">
-            <option value="canada">🇨🇦 Canada</option>
-            <option value="us">🇺🇸 United States</option>
-            <option value="india">🇮🇳 India</option>
-          </select>
+          <span id="places-location-label" style="font-size:11px;color:var(--muted)"></span>
         </div>
         <div id="tr-places"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
       </div>
@@ -1356,65 +1348,64 @@ function showMsg(el, text, type) {
   setTimeout(() => { el.style.display = 'none'; }, 4000);
 }
 
+
 // ── TRENDING ──────────────────────────────────────────────
 
-// Static fallbacks shown when DB has no data yet
+// Global item store — avoids JSON.stringify in onclick (breaks on quotes/special chars)
+window._trendItems = {};
+var _trendItemCounter = 0;
+function storeTrendItem(item) {
+  var id = 'ti_' + (++_trendItemCounter);
+  window._trendItems[id] = item;
+  return id;
+}
+
 var STREAM_FB = {
   netflix: [
-    {title:'Adolescence',       genre:'British Drama', badge:'N', badgeColor:'#E50914', url:'https://www.netflix.com/search?q=Adolescence'},
-    {title:'Stranger Things S5',genre:'Sci-fi Horror',  badge:'N', badgeColor:'#E50914', url:'https://www.netflix.com/search?q=Stranger+Things'},
-    {title:'Squid Game S3',     genre:'Korean Thriller',badge:'N', badgeColor:'#E50914', url:'https://www.netflix.com/search?q=Squid+Game'},
+    {title:'Adolescence',        genre:'British Drama',   badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Adolescence'},
+    {title:'Stranger Things S5', genre:'Sci-fi Horror',   badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Stranger+Things'},
+    {title:'Squid Game S3',      genre:'Korean Thriller', badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Squid+Game'},
   ],
   prime: [
-    {title:'Panchayat S4', genre:'Hindi Comedy',  badge:'P', badgeColor:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Panchayat'},
-    {title:'The Boys S5',  genre:'Superhero Dark', badge:'P', badgeColor:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=The+Boys'},
-    {title:'Fallout S2',   genre:'Post-apocalyptic',badge:'P',badgeColor:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Fallout'},
+    {title:'Panchayat S4', genre:'Hindi Comedy',     badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Panchayat'},
+    {title:'The Boys S5',  genre:'Superhero Dark',   badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=The+Boys'},
+    {title:'Fallout S2',   genre:'Post-apocalyptic', badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Fallout'},
   ]
 };
 var TMDB_FB = [
-  {title:'Dune: Part Two',    year:'2024', rating:'8.4', tmdb_url:'https://www.themoviedb.org/movie/693134'},
-  {title:'Oppenheimer',       year:'2023', rating:'8.3', tmdb_url:'https://www.themoviedb.org/movie/872585'},
-  {title:'Inside Out 2',      year:'2024', rating:'7.7', tmdb_url:'https://www.themoviedb.org/movie/1022789'},
+  {title:'Dune: Part Two', year:'2024', rating:'8.4', tmdb_url:'https://www.themoviedb.org/movie/693134'},
+  {title:'Oppenheimer',    year:'2023', rating:'8.3', tmdb_url:'https://www.themoviedb.org/movie/872585'},
+  {title:'Inside Out 2',   year:'2024', rating:'7.7', tmdb_url:'https://www.themoviedb.org/movie/1022789'},
 ];
 var PLACES_STATIC = {
   canada: [
-    {title:'Banff National Park',      description:'Rocky Mountains · Alberta',     url:'https://maps.google.com/?q=Banff+National+Park'},
-    {title:'CN Tower',                 description:'Toronto · Ontario',             url:'https://maps.google.com/?q=CN+Tower+Toronto'},
-    {title:'Niagara Falls',            description:'Ontario · Free access',         url:'https://maps.google.com/?q=Niagara+Falls+Canada'},
-    {title:'Old Quebec City',          description:'UNESCO World Heritage',         url:'https://maps.google.com/?q=Old+Quebec+City'},
-    {title:'Whistler Village',         description:'British Columbia · Skiing',     url:'https://maps.google.com/?q=Whistler+Village+BC'},
+    {title:'Banff National Park',       description:'Alberta · Rocky Mountains',         url:'https://maps.google.com/?q=Banff+National+Park'},
+    {title:'CN Tower',                  description:'Toronto · Iconic observation tower', url:'https://maps.google.com/?q=CN+Tower+Toronto'},
+    {title:'Niagara Falls',             description:'Ontario · Natural wonder',           url:'https://maps.google.com/?q=Niagara+Falls+Canada'},
+    {title:'Stanley Park',              description:'Vancouver · Seawall & old-growth',   url:'https://maps.google.com/?q=Stanley+Park+Vancouver'},
+    {title:'Old Quebec City',           description:'UNESCO World Heritage Site',          url:'https://maps.google.com/?q=Old+Quebec+City'},
   ],
   us: [
-    {title:'Grand Canyon',             description:'Arizona · National Park',       url:'https://maps.google.com/?q=Grand+Canyon'},
-    {title:'Yellowstone',              description:'Wyoming · Geysers & Wildlife',  url:'https://maps.google.com/?q=Yellowstone+National+Park'},
-    {title:'Times Square',             description:'New York City',                 url:'https://maps.google.com/?q=Times+Square+NYC'},
-    {title:'Golden Gate Bridge',       description:'San Francisco · California',    url:'https://maps.google.com/?q=Golden+Gate+Bridge'},
-    {title:'Zion National Park',       description:'Utah · Hiking & Canyons',      url:'https://maps.google.com/?q=Zion+National+Park'},
+    {title:'Grand Canyon',              description:'Arizona · Natural wonder',           url:'https://maps.google.com/?q=Grand+Canyon'},
+    {title:'Yellowstone National Park', description:'Wyoming · Geysers & wildlife',       url:'https://maps.google.com/?q=Yellowstone+National+Park'},
+    {title:'Golden Gate Bridge',        description:'San Francisco · Iconic bridge',      url:'https://maps.google.com/?q=Golden+Gate+Bridge'},
+    {title:'Times Square',              description:'New York City',                      url:'https://maps.google.com/?q=Times+Square+NYC'},
+    {title:'Zion National Park',        description:'Utah · Canyons & hiking',            url:'https://maps.google.com/?q=Zion+National+Park'},
   ],
   india: [
-    {title:'Taj Mahal',                description:'Agra · UNESCO Heritage',        url:'https://maps.google.com/?q=Taj+Mahal+Agra'},
-    {title:'Jaipur Pink City',         description:'Rajasthan · Forts & Palaces',   url:'https://maps.google.com/?q=Jaipur+Pink+City'},
-    {title:'Varanasi Ghats',           description:'Uttar Pradesh · Spiritual',     url:'https://maps.google.com/?q=Varanasi+Ghats'},
-    {title:'Kerala Backwaters',        description:'Kerala · Houseboats & Nature',  url:'https://maps.google.com/?q=Kerala+Backwaters'},
-    {title:'Goa Beaches',              description:'Goa · Sun, Sea & Culture',      url:'https://maps.google.com/?q=Goa+Beaches'},
+    {title:'Taj Mahal',                 description:'Agra · UNESCO Heritage wonder',      url:'https://maps.google.com/?q=Taj+Mahal+Agra'},
+    {title:'Jaipur — Pink City',        description:'Rajasthan · Forts & palaces',        url:'https://maps.google.com/?q=Jaipur+Pink+City'},
+    {title:'Kerala Backwaters',         description:'Kerala · Houseboats & palms',        url:'https://maps.google.com/?q=Kerala+Backwaters'},
+    {title:'Varanasi Ghats',            description:'UP · Spiritual & cultural',          url:'https://maps.google.com/?q=Varanasi+Ghats'},
+    {title:'Goa Beaches',               description:'Goa · Sun, sea & seafood',           url:'https://maps.google.com/?q=Goa+Beaches'},
   ],
 };
-var EVENTS_STATIC = {
-  canada: [
-    {title:'Vancouver International Film Festival', description:'Oct · Vancouver · Annual'},
-    {title:'Diwali Festival of Lights',             description:'Nov · Surrey Central · Free'},
-    {title:'Calgary Stampede',                      description:'Jul · Calgary · Rodeo & Music'},
-  ],
-  us: [
-    {title:'Coachella Valley Music & Arts',         description:'Apr · Indio CA · Annual'},
-    {title:'SXSW',                                  description:'Mar · Austin TX · Music & Tech'},
-    {title:'Macy\'s Thanksgiving Parade',           description:'Nov · New York City'},
-  ],
-  india: [
-    {title:'Sunburn Festival',                      description:'Dec · Goa · EDM & Music'},
-    {title:'Lollapalooza India',                    description:'Jan · Mumbai · Multi-genre'},
-    {title:'Holi Festival',                         description:'Mar · Nationwide · Free'},
-  ],
+
+// Default cities when geolocation is denied — based on browser locale
+var REGION_DEFAULTS = {
+  canada: { lat: 43.6532,  lng: -79.3832,   label: 'Toronto',       region: 'canada' },
+  us:     { lat: 37.7749,  lng: -122.4194,  label: 'San Francisco', region: 'us'     },
+  india:  { lat: 28.6139,  lng: 77.2090,    label: 'New Delhi',     region: 'india'  },
 };
 
 function setTrendCat(cat, btn) {
@@ -1423,102 +1414,156 @@ function setTrendCat(cat, btn) {
   document.querySelectorAll('.trend-cat-section').forEach(s => s.classList.toggle('on', s.id === 'tcat-' + cat));
 }
 
+function detectUserRegion() {
+  var lang = navigator.language || 'en-CA';
+  if (/^(hi|bn|ta|te|kn|ml|mr|gu|pa)/.test(lang) || lang.endsWith('-IN')) return 'india';
+  if (lang.endsWith('-US') || lang === 'en-US') return 'us';
+  return 'canada';
+}
+
 function loadTrending() {
-  // Netflix + Prime from DB
+  // Netflix
   fetch(BASE + '/api/trending/streaming')
     .then(r => r.json())
     .then(data => {
-      const nf = (data.netflix && data.netflix.length) ? data.netflix : STREAM_FB.netflix;
-      const pv = (data.prime   && data.prime.length)   ? data.prime   : STREAM_FB.prime;
-      renderStreamRow('tr-netflix', nf);
-      renderStreamRow('tr-prime',   pv);
+      var nf = (data.netflix && data.netflix.length) ? data.netflix : STREAM_FB.netflix;
+      var pv = (data.prime   && data.prime.length)   ? data.prime   : STREAM_FB.prime;
+      renderStreamRow('tr-netflix', nf, '#E50914', 'N', '📺');
+      renderStreamRow('tr-prime',   pv, '#00A8E0', 'P', '🎬');
       if (data.source === 'db') {
         if (nf.length) document.getElementById('nf-live').style.display = 'inline';
         if (pv.length) document.getElementById('pv-live').style.display = 'inline';
       }
-    }).catch(() => {
-      renderStreamRow('tr-netflix', STREAM_FB.netflix);
-      renderStreamRow('tr-prime',   STREAM_FB.prime);
+    }).catch(function() {
+      renderStreamRow('tr-netflix', STREAM_FB.netflix, '#E50914', 'N', '📺');
+      renderStreamRow('tr-prime',   STREAM_FB.prime,   '#00A8E0', 'P', '🎬');
     });
 
-  // TMDB Trending (replaces IMDb)
+  // TMDB Popular
   fetch(BASE + '/api/trending/tmdb?category=top_movies')
     .then(r => r.json())
     .then(data => {
-      const items = (data.data && data.data.length) ? data.data : TMDB_FB;
+      var items = (data.data && data.data.length) ? data.data : TMDB_FB;
       renderTmdbRow('tr-tmdb', items);
       if (data.source === 'db') document.getElementById('tmdb-live').style.display = 'inline';
-    }).catch(() => renderTmdbRow('tr-tmdb', TMDB_FB));
+    }).catch(function() { renderTmdbRow('tr-tmdb', TMDB_FB); });
 
-  // Load places and events with default region (detect from browser or use 'canada')
-  const defaultRegion = detectUserRegion();
-  loadPlaces(defaultRegion);
-  loadEvents(defaultRegion);
+  // Places — use region based on browser locale
+  var region = detectUserRegion();
+  loadPlaces(region);
 
-  // Set dropdowns to match
-  const pSel = document.getElementById('places-region-sel');
-  const eSel = document.getElementById('events-region-sel');
-  if (pSel) pSel.value = defaultRegion;
-  if (eSel) eSel.value = defaultRegion;
-}
-
-function detectUserRegion() {
-  // Try to detect based on browser locale
-  const lang = navigator.language || 'en-CA';
-  if (lang.includes('IN') || lang.includes('hi') || lang.includes('bn')) return 'india';
-  if (lang.includes('US')) return 'us';
-  return 'canada'; // default
+  // Events — request GPS location, fall back to region default city
+  loadEventsWithLocation();
 }
 
 function loadPlaces(region) {
-  region = region || 'canada';
-  const el = document.getElementById('tr-places');
-  if (el) el.innerHTML = '<div class="trend-loading"><div class="trend-spin"></div>Loading...</div>';
+  region = region || detectUserRegion();
   fetch(BASE + '/api/trending/places?region=' + encodeURIComponent(region))
     .then(r => r.json())
     .then(data => {
-      const items = (data.data && data.data.length) ? data.data : (PLACES_STATIC[region] || PLACES_STATIC.canada);
+      var items = (data.data && data.data.length) ? data.data : (PLACES_STATIC[region] || PLACES_STATIC.canada);
       renderWideRow('tr-places', items, 'place', '📍');
-    }).catch(() => renderWideRow('tr-places', PLACES_STATIC[region] || PLACES_STATIC.canada, 'place', '📍'));
+    }).catch(function() { renderWideRow('tr-places', PLACES_STATIC[region] || PLACES_STATIC.canada, 'place', '📍'); });
 }
 
-function loadEvents(region) {
-  region = region || 'canada';
-  const el = document.getElementById('tr-events');
-  if (el) el.innerHTML = '<div class="trend-loading"><div class="trend-spin"></div>Loading...</div>';
-  fetch(BASE + '/api/trending/events?region=' + encodeURIComponent(region))
+function loadEventsWithLocation() {
+  var lbl = document.getElementById('events-location-label');
+  var geoUsed = false;
+
+  // 5-second fallback timer in case geolocation stalls
+  var fallbackTimer = setTimeout(function() {
+    if (geoUsed) return;
+    geoUsed = true;
+    var region = detectUserRegion();
+    var def    = REGION_DEFAULTS[region];
+    if (lbl) lbl.textContent = 'Near ' + def.label;
+    fetchEventsNearby(def.lat, def.lng, def.region);
+  }, 5000);
+
+  if (!navigator.geolocation) {
+    clearTimeout(fallbackTimer);
+    var region = detectUserRegion();
+    var def    = REGION_DEFAULTS[region];
+    if (lbl) lbl.textContent = 'Near ' + def.label;
+    fetchEventsNearby(def.lat, def.lng, def.region);
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      if (geoUsed) return;
+      geoUsed = true;
+      clearTimeout(fallbackTimer);
+      var lat    = pos.coords.latitude;
+      var lng    = pos.coords.longitude;
+      if (lbl) lbl.textContent = 'Near your location 📍';
+      // Rough region detection from coordinates
+      var region = (lat > 49)  ? 'canada'
+                 : (lat < 25 || (lat < 37 && lng > 60)) ? 'india'
+                 : 'us';
+      fetchEventsNearby(lat, lng, region);
+    },
+    function() {
+      // Denied or error
+      if (geoUsed) return;
+      geoUsed = true;
+      clearTimeout(fallbackTimer);
+      var region = detectUserRegion();
+      var def    = REGION_DEFAULTS[region];
+      if (lbl) lbl.textContent = 'Near ' + def.label;
+      fetchEventsNearby(def.lat, def.lng, def.region);
+    },
+    { timeout: 8000, maximumAge: 300000 }
+  );
+}
+
+function fetchEventsNearby(lat, lng, region) {
+  var el = document.getElementById('tr-events');
+  if (el) el.innerHTML = '<div class="trend-loading"><div class="trend-spin"></div>Finding events near you...</div>';
+
+  // India: use Insider.in data from DB
+  var url = (region === 'india')
+    ? BASE + '/api/trending/events?region=india'
+    : BASE + '/api/trending/events/nearby?lat=' + lat + '&lng=' + lng + '&region=' + region;
+
+  fetch(url)
     .then(r => r.json())
     .then(data => {
-      const items = (data.data && data.data.length) ? data.data : (EVENTS_STATIC[region] || EVENTS_STATIC.canada);
-      renderWideRow('tr-events', items, 'event', '🎭');
-    }).catch(() => renderWideRow('tr-events', EVENTS_STATIC[region] || EVENTS_STATIC.canada, 'event', '🎭'));
+      if (data.data && data.data.length) {
+        renderWideRow('tr-events', data.data, 'event', '🎭');
+      } else {
+        if (el) el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">🎭</div><div style="font-size:13px;font-weight:600;margin-bottom:4px">No events found nearby</div><div style="font-size:12px">Events data is refreshed weekly. Check back soon!</div></div>';
+      }
+    })
+    .catch(function() {
+      if (el) el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Could not load events. Please try again.</div>';
+    });
 }
 
-// Render poster cards (Netflix, Prime, TMDB)
-function renderStreamRow(elId, items) {
+function renderStreamRow(elId, items, badgeColor, badgeLetter, fallbackEmoji) {
   var el = document.getElementById(elId); if (!el) return;
   var html = '<div class="trend-row">';
   items.slice(0, 10).forEach(function(it, i) {
-    var bc  = it.badgeColor || it.badge_color || '#888';
-    var img = it.image_url
-      ? `<img src="${esc(it.image_url)}" alt="" onerror="this.style.display='none'">`
-      : `<span style="font-size:52px;z-index:1;position:relative">${it.badge === 'N' ? '📺' : '🎬'}</span>`;
-    html += `<div class="tc-poster">
-      <div class="tc-poster-img">
-        ${img}
-        <div class="tc-stream-badge" style="background:${bc}">${esc(it.badge || '')}</div>
-        <div class="tc-rank-badge">#${i + 1}</div>
-        ${it.score || it.rating ? `<div class="tc-score">⭐ ${esc(it.score || it.rating)}</div>` : ''}
-      </div>
-      <div class="tc-poster-body">
-        <div class="tc-poster-title" title="${esc(it.title)}">${esc(it.title)}</div>
-        <div class="tc-poster-meta">${esc(it.genre || it.type || '')}</div>
-      </div>
-      <div class="tc-poster-actions">
-        <button class="tc-pa-btn" onclick="addTrendPickDirect(${JSON.stringify(it)},${JSON.stringify(it.url||it.netflix_url||it.prime_url||'')})" style="color:var(--blue)">+ Add to squad</button>
-        ${it.url||it.netflix_url ? `<button class="tc-pa-btn" onclick="window.open('${esc(it.url||it.netflix_url||'')}','_blank')" style="color:${bc}">▶</button>` : ''}
-      </div>
-    </div>`;
+    var bc  = it.badge_color || it.badgeColor || badgeColor || '#888';
+    var tid = storeTrendItem(it);
+    var imgHtml = it.image_url
+      ? '<img src="' + esc(it.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
+      : '<span style="font-size:48px;position:relative;z-index:1">' + fallbackEmoji + '</span>';
+    html += '<div class="tc-poster">'
+      + '<div class="tc-poster-img">'
+      + imgHtml
+      + '<div class="tc-stream-badge" style="background:' + bc + '">' + esc(it.badge || badgeLetter) + '</div>'
+      + '<div class="tc-rank-badge">#' + (i + 1) + '</div>'
+      + ((it.score || it.rating) ? '<div class="tc-score">&#11088; ' + esc(it.score || it.rating) + '</div>' : '')
+      + '</div>'
+      + '<div class="tc-poster-body">'
+      + '<div class="tc-poster-title" title="' + esc(it.title) + '">' + esc(it.title) + '</div>'
+      + '<div class="tc-poster-meta">' + esc(it.genre || it.type || '') + '</div>'
+      + '</div>'
+      + '<div class="tc-poster-actions">'
+      + '<button class="tc-pa-btn" onclick="addTrendPickDirect(\'' + tid + '\')" style="color:var(--blue)">+ Add</button>'
+      + ((it.url || it.netflix_url) ? '<button class="tc-pa-btn" onclick="window.open(\'' + esc(it.url || it.netflix_url || '') + '\',\'_blank\')" style="color:' + bc + '">&#9654;</button>' : '')
+      + '</div></div>';
   });
   el.innerHTML = html + '</div>';
 }
@@ -1527,81 +1572,88 @@ function renderTmdbRow(elId, items) {
   var el = document.getElementById(elId); if (!el) return;
   var html = '<div class="trend-row">';
   items.slice(0, 10).forEach(function(it, i) {
-    var img = it.image_url
-      ? `<img src="${esc(it.image_url)}" alt="" onerror="this.style.display='none'">`
-      : `<span style="font-size:52px;z-index:1;position:relative">🎬</span>`;
-    html += `<div class="tc-poster">
-      <div class="tc-poster-img">
-        ${img}
-        <div class="tc-stream-badge" style="background:#01b4e4;color:#fff;font-size:7px;font-weight:900">TMDB</div>
-        <div class="tc-rank-badge">#${i + 1}</div>
-        ${it.rating ? `<div class="tc-score">⭐ ${esc(it.rating)}</div>` : ''}
-      </div>
-      <div class="tc-poster-body">
-        <div class="tc-poster-title" title="${esc(it.title)}">${esc(it.title)}</div>
-        <div class="tc-poster-meta">${esc(it.year || it.genre || '')}</div>
-      </div>
-      <div class="tc-poster-actions">
-        <button class="tc-pa-btn" onclick="addTrendPickDirect(${JSON.stringify(it)},${JSON.stringify(it.tmdb_url||'')})" style="color:var(--blue)">+ Add to squad</button>
-        ${it.tmdb_url ? `<button class="tc-pa-btn" onclick="window.open('${esc(it.tmdb_url)}','_blank')" style="color:#01b4e4">TMDB</button>` : ''}
-      </div>
-    </div>`;
+    var tid = storeTrendItem(it);
+    var imgHtml = it.image_url
+      ? '<img src="' + esc(it.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
+      : '<span style="font-size:48px;position:relative;z-index:1">&#127916;</span>';
+    html += '<div class="tc-poster">'
+      + '<div class="tc-poster-img">'
+      + imgHtml
+      + '<div class="tc-stream-badge" style="background:#01b4e4;color:#fff;font-size:7px;font-weight:900">TMDB</div>'
+      + '<div class="tc-rank-badge">#' + (i + 1) + '</div>'
+      + (it.rating ? '<div class="tc-score">&#11088; ' + esc(it.rating) + '</div>' : '')
+      + '</div>'
+      + '<div class="tc-poster-body">'
+      + '<div class="tc-poster-title" title="' + esc(it.title) + '">' + esc(it.title) + '</div>'
+      + '<div class="tc-poster-meta">' + esc(it.year || '') + '</div>'
+      + '</div>'
+      + '<div class="tc-poster-actions">'
+      + '<button class="tc-pa-btn" onclick="addTrendPickDirect(\'' + tid + '\')" style="color:var(--blue)">+ Add</button>'
+      + (it.tmdb_url ? '<button class="tc-pa-btn" onclick="window.open(\'' + esc(it.tmdb_url) + '\',\'_blank\')" style="color:#01b4e4">TMDB</button>' : '')
+      + '</div></div>';
   });
   el.innerHTML = html + '</div>';
 }
 
 function renderWideRow(elId, items, type, defaultEmoji) {
   var el = document.getElementById(elId); if (!el) return;
-  if (!items || !items.length) {
-    el.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:1rem">No data yet</div>`;
-    return;
-  }
-  el.innerHTML = '<div class="trend-row">' + items.slice(0, 10).map(function(it) {
-    var img = it.image_url
-      ? `<img src="${esc(it.image_url)}" alt="" onerror="this.style.display='none'">`
-      : `<span style="font-size:40px">${defaultEmoji || '🗺️'}</span>`;
-    return `<div class="tc-wide">
-      <div class="tc-wide-img">${img}</div>
-      <div class="tc-wide-body">
-        <div class="tc-wide-title" title="${esc(it.title)}">${esc(it.title)}</div>
-        <div class="tc-wide-meta">${esc(it.description || it.desc || '')}</div>
-      </div>
-      <div class="tc-poster-actions">
-        <button class="tc-pa-btn" onclick="addTrendPickDirect(${JSON.stringify(it)},${JSON.stringify(it.url||'')})" style="color:var(--blue)">+ Add</button>
-        ${it.url ? `<button class="tc-pa-btn" onclick="window.open('${esc(it.url)}','_blank')" style="color:var(--muted)">↗ View</button>` : ''}
-      </div>
-    </div>`;
-  }).join('') + '</div>';
+  if (!items || !items.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem">No data yet</div>'; return; }
+  var html = '<div class="trend-row">';
+  items.slice(0, 10).forEach(function(it) {
+    var tid = storeTrendItem(it);
+    var imgHtml = it.image_url
+      ? '<img src="' + esc(it.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
+      : '<span style="font-size:36px">' + (defaultEmoji || '&#128506;') + '</span>';
+    html += '<div class="tc-wide">'
+      + '<div class="tc-wide-img">' + imgHtml + '</div>'
+      + '<div class="tc-wide-body">'
+      + '<div class="tc-wide-title" title="' + esc(it.title) + '">' + esc(it.title) + '</div>'
+      + '<div class="tc-wide-meta">' + esc(it.description || it.desc || '') + '</div>'
+      + '</div>'
+      + '<div class="tc-poster-actions">'
+      + '<button class="tc-pa-btn" onclick="addTrendPickDirect(\'' + tid + '\')" style="color:var(--blue)">+ Add</button>'
+      + (it.url ? '<button class="tc-pa-btn" onclick="window.open(\'' + esc(it.url) + '\',\'_blank\')" style="color:var(--muted)">&#8599;</button>' : '')
+      + '</div></div>';
+  });
+  el.innerHTML = html + '</div>';
 }
 
-// Add a trending item directly to the current squad via /api/picks
-async function addTrendPickDirect(item, itemUrl) {
-  if (!currentGroupId) { showToast('Select a squad first'); return; }
-  const title = item.title || item.name || '';
-  const url   = itemUrl || item.url || item.tmdb_url || item.netflix_url || item.prime_url || title;
-  const type  = item.type || (item.badge === 'N' || item.badge === 'P' ? 'show' : 'movie');
+async function addTrendPickDirect(itemId) {
+  var item = window._trendItems[itemId];
+  if (!item) { showToast('Item not found'); return; }
+  if (!currentGroupId) { showToast('Select a squad first'); goSection('picks', document.getElementById('dnav-picks')); return; }
+
+  var title = item.title || item.name || '';
+  var url   = item.tmdb_url || item.url || item.netflix_url || item.prime_url || title;
+  var type  = item.type || (item.badge === 'N' || item.badge === 'P' ? 'show' : 'movie');
+
+  showToast('Adding to squad...');
+
   try {
-    const r = await fetch(BASE + '/api/picks', {
+    var r = await fetch(BASE + '/api/picks', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type':         'application/json',
         'x-telegram-init-data': 'test',
-        'x-user-id':   String(currentUser?.id || '0'),
-        'x-user-name': currentUser?.name || 'User',
-        'x-chat-id':   String(currentGroupId),
+        'x-user-id':            String(currentUser && currentUser.id  || '0'),
+        'x-user-name':          String(currentUser && currentUser.name || 'User'),
+        'x-chat-id':            String(currentGroupId),
       },
       body: JSON.stringify({ url, groupId: currentGroupId, manualType: type, manualTitle: title })
     });
-    const data = await r.json();
+    var data = await r.json();
     if (data.pick) {
-      allPicks.unshift({ ...data.pick, votes: [], my_vote: '', group_ok: false });
+      var newPick = Object.assign({}, data.pick, { votes: [], my_vote: '', group_ok: false });
+      if (!allPicks.find(p => p.id === newPick.id)) allPicks.unshift(newPick);
+      myVotes[newPick.id] = '';
       renderStats(); renderPicks(); renderPlan();
-      showToast(`"${title}" added to squad! ✅`);
+      showToast('"' + title + '" added to squad! \u2705');
     } else {
       showToast(data.error || 'Could not add pick');
     }
   } catch(e) {
-    showToast('Could not add pick');
+    console.error('[addTrendPickDirect]', e);
+    showToast('Connection error \u2014 please try again');
   }
 }
 

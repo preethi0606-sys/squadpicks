@@ -390,13 +390,40 @@ module.exports = {
 async function upsertTrendingNetflix(rows) {
   if (!rows.length) return;
   const weekOf = new Date().toISOString().slice(0, 10);
-  // Clear old rows for this region this week first, then insert fresh
   for (const row of rows) {
     await supabase.from('trending_netflix')
       .upsert({ ...row, week_of: weekOf, fetched_at: new Date().toISOString() },
                { onConflict: 'title,region,week_of' });
   }
   console.log(`[DB] Upserted ${rows.length} Netflix rows`);
+}
+
+async function clearTrendingNetflixRegion(region) {
+  const weekOf = new Date().toISOString().slice(0, 10);
+  const { error } = await supabase.from('trending_netflix').delete().eq('region', region).eq('week_of', weekOf);
+  if (error) console.warn('[DB] clearTrendingNetflix:', error.message);
+}
+
+async function clearTrendingPrimeRegion(region) {
+  const weekOf = new Date().toISOString().slice(0, 10);
+  const { error } = await supabase.from('trending_prime').delete().eq('region', region).eq('week_of', weekOf);
+  if (error) console.warn('[DB] clearTrendingPrime:', error.message);
+}
+
+async function clearTrendingImdbCategory(category) {
+  const weekOf = new Date().toISOString().slice(0, 10);
+  const { error } = await supabase.from('trending_imdb').delete().eq('category', category).eq('week_of', weekOf);
+  if (error) console.warn('[DB] clearTrendingImdb:', error.message);
+}
+
+async function clearTrendingPlacesRegion(region) {
+  const { error } = await supabase.from('trending_places').delete().eq('region', region);
+  if (error) console.warn('[DB] clearTrendingPlaces:', error.message);
+}
+
+async function clearTrendingEventsRegion(region) {
+  const { error } = await supabase.from('trending_events').delete().eq('region', region);
+  if (error) console.warn('[DB] clearTrendingEvents:', error.message);
 }
 
 async function upsertTrendingPrime(rows) {
@@ -484,7 +511,9 @@ module.exports = Object.assign(module.exports, {
   getLatestNetflixTop10, getLatestPrimeTop10, getLatestImdbTop10,
   getMixedStreamingTop10,
   upsertTrendingPlaces, upsertTrendingEvents,
-  getLatestPlaces, getLatestEvents
+  getLatestPlaces, getLatestEvents,
+  clearTrendingNetflixRegion, clearTrendingPrimeRegion, clearTrendingImdbCategory,
+  clearTrendingPlacesRegion, clearTrendingEventsRegion
 });
 
 async function upsertTrendingPlaces(rows) {

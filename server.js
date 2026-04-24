@@ -322,7 +322,7 @@ app.get('/api/trending/places', async (req, res) => {
   }
 });
 
-// Events top 10 — location-aware
+// Events top 10 — location-aware (region fallback)
 app.get('/api/trending/events', async (req, res) => {
   try {
     const region = req.query.region || 'canada';
@@ -330,6 +330,24 @@ app.get('/api/trending/events', async (req, res) => {
     res.json({ ok: true, data, source: data.length ? 'db' : 'empty', region, ts: new Date().toISOString() });
   } catch (e) {
     console.error('[GET /trending/events]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Events by GPS coordinates — called from browser with user's actual location
+app.get('/api/trending/events/nearby', async (req, res) => {
+  try {
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    const region = req.query.region || 'canada';
+    if (isNaN(lat) || isNaN(lng)) return res.status(400).json({ error: 'lat and lng required' });
+    // Determine country code from region
+    const countryCode = region === 'us' ? 'US' : region === 'india' ? null : 'CA';
+    const { fetchEventsByLatLng } = require('./scraper');
+    const events = await fetchEventsByLatLng(lat, lng, countryCode, region);
+    res.json({ ok: true, data: events, source: events.length ? 'live' : 'empty', ts: new Date().toISOString() });
+  } catch (e) {
+    console.error('[GET /trending/events/nearby]', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
