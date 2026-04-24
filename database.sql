@@ -81,26 +81,30 @@ CREATE TABLE IF NOT EXISTS trending_prime (
   type        TEXT DEFAULT 'show',
   genre       TEXT,
   image_url   TEXT,
-  prime_url   TEXT,
-  region      TEXT NOT NULL,                 -- 'ca' | 'in'
+  prime_url   TEXT,                          -- search link on Prime Video
+  tmdb_url    TEXT,                          -- direct TMDB page link (used for add-to-picks)
+  badge       TEXT DEFAULT 'P',
+  badge_color TEXT DEFAULT '#00A8E0',
+  score       TEXT,
+  region      TEXT NOT NULL DEFAULT 'us',
   fetched_at  TIMESTAMPTZ DEFAULT NOW(),
   week_of     DATE NOT NULL DEFAULT CURRENT_DATE,
   UNIQUE(title, region, week_of)
 );
 
--- 8. IMDb Top Picks — refreshed every Thursday
+-- 8. TMDB Top Picks — refreshed every Thursday (replaces IMDb scraping)
 CREATE TABLE IF NOT EXISTS trending_imdb (
   id          SERIAL PRIMARY KEY,
   rank        INTEGER NOT NULL,
   title       TEXT NOT NULL,
   type        TEXT DEFAULT 'movie',          -- 'movie' | 'show'
   year        TEXT,
-  rating      TEXT,                          -- IMDb rating e.g. "8.4"
-  votes       TEXT,                          -- e.g. "2.3M"
+  rating      TEXT,
   genre       TEXT,
   image_url   TEXT,
-  imdb_url    TEXT,
-  category    TEXT NOT NULL,                 -- 'top_movies' | 'top_shows' | 'fan_picks'
+  tmdb_url    TEXT,                          -- direct TMDB link (used for add-to-picks)
+  imdb_url    TEXT,                          -- kept for schema compatibility
+  category    TEXT NOT NULL,                 -- 'top_movies' | 'popular_shows' | 'popular_movies'
   fetched_at  TIMESTAMPTZ DEFAULT NOW(),
   week_of     DATE NOT NULL DEFAULT CURRENT_DATE,
   UNIQUE(title, category, week_of)

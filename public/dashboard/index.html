@@ -123,6 +123,12 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
 .tsh-live{font-size:9px;font-weight:700;color:#059669}
 .trend-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
 .trend-row::-webkit-scrollbar{display:none}
+/* Responsive grid for places — wraps on mobile */
+.places-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;padding-bottom:4px}
+/* Event category sections */
+.event-cat-section{margin-bottom:1.5rem}
+.event-cat-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:.5rem;display:flex;align-items:center;gap:6px}
+.event-cat-icon{font-size:16px}
 
 /* Poster cards — increased from 120×175 to 150×220 */
 .tc-poster{flex-shrink:0;width:150px;border-radius:var(--rsm);overflow:hidden;background:var(--navy2,#3B0764);border:1px solid var(--beige3);box-shadow:0 2px 8px rgba(0,0,0,.12)}
@@ -140,8 +146,8 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
 .tc-pa-btn:hover{background:var(--beige2)}
 
 /* Wide cards for places & events */
-.tc-wide{flex-shrink:0;width:210px;border-radius:var(--rsm);overflow:hidden;background:var(--white);border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.tc-wide-img{width:210px;height:130px;display:flex;align-items:center;justify-content:center;font-size:40px;background:#1a1a3e;position:relative;overflow:hidden}
+.tc-wide{border-radius:var(--rsm);overflow:hidden;background:var(--white);border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.tc-wide-img{width:100%;height:130px;display:flex;align-items:center;justify-content:center;font-size:40px;background:#1a1a3e;position:relative;overflow:hidden}
 .tc-wide-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .tc-wide-body{padding:10px 12px}
 .tc-wide-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -336,20 +342,19 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
         <div id="tr-tmdb"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
       </div>
 
-      <!-- Events -->
+      <!-- Events — split by category via JS -->
       <div class="trend-cat-section" id="tcat-events">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem;flex-wrap:wrap">
           <div class="trend-sec-hdr" style="margin:0">🎭 Events Near You <span class="tsh-tag" style="background:#F05537">Ticketmaster</span></div>
           <span id="events-location-label" style="font-size:11px;color:var(--muted)">Detecting location...</span>
         </div>
-        <div id="tr-events"><div class="trend-loading"><div class="trend-spin"></div>Loading events...</div></div>
+        <div id="tr-events"><div class="trend-loading"><div class="trend-spin"></div>Finding events near you...</div></div>
       </div>
 
-      <!-- Places -->
+      <!-- Places — responsive grid -->
       <div class="trend-cat-section" id="tcat-places">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem;flex-wrap:wrap">
-          <div class="trend-sec-hdr" style="margin:0">📍 Top Places to Visit</div>
-          <span id="places-location-label" style="font-size:11px;color:var(--muted)"></span>
+          <div class="trend-sec-hdr" style="margin:0">📍 Top Places to Visit <span class="tsh-tag" style="background:#1DA462">TripAdvisor</span></div>
         </div>
         <div id="tr-places"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
       </div>
@@ -1462,8 +1467,8 @@ function loadPlaces(region) {
     .then(r => r.json())
     .then(data => {
       var items = (data.data && data.data.length) ? data.data : (PLACES_STATIC[region] || PLACES_STATIC.canada);
-      renderWideRow('tr-places', items, 'place', '📍');
-    }).catch(function() { renderWideRow('tr-places', PLACES_STATIC[region] || PLACES_STATIC.canada, 'place', '📍'); });
+      renderPlacesGrid('tr-places', items.slice(0, 10));
+    }).catch(function() { renderPlacesGrid('tr-places', PLACES_STATIC[region] || PLACES_STATIC.canada); });
 }
 
 function loadEventsWithLocation() {
@@ -1521,20 +1526,13 @@ function fetchEventsNearby(lat, lng, region) {
   var el = document.getElementById('tr-events');
   if (el) el.innerHTML = '<div class="trend-loading"><div class="trend-spin"></div>Finding events near you...</div>';
 
-  // India: use Insider.in data from DB
   var url = (region === 'india')
     ? BASE + '/api/trending/events?region=india'
     : BASE + '/api/trending/events/nearby?lat=' + lat + '&lng=' + lng + '&region=' + region;
 
   fetch(url)
     .then(r => r.json())
-    .then(data => {
-      if (data.data && data.data.length) {
-        renderWideRow('tr-events', data.data, 'event', '🎭');
-      } else {
-        if (el) el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">🎭</div><div style="font-size:13px;font-weight:600;margin-bottom:4px">No events found nearby</div><div style="font-size:12px">Events data is refreshed weekly. Check back soon!</div></div>';
-      }
-    })
+    .then(data => { renderEventCategories('tr-events', data.data || []); })
     .catch(function() {
       if (el) el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Could not load events. Please try again.</div>';
     });
@@ -1542,11 +1540,13 @@ function fetchEventsNearby(lat, lng, region) {
 
 function renderStreamRow(elId, items, badgeColor, badgeLetter, fallbackEmoji) {
   var el = document.getElementById(elId); if (!el) return;
+  if (!items || !items.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem">No data available</div>'; return; }
   var html = '<div class="trend-row">';
   items.slice(0, 10).forEach(function(it, i) {
-    var bc  = it.badge_color || it.badgeColor || badgeColor || '#888';
-    var tid = storeTrendItem(it);
-    var imgHtml = it.image_url
+    var bc       = it.badge_color || it.badgeColor || badgeColor || '#888';
+    var watchUrl = it.url || it.netflix_url || it.prime_url || '';
+    var tid      = storeTrendItem(it);
+    var imgHtml  = it.image_url
       ? '<img src="' + esc(it.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
       : '<span style="font-size:48px;position:relative;z-index:1">' + fallbackEmoji + '</span>';
     html += '<div class="tc-poster">'
@@ -1562,7 +1562,7 @@ function renderStreamRow(elId, items, badgeColor, badgeLetter, fallbackEmoji) {
       + '</div>'
       + '<div class="tc-poster-actions">'
       + '<button class="tc-pa-btn" onclick="addTrendPickDirect(\'' + tid + '\')" style="color:var(--blue)">+ Add</button>'
-      + ((it.url || it.netflix_url) ? '<button class="tc-pa-btn" onclick="window.open(\'' + esc(it.url || it.netflix_url || '') + '\',\'_blank\')" style="color:' + bc + '">&#9654;</button>' : '')
+      + (watchUrl ? '<button class="tc-pa-btn" onclick="window.open(\'' + esc(watchUrl) + '\',\'_blank\')" style="color:' + bc + '">&#9654;</button>' : '')
       + '</div></div>';
   });
   el.innerHTML = html + '</div>';
@@ -1570,6 +1570,7 @@ function renderStreamRow(elId, items, badgeColor, badgeLetter, fallbackEmoji) {
 
 function renderTmdbRow(elId, items) {
   var el = document.getElementById(elId); if (!el) return;
+  if (!items || !items.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem">No data available — run scraper to populate</div>'; return; }
   var html = '<div class="trend-row">';
   items.slice(0, 10).forEach(function(it, i) {
     var tid = storeTrendItem(it);
@@ -1595,20 +1596,21 @@ function renderTmdbRow(elId, items) {
   el.innerHTML = html + '</div>';
 }
 
-function renderWideRow(elId, items, type, defaultEmoji) {
+// Places: responsive CSS grid (wraps, max 5 per row on desktop, 2 on mobile)
+function renderPlacesGrid(elId, items) {
   var el = document.getElementById(elId); if (!el) return;
-  if (!items || !items.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem">No data yet</div>'; return; }
-  var html = '<div class="trend-row">';
+  if (!items || !items.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem">No places data yet</div>'; return; }
+  var html = '<div class="places-grid">';
   items.slice(0, 10).forEach(function(it) {
     var tid = storeTrendItem(it);
     var imgHtml = it.image_url
       ? '<img src="' + esc(it.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
-      : '<span style="font-size:36px">' + (defaultEmoji || '&#128506;') + '</span>';
+      : '<span style="font-size:36px">&#128205;</span>';
     html += '<div class="tc-wide">'
       + '<div class="tc-wide-img">' + imgHtml + '</div>'
       + '<div class="tc-wide-body">'
       + '<div class="tc-wide-title" title="' + esc(it.title) + '">' + esc(it.title) + '</div>'
-      + '<div class="tc-wide-meta">' + esc(it.description || it.desc || '') + '</div>'
+      + '<div class="tc-wide-meta">' + esc(it.description || '') + '</div>'
       + '</div>'
       + '<div class="tc-poster-actions">'
       + '<button class="tc-pa-btn" onclick="addTrendPickDirect(\'' + tid + '\')" style="color:var(--blue)">+ Add</button>'
@@ -1618,14 +1620,78 @@ function renderWideRow(elId, items, type, defaultEmoji) {
   el.innerHTML = html + '</div>';
 }
 
+// Events: split by category (Concerts / Sports / Arts / Family)
+var EVENT_CATS = {
+  concerts: { label: 'Concerts',                  icon: '🎵' },
+  sports:   { label: 'Sports',                    icon: '🏆' },
+  arts:     { label: 'Arts, Theatre & Comedy',    icon: '🎭' },
+  family:   { label: 'Family',                    icon: '👨‍👩‍👧' },
+};
+
+function renderEventCategories(elId, items) {
+  var el = document.getElementById(elId); if (!el) return;
+  if (!items || !items.length) {
+    el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">🎭</div><div style="font-size:13px;font-weight:600;margin-bottom:4px">No events found nearby</div><div style="font-size:12px">Events refresh weekly — check back soon or add your Ticketmaster key</div></div>';
+    return;
+  }
+
+  // Group by category
+  var byCategory = {};
+  items.forEach(function(ev) {
+    var cat = ev.category || 'other';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(ev);
+  });
+
+  var html = '';
+  // Render known categories first
+  var orderedCats = ['concerts', 'sports', 'arts', 'family'];
+  var allCats = orderedCats.concat(Object.keys(byCategory).filter(c => !orderedCats.includes(c)));
+
+  allCats.forEach(function(cat) {
+    var evs = byCategory[cat];
+    if (!evs || !evs.length) return;
+    var catInfo = EVENT_CATS[cat] || { label: cat.charAt(0).toUpperCase() + cat.slice(1), icon: '🎟️' };
+    html += '<div class="event-cat-section">'
+      + '<div class="event-cat-title"><span class="event-cat-icon">' + catInfo.icon + '</span>' + catInfo.label + '</div>'
+      + '<div class="trend-row">';
+    evs.slice(0, 5).forEach(function(it) {
+      var tid = storeTrendItem(it);
+      var imgHtml = it.image_url
+        ? '<img src="' + esc(it.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
+        : '<span style="font-size:36px">' + catInfo.icon + '</span>';
+      html += '<div class="tc-wide">'
+        + '<div class="tc-wide-img">' + imgHtml + '</div>'
+        + '<div class="tc-wide-body">'
+        + '<div class="tc-wide-title" title="' + esc(it.title) + '">' + esc(it.title) + '</div>'
+        + '<div class="tc-wide-meta">' + esc(it.description || '') + '</div>'
+        + '</div>'
+        + '<div class="tc-poster-actions">'
+        + '<button class="tc-pa-btn" onclick="addTrendPickDirect(\'' + tid + '\')" style="color:var(--blue)">+ Add</button>'
+        + (it.url ? '<button class="tc-pa-btn" onclick="window.open(\'' + esc(it.url) + '\',\'_blank\')" style="color:var(--muted)">&#8599;</button>' : '')
+        + '</div></div>';
+    });
+    html += '</div></div>';
+  });
+
+  el.innerHTML = html || '<div style="color:var(--muted);font-size:13px;padding:1rem">No events found in your area</div>';
+}
+
+// ── FIX: addTrendPickDirect sends imageUrl directly so no re-fetch needed ──
 async function addTrendPickDirect(itemId) {
   var item = window._trendItems[itemId];
   if (!item) { showToast('Item not found'); return; }
-  if (!currentGroupId) { showToast('Select a squad first'); goSection('picks', document.getElementById('dnav-picks')); return; }
+  if (!currentGroupId) {
+    showToast('Select a squad first');
+    goSection('picks', document.getElementById('dnav-picks'));
+    return;
+  }
 
-  var title = item.title || item.name || '';
-  var url   = item.tmdb_url || item.url || item.netflix_url || item.prime_url || title;
-  var type  = item.type || (item.badge === 'N' || item.badge === 'P' ? 'show' : 'movie');
+  var title    = item.title || item.name || '';
+  // Use TMDB URL if available (best for metadata re-fetch), else use any URL, else just the title
+  var url      = item.tmdb_url || item.url || item.netflix_url || item.prime_url || title;
+  var type     = item.type || (item.badge === 'P' ? 'show' : item.badge === 'N' ? 'show' : 'movie');
+  var imageUrl = item.image_url || '';
 
   showToast('Adding to squad...');
 
@@ -1639,15 +1705,26 @@ async function addTrendPickDirect(itemId) {
         'x-user-name':          String(currentUser && currentUser.name || 'User'),
         'x-chat-id':            String(currentGroupId),
       },
-      body: JSON.stringify({ url, groupId: currentGroupId, manualType: type, manualTitle: title })
+      // Send imageUrl directly — avoids needing to re-fetch from TMDB
+      body: JSON.stringify({
+        url,
+        groupId:        currentGroupId,
+        manualType:     type,
+        manualTitle:    title,
+        manualImageUrl: imageUrl,   // ← key fix: bypass fetchMeta for image
+      })
     });
     var data = await r.json();
     if (data.pick) {
       var newPick = Object.assign({}, data.pick, { votes: [], my_vote: '', group_ok: false });
+      // Ensure image_url is set (sometimes DB row has null if save had issue)
+      if (!newPick.image_url && imageUrl) newPick.image_url = imageUrl;
       if (!allPicks.find(p => p.id === newPick.id)) allPicks.unshift(newPick);
       myVotes[newPick.id] = '';
-      renderStats(); renderPicks(); renderPlan();
-      showToast('"' + title + '" added to squad! \u2705');
+      renderStats();
+      renderPicks();
+      renderPlan();
+      showToast('"' + title + '" added! \u2705');
     } else {
       showToast(data.error || 'Could not add pick');
     }

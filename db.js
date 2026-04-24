@@ -411,8 +411,8 @@ async function clearTrendingPrimeRegion(region) {
 }
 
 async function clearTrendingImdbCategory(category) {
-  const weekOf = new Date().toISOString().slice(0, 10);
-  const { error } = await supabase.from('trending_imdb').delete().eq('category', category).eq('week_of', weekOf);
+  // Delete ALL rows for this category regardless of week_of — prevents stale data conflict
+  const { error } = await supabase.from('trending_imdb').delete().eq('category', category);
   if (error) console.warn('[DB] clearTrendingImdb:', error.message);
 }
 
@@ -488,14 +488,13 @@ async function getLatestImdbTop10(category) {
 async function getMixedStreamingTop10(region) {
   const [nf, pv] = await Promise.all([
     getLatestNetflixTop10(region),
-    getLatestPrimeTop10(region === 'canada' ? 'ca' : region === 'india' ? 'in' : 'ca')
+    getLatestPrimeTop10('us')   // Prime data is always stored as 'us' region
   ]);
-  // Tag with source
   const tagged = [
     ...nf.map(r => ({ ...r, source: 'netflix', badge: 'N', badgeColor: '#E50914',
       url: r.netflix_url || `https://www.netflix.com/search?q=${encodeURIComponent(r.title)}` })),
     ...pv.map(r => ({ ...r, source: 'prime',   badge: 'P', badgeColor: '#00A8E0',
-      url: r.prime_url   || `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(r.title)}` }))
+      url: r.url || `https://www.primevideo.com/search/?phrase=${encodeURIComponent(r.title)}` }))
   ];
   // Sort: newest week_of first, then by rank
   tagged.sort((a, b) => {

@@ -168,22 +168,28 @@ app.get('/api/picks', telegramAuth, async (req, res) => {
 app.post('/api/picks', telegramAuth, async (req, res) => {
   try {
     const db = getDb(), links = getLinks();
-    const { url, groupId, groupTitle, manualType, manualTitle } = req.body;
+    const { url, groupId, groupTitle, manualType, manualTitle, manualImageUrl } = req.body;
     const chatId = groupId || req.tgUser.chatId;
     if (!url || !chatId) return res.status(400).json({ error: 'url and groupId required' });
     await db.ensureGroup(chatId, groupTitle || 'SquadPicks Group');
-    const meta = await links.fetchMeta(url);
-    // manualType overrides auto-detection (from Full App category picker)
-    // manualTitle overrides fetched title (from Full App manual entry)
+
+    // If caller provides title + image directly (e.g. from trending cards), skip the fetch
+    let meta;
+    if (manualTitle && manualImageUrl) {
+      meta = { title: manualTitle, description: '', imageUrl: manualImageUrl, sourceUrl: url };
+    } else {
+      meta = await links.fetchMeta(url);
+    }
+
     const type  = manualType  || links.detectType(url, meta);
     const title = manualTitle || meta.title;
     const pick = await db.savePick({
       groupId: chatId, type,
-      title:        title,
-      description:  meta.description,
+      title,
+      description:  meta.description || '',
       url:          url,
       sourceUrl:    meta.sourceUrl || url,
-      imageUrl:     meta.imageUrl,
+      imageUrl:     manualImageUrl || meta.imageUrl || '',
       addedById:    req.tgUser.id,
       addedByName:  req.tgUser.first_name || 'Someone',
       reviewerName: null, reviewerScore: null, reviewerQuote: null, reviewerVideoId: null

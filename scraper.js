@@ -321,7 +321,8 @@ async function fetchTmdbStreaming() {
       image_url:   item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null,
       badge:       'P',
       badge_color: '#00A8E0',
-      url:         `https://www.primevideo.com/search/?phrase=${encodeURIComponent(item.title || item.name || '')}`,
+      prime_url:   `https://www.primevideo.com/search/?phrase=${encodeURIComponent(item.title || item.name || '')}`,
+      tmdb_url:    `https://www.themoviedb.org/${item._media === 'movie' ? 'movie' : 'tv'}/${item.id}`,
       score:       item.vote_average ? item.vote_average.toFixed(1) : null,
       region:      'us',
       genre:       null,
@@ -494,11 +495,17 @@ async function fetchPlaces() {
 // Events are fetched by lat/lng — client sends location, server queries by coords
 // =============================================================================
 
-const TM_CATEGORIES = 'KZFzniwnSyZfZ7v7nJ,KZFzniwnSyZfZ7v7nE,KZFzniwnSyZfZ7v7na,KZFzniwnSyZfZ7v7n1';
+// Ticketmaster classification IDs
+const TM_CAT_IDS = {
+  concerts: 'KZFzniwnSyZfZ7v7nJ',
+  sports:   'KZFzniwnSyZfZ7v7nE',
+  arts:     'KZFzniwnSyZfZ7v7na',
+  family:   'KZFzniwnSyZfZ7v7n1',
+};
 
 const EVENTS_DEFAULTS = [
-  { name: 'canada', lat: 43.6532,  lng: -79.3832,  countryCode: 'CA', label: 'Toronto'       },
-  { name: 'us',     lat: 37.7749,  lng: -122.4194, countryCode: 'US', label: 'San Francisco'  },
+  { name: 'canada', lat: 43.6532,  lng: -79.3832,  countryCode: 'CA', label: 'Toronto'      },
+  { name: 'us',     lat: 37.7749,  lng: -122.4194, countryCode: 'US', label: 'San Francisco' },
   { name: 'india',  lat: 19.0760,  lng: 72.8777,   countryCode: null, label: 'Mumbai', useInsider: true },
 ];
 
@@ -508,43 +515,58 @@ async function fetchEventsByLatLng(lat, lng, countryCode, region) {
     console.warn('[Events] No TICKETMASTER_API_KEY');
     return [];
   }
-  const url =
-    `https://app.ticketmaster.com/discovery/v2/events.json` +
-    `?apikey=${tmKey}` +
-    `&latlong=${lat},${lng}` +
-    `&radius=50&unit=miles` +
-    `&classificationId=${TM_CATEGORIES}` +
-    `&sort=date,asc` +
-    `&size=15` +
-    (countryCode ? `&countryCode=${countryCode}` : '');
-  const res = await safeFetch(url);
-  if (!res) return [];
-  const data = await res.json();
-  const rawEvents = (data._embedded || {}).events || [];
-  const now = new Date();
-  return rawEvents
-    .filter(ev => {
-      const d = new Date(ev.dates?.start?.dateTime || ev.dates?.start?.localDate || '');
-      return !isNaN(d.getTime()) && d > now;
-    })
-    .slice(0, 10)
-    .map((ev, i) => {
-      const venue   = ev._embedded?.venues?.[0];
-      const dateStr = ev.dates?.start?.localDate || '';
-      const timeStr = ev.dates?.start?.localTime ? ev.dates.start.localTime.slice(0, 5) : '';
-      const price   = ev.priceRanges?.[0] ? `From $${Math.round(ev.priceRanges[0].min)}` : '';
-      return {
-        rank:        i + 1,
-        title:       ev.name,
-        description: [dateStr + (timeStr ? ' ' + timeStr : ''), venue?.name, price].filter(Boolean).join(' · '),
-        image_url:   ev.images?.find(img => img.ratio === '16_9' && img.width >= 500)?.url || ev.images?.[0]?.url || null,
-        url:         ev.url || null,
-        region,
-        type:        'event',
-        lat:         venue?.location?.latitude  ? parseFloat(venue.location.latitude)  : lat,
-        lng:         venue?.location?.longitude ? parseFloat(venue.location.longitude) : lng,
-      };
-    });
+
+  const allEvents = [];
+
+  for (const [catKey, catId] of Object.entries(TM_CAT_IDS)) {
+    try {
+      const url =
+        `https://app.ticketmaster.com/discovery/v2/events.json` +
+        `?apikey=${tmKey}` +
+        `&latlong=${lat},${lng}` +
+        `&radius=50&unit=miles` +
+        `&classificationId=${catId}` +
+        `&sort=date,asc` +
+        `&size=5` +
+        (countryCode ? `&countryCode=${countryCode}` : '');
+
+      const res = await safeFetch(url);
+      if (!res) continue;
+      const data = await res.json();
+      const rawEvents = (data._embedded || {}).events || [];
+      const now = new Date();
+
+      const catEvents = rawEvents
+        .filter(ev => {
+          const d = new Date(ev.dates?.start?.dateTime || ev.dates?.start?.localDate || '');
+          return !isNaN(d.getTime()) && d > now;
+        })
+        .slice(0, 5)
+        .map((ev, i) => {
+          const venue   = ev._embedded?.venues?.[0];
+          const dateStr = ev.dates?.start?.localDate || '';
+          const timeStr = ev.dates?.start?.localTime ? ev.dates.start.localTime.slice(0, 5) : '';
+          const price   = ev.priceRanges?.[0] ? `From $${Math.round(ev.priceRanges[0].min)}` : '';
+          return {
+            rank:        i + 1,
+            title:       ev.name,
+            category:    catKey,   // concerts / sports / arts / family
+            description: [dateStr + (timeStr ? ' ' + timeStr : ''), venue?.name, price].filter(Boolean).join(' · '),
+            image_url:   ev.images?.find(img => img.ratio === '16_9' && img.width >= 500)?.url || ev.images?.[0]?.url || null,
+            url:         ev.url || null,
+            region,
+            type:        'event',
+          };
+        });
+
+      allEvents.push(...catEvents);
+      await sleep(200); // respect Ticketmaster rate limit
+    } catch (e) {
+      console.warn(`[Events] Category ${catKey} error:`, e.message);
+    }
+  }
+
+  return allEvents;
 }
 
 async function fetchEventsInsiderIndia() {
