@@ -626,33 +626,26 @@ function esc(s) {
   if (!groupId) groupId = new URLSearchParams(location.search).get('groupId') ||
                           new URLSearchParams(location.search).get('startapp') || null;
 
-  // 3. If not inside Telegram, check server session (web-Telegram login via website)
+  // 3. If not inside Telegram, redirect to the Full App (/dashboard)
+  // This unifies the experience — browser users always use the Full App
   if (!isInsideTelegram) {
     try {
       var sesRes = await fetch('/api/session');
       var ses    = await sesRes.json();
       if (ses.ok && ses.user) {
-        tgUser = { id: ses.user.id, first_name: ses.user.name || 'Member', username: '' };
-        // If no groupId yet, resolve from user's groups
-        if (!groupId) {
-          try {
-            var grpRes  = await fetch('/api/groups');
-            var grpData = await grpRes.json();
-            if (grpData.groups && grpData.groups.length) {
-              groupId = String(grpData.groups[0].id);
-            }
-          } catch(e) {}
-        }
+        // Authenticated browser user → Full App is their home
+        var dest = '/dashboard';
+        if (groupId) dest += '?groupId=' + encodeURIComponent(groupId);
+        window.location.href = dest;
       } else {
-        // Not authenticated via browser session and not inside Telegram → go to login
         window.location.href = '/login';
-        return;
       }
     } catch(e) {
       window.location.href = '/login';
-      return;
     }
+    return; // always stop here for browser users
   }
+  // Beyond this point: we are inside Telegram Mini App
 
   // 4. Final fallback — should only reach here if inside Telegram with no user data
   if (!tgUser) { tgUser = {id: 123456789, first_name: 'Guest', username: ''}; }
@@ -856,7 +849,8 @@ function vote(btn) {
   p.my = (p.my === s) ? '' : s;
   p.votes = p.votes.filter(function(v) { return v.n !== sn(tgUser.first_name); });
   if (p.my) p.votes.push({n: sn(tgUser.first_name || 'You'), s: p.my});
-  p.ok = p.votes.length >= 4 && p.votes.every(function(v) { return v.s !== 'skip'; });
+  p.ok = p.votes.length > 0 && !p.votes.some(function(v) { return v.s === 'skip'; }) &&
+         p.votes.filter(function(v) { return v.s === 'want' || v.s === 'seen'; }).length >= Math.ceil((p._memberCount || 2) * 0.5);
   renderPicks();
   renderPlan();
   var labels = VOTE_LABELS[p.type] || VOTE_LABELS.link;

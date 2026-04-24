@@ -149,6 +149,24 @@ function telegramAuth(req, res, next) {
 }
 
 // ─── API: GET PICKS ────────────────────────────────────────
+// Helper: group_ok = no skips AND at least 50% of active members voted "want" or "seen"
+async function computeGroupOk(db, pickId, groupId, votes) {
+  if (!votes.length) return false;
+  if (votes.some(v => v.status === 'skip')) return false;
+  // Count active members in the group
+  try {
+    const members = await db.getGroupMembers(groupId);
+    const activeCount = members.filter(m => m.status === 'active').length;
+    const positiveVotes = votes.filter(v => v.status === 'want' || v.status === 'seen').length;
+    // Group ok if at least 50% of members voted positively
+    if (activeCount >= 2) return positiveVotes >= Math.ceil(activeCount * 0.5);
+    return positiveVotes > 0; // single-person group: any positive vote = ok
+  } catch(e) {
+    // Fallback: at least 1 positive vote, no skips
+    return votes.some(v => v.status === 'want' || v.status === 'seen');
+  }
+}
+
 app.get('/api/picks', telegramAuth, async (req, res) => {
   try {
     const db      = getDb();
@@ -156,13 +174,23 @@ app.get('/api/picks', telegramAuth, async (req, res) => {
     if (!groupId) return res.status(400).json({ error: 'groupId required' });
     const picks   = await db.getGroupPicks(groupId, 30);
     const votes   = await db.getVotesForPicks(picks.map(p => p.id));
+    // Compute group_ok with 50% threshold
+    const members = await db.getGroupMembers(groupId).catch(() => []);
+    const activeCount = members.filter(m => m.status === 'active').length || 1;
     const enriched = picks.map(p => {
       const pv = votes.filter(v => v.pick_id === p.id);
-      return { ...p, votes: pv, my_vote: pv.find(v=>v.user_id===req.tgUser.id)?.status||null, group_ok: pv.length>0 && pv.every(v=>v.status!=='skip') };
+      const hasSkip = pv.some(v => v.status === 'skip');
+      const positiveVotes = pv.filter(v => v.status === 'want' || v.status === 'seen').length;
+      const threshold = Math.ceil(activeCount * 0.5);
+      const group_ok = !hasSkip && positiveVotes >= threshold && pv.length > 0;
+      return { ...p, votes: pv, my_vote: pv.find(v=>v.user_id===req.tgUser.id)?.status||null, group_ok };
     });
     res.json({ picks: enriched });
   } catch (e) { console.error('[GET /picks]',e.message); res.status(500).json({ error: e.message }); }
 });
+
+// Vote label for each type — used to auto-vote "want" equivalent on add
+const WANT_STATUS = { movie:'want', show:'want', food:'want', place:'want', event:'want', video:'want', link:'want' };
 
 // ─── API: ADD PICK ─────────────────────────────────────────
 app.post('/api/picks', telegramAuth, async (req, res) => {
@@ -173,7 +201,6 @@ app.post('/api/picks', telegramAuth, async (req, res) => {
     if (!url || !chatId) return res.status(400).json({ error: 'url and groupId required' });
     await db.ensureGroup(chatId, groupTitle || 'SquadPicks Group');
 
-    // If caller provides title + image directly (e.g. from trending cards), skip the fetch
     let meta;
     if (manualTitle && manualImageUrl) {
       meta = { title: manualTitle, description: '', imageUrl: manualImageUrl, sourceUrl: url };
@@ -184,8 +211,7 @@ app.post('/api/picks', telegramAuth, async (req, res) => {
     const type  = manualType  || links.detectType(url, meta);
     const title = manualTitle || meta.title;
     const pick = await db.savePick({
-      groupId: chatId, type,
-      title,
+      groupId: chatId, type, title,
       description:  meta.description || '',
       url:          url,
       sourceUrl:    meta.sourceUrl || url,
@@ -195,9 +221,19 @@ app.post('/api/picks', telegramAuth, async (req, res) => {
       reviewerName: null, reviewerScore: null, reviewerQuote: null, reviewerVideoId: null
     });
     if (!pick) return res.status(500).json({ error: 'Failed to save' });
+
+    // Fix 6: Auto-vote "want" (type-appropriate status) for the person who added it
+    const autoStatus = WANT_STATUS[type] || 'want';
+    await db.upsertVote({
+      pickId: pick.id, userId: req.tgUser.id,
+      username: req.tgUser.username || '', firstName: req.tgUser.first_name || 'Someone',
+      status: autoStatus
+    });
+
     if (global.squadPicksBot) {
       try {
-        const sent = await global.squadPicksBot.sendMessage(chatId, links.formatCard(pick,[]), { parse_mode:'HTML', reply_markup: links.buildVoteKeyboard(pick.id, pick.group_id || chatId) });
+        const votes = await db.getVotesForPick(pick.id);
+        const sent = await global.squadPicksBot.sendMessage(chatId, links.formatCard(pick, votes), { parse_mode:'HTML', reply_markup: links.buildVoteKeyboard(pick.id, pick.group_id || chatId) });
         await db.updatePickMessageId(pick.id, sent.message_id);
       } catch(e) { console.error('[Bot notify]',e.message); }
     }
@@ -217,7 +253,7 @@ app.post('/api/vote', telegramAuth, async (req, res) => {
     else await db.upsertVote({ pickId, userId:req.tgUser.id, username:req.tgUser.username||'', firstName:req.tgUser.first_name||'Someone', status });
     const votes   = await db.getVotesForPick(pickId);
     const pick    = await db.getPick(pickId);
-    const groupOk = votes.length>0 && votes.every(v=>v.status!=='skip');
+    const groupOk = await computeGroupOk(db, pickId, pick?.group_id, votes);
     if (global.squadPicksBot && pick?.message_id && pick?.group_id) {
       try { await global.squadPicksBot.editMessageText(links.formatCard(pick,votes),{ chat_id:pick.group_id, message_id:pick.message_id, parse_mode:'HTML', reply_markup:links.buildVoteKeyboard(pickId, pick?.group_id) }); }
       catch(e) { if (!e.message?.includes('not modified')) console.error('[Card update]',e.message); }
@@ -441,21 +477,80 @@ app.post('/api/groups/link-telegram', requireWebAuth, async (req, res) => {
   } catch(e) { console.error('[link-telegram]', e.message); res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/groups/invite — invite member by email
+// POST /api/groups/invite — invite member by email + send email notification
 app.post('/api/groups/invite', requireWebAuth, async (req, res) => {
   try {
     const db = getDb();
     const { groupId, email } = req.body;
     if (!groupId || !email) return res.status(400).json({ error: 'groupId and email required' });
+
+    // Get group name for the email
+    const { data: grpData } = await (async () => {
+      const { createClient } = require('@supabase/supabase-js');
+      const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+      return sb.from('groups').select('title').eq('id', groupId).maybeSingle();
+    })();
+    const groupName = grpData?.title || 'a SquadPicks group';
+    const inviterName = req.session.userName || req.session.userEmail || 'Someone';
+    const appUrl = process.env.APP_URL || 'https://squadpicks.app';
+
     const existing = await db.getUserByEmail(email);
     if (existing) {
       await db.addGroupMember({ groupId, userId: existing.id, email });
-      return res.json({ ok: true, status: 'added', message: `${email} added to squad` });
+      await sendInviteEmail({ to: email, inviterName, groupName, appUrl, isNew: false });
+      return res.json({ ok: true, status: 'added', message: `${email} added to squad — invite email sent` });
     }
     await db.addPendingInvite({ groupId, email, invitedBy: req.session.userId });
-    res.json({ ok: true, status: 'invited', message: `Invite recorded for ${email}` });
+    await sendInviteEmail({ to: email, inviterName, groupName, appUrl, isNew: true });
+    res.json({ ok: true, status: 'invited', message: `Invite sent to ${email}` });
   } catch(e) { console.error('[invite]', e.message); res.status(500).json({ error: e.message }); }
 });
+
+// Email sending helper — uses Resend (RESEND_API_KEY) or logs to console if not configured
+async function sendInviteEmail({ to, inviterName, groupName, appUrl, isNew }) {
+  const resendKey = process.env.RESEND_API_KEY;
+  const subject   = `${inviterName} invited you to "${groupName}" on SquadPicks`;
+  const html      = `
+    <div style="font-family:'DM Sans',sans-serif;max-width:520px;margin:0 auto;background:#F5F3FF;padding:24px;border-radius:16px">
+      <h1 style="font-family:Georgia,serif;color:#6B21A8;font-size:28px;margin:0 0 8px">SquadPicks 🎬</h1>
+      <p style="color:#3B1F6B;font-size:16px;margin:0 0 20px">
+        <strong>${inviterName}</strong> has invited you to join <strong>${groupName}</strong> on SquadPicks —
+        the app your squad uses to pick movies, restaurants, events and places together.
+      </p>
+      <a href="${appUrl}/login" style="display:inline-block;background:#7C3AED;color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-size:16px;font-weight:700">
+        ${isNew ? 'Accept invite &amp; sign up' : 'Open SquadPicks'}
+      </a>
+      <p style="color:#7C5AB8;font-size:13px;margin-top:20px">
+        ${isNew ? 'Create your account with Google and you\'ll automatically be added to the squad.' : 'You\'ve been added to the squad. Sign in to see the picks.'}
+      </p>
+      <hr style="border:none;border-top:1px solid #DDD6FE;margin:20px 0"/>
+      <p style="color:#9D86D4;font-size:11px">SquadPicks · Your squad. Any plan. One app.</p>
+    </div>`;
+
+  if (!resendKey) {
+    console.log(`[Email] No RESEND_API_KEY — would have sent invite to ${to}`);
+    console.log(`[Email] Subject: ${subject}`);
+    return; // graceful — invite still recorded in DB even without email
+  }
+
+  try {
+    const fetch = (...a) => import('node-fetch').then(m => m.default(...a));
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from:    process.env.RESEND_FROM_EMAIL || 'SquadPicks <noreply@squadpicks.app>',
+        to:      [to],
+        subject, html
+      })
+    });
+    const d = await r.json();
+    if (r.ok) console.log(`[Email] Invite sent to ${to}, id: ${d.id}`);
+    else      console.error(`[Email] Resend error:`, d);
+  } catch(e) {
+    console.error('[Email] Send failed:', e.message);
+  }
+}
 
 // ─── API: METADATA PREVIEW (for Add Pick modal) ────────────
 app.get('/api/meta', async (req, res) => {

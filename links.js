@@ -27,6 +27,12 @@ function detectType(url, meta = {}) {
   if (/youtube\.com\/watch|youtu\.be\//.test(u))     return 'video';
   if (/youtube\.com\/(shorts|live)/.test(u))         return 'video';
 
+  // Social media — Facebook and Instagram
+  if (/facebook\.com\/(events|pages\/.*\/events)/.test(u)) return 'event';
+  if (/facebook\.com/.test(u))                       return 'link';
+  if (/instagram\.com\/(reel|reels|tv)/.test(u))    return 'video';
+  if (/instagram\.com/.test(u))                      return 'link';
+
   // Food
   if (/yelp\.com/.test(u))                           return 'food';
   if (/zomato\.com/.test(u))                         return 'food';
