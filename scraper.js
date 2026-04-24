@@ -353,46 +353,46 @@ const PLACES_CURATED = [
   {
     name: 'canada',
     items: [
-      { title: 'Banff National Park',          description: 'Alberta · Rocky Mountains',          url: 'https://maps.google.com/?q=Banff+National+Park' },
-      { title: 'CN Tower',                     description: 'Toronto · Iconic observation tower',  url: 'https://maps.google.com/?q=CN+Tower+Toronto' },
-      { title: 'Niagara Falls',                description: 'Ontario · Natural wonder',            url: 'https://maps.google.com/?q=Niagara+Falls+Canada' },
-      { title: 'Stanley Park',                 description: 'Vancouver · Seawall & old-growth',    url: 'https://maps.google.com/?q=Stanley+Park+Vancouver' },
-      { title: 'Old Quebec City',              description: 'UNESCO World Heritage Site',          url: 'https://maps.google.com/?q=Old+Quebec+City' },
-      { title: 'Whistler Village',             description: 'BC · Skiing & mountain culture',      url: 'https://maps.google.com/?q=Whistler+Village+BC' },
-      { title: 'Capilano Suspension Bridge',   description: 'North Vancouver · Rainforest walk',   url: 'https://maps.google.com/?q=Capilano+Suspension+Bridge' },
-      { title: 'Parliament Hill',              description: 'Ottawa · National landmark',          url: 'https://maps.google.com/?q=Parliament+Hill+Ottawa' },
-      { title: 'Rideau Canal',                 description: 'Ottawa · UNESCO Heritage waterway',   url: 'https://maps.google.com/?q=Rideau+Canal+Ottawa' },
-      { title: 'Peggy\'s Cove',               description: 'Nova Scotia · Iconic lighthouse',     url: 'https://maps.google.com/?q=Peggys+Cove+Nova+Scotia' },
+      { title: 'Banff National Park',        description: 'Alberta · Rocky Mountains',          url: 'https://maps.google.com/?q=Banff+National+Park',         image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Banff_NP_Canada.jpg/640px-Banff_NP_Canada.jpg' },
+      { title: 'CN Tower',                   description: 'Toronto · Iconic observation tower',  url: 'https://maps.google.com/?q=CN+Tower+Toronto',             image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Toronto_-_ON_-_CN_Tower_%2841417699282%29.jpg/480px-Toronto_-_ON_-_CN_Tower_%2841417699282%29.jpg' },
+      { title: 'Niagara Falls',              description: 'Ontario · Natural wonder',            url: 'https://maps.google.com/?q=Niagara+Falls+Canada',         image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Niagara_Falls%2C_from_the_Canadian_side.jpg/640px-Niagara_Falls%2C_from_the_Canadian_side.jpg' },
+      { title: 'Stanley Park',               description: 'Vancouver · Seawall & old-growth',   url: 'https://maps.google.com/?q=Stanley+Park+Vancouver',        image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Stanley_Park_Coal_Harbour.jpg/640px-Stanley_Park_Coal_Harbour.jpg' },
+      { title: 'Old Quebec City',            description: 'UNESCO World Heritage Site',          url: 'https://maps.google.com/?q=Old+Quebec+City',              image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Vieux-Quebec-Basse-Ville.jpg/640px-Vieux-Quebec-Basse-Ville.jpg' },
+      { title: 'Whistler Village',           description: 'BC · Skiing & mountain culture',      url: 'https://maps.google.com/?q=Whistler+Village+BC',           image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Whistler_Village_from_Whistler_Mountain.jpg/640px-Whistler_Village_from_Whistler_Mountain.jpg' },
+      { title: 'Capilano Suspension Bridge', description: 'North Vancouver · Rainforest walk',   url: 'https://maps.google.com/?q=Capilano+Suspension+Bridge',    image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Capilano_Suspension_Bridge.jpg/640px-Capilano_Suspension_Bridge.jpg' },
+      { title: 'Parliament Hill',            description: 'Ottawa · National landmark',          url: 'https://maps.google.com/?q=Parliament+Hill+Ottawa',       image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Parliament_Hill%2C_Ottawa%2C_Canada.jpg/640px-Parliament_Hill%2C_Ottawa%2C_Canada.jpg' },
+      { title: 'Rideau Canal',               description: 'Ottawa · UNESCO Heritage waterway',   url: 'https://maps.google.com/?q=Rideau+Canal+Ottawa',          image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Rideau_Canal_Ottawa.jpg/640px-Rideau_Canal_Ottawa.jpg' },
+      { title: "Peggy's Cove",               description: 'Nova Scotia · Iconic lighthouse',     url: 'https://maps.google.com/?q=Peggys+Cove+Nova+Scotia',      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Peggy%27s_Point_Lighthouse.jpg/640px-Peggy%27s_Point_Lighthouse.jpg' },
     ]
   },
   {
     name: 'us',
     items: [
-      { title: 'Grand Canyon',                 description: 'Arizona · One of the 7 natural wonders', url: 'https://maps.google.com/?q=Grand+Canyon' },
-      { title: 'Yellowstone National Park',    description: 'Wyoming · Geysers & wildlife',        url: 'https://maps.google.com/?q=Yellowstone+National+Park' },
-      { title: 'Golden Gate Bridge',           description: 'San Francisco · Iconic suspension bridge', url: 'https://maps.google.com/?q=Golden+Gate+Bridge' },
-      { title: 'Times Square',                 description: 'New York City · The crossroads',      url: 'https://maps.google.com/?q=Times+Square+NYC' },
-      { title: 'Zion National Park',           description: 'Utah · Canyons & hiking',             url: 'https://maps.google.com/?q=Zion+National+Park' },
-      { title: 'Yosemite Valley',              description: 'California · Waterfalls & granite',   url: 'https://maps.google.com/?q=Yosemite+Valley' },
-      { title: 'Statue of Liberty',            description: 'New York · National monument',        url: 'https://maps.google.com/?q=Statue+of+Liberty' },
-      { title: 'Antelope Canyon',              description: 'Arizona · Stunning slot canyon',      url: 'https://maps.google.com/?q=Antelope+Canyon' },
-      { title: 'Waikiki Beach',                description: 'Hawaii · Surfing & sunsets',          url: 'https://maps.google.com/?q=Waikiki+Beach+Hawaii' },
-      { title: 'Las Vegas Strip',              description: 'Nevada · Entertainment & casinos',    url: 'https://maps.google.com/?q=Las+Vegas+Strip' },
+      { title: 'Grand Canyon',               description: 'Arizona · One of the 7 natural wonders', url: 'https://maps.google.com/?q=Grand+Canyon',              image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/USA_09649_Grand_Canyon_Luca_Galuzzi_2007.jpg/640px-USA_09649_Grand_Canyon_Luca_Galuzzi_2007.jpg' },
+      { title: 'Yellowstone National Park',  description: 'Wyoming · Geysers & wildlife',           url: 'https://maps.google.com/?q=Yellowstone+National+Park', image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Yellowstone_np_grand_prismatic_spring.jpg/640px-Yellowstone_np_grand_prismatic_spring.jpg' },
+      { title: 'Golden Gate Bridge',         description: 'San Francisco · Iconic suspension bridge', url: 'https://maps.google.com/?q=Golden+Gate+Bridge',       image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/GoldenGateBridge-001.jpg/640px-GoldenGateBridge-001.jpg' },
+      { title: 'Times Square',               description: 'New York City · The crossroads',        url: 'https://maps.google.com/?q=Times+Square+NYC',           image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/New_york_times_square-terabass.jpg/480px-New_york_times_square-terabass.jpg' },
+      { title: 'Zion National Park',         description: 'Utah · Canyons & hiking',               url: 'https://maps.google.com/?q=Zion+National+Park',         image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Zion_angels_landing_view.jpg/640px-Zion_angels_landing_view.jpg' },
+      { title: 'Yosemite Valley',            description: 'California · Waterfalls & granite',     url: 'https://maps.google.com/?q=Yosemite+Valley',            image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Yosemite_Valley_from_Tunnel_View.jpg/640px-Yosemite_Valley_from_Tunnel_View.jpg' },
+      { title: 'Statue of Liberty',          description: 'New York · National monument',          url: 'https://maps.google.com/?q=Statue+of+Liberty',          image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Statue_of_Liberty_7.jpg/480px-Statue_of_Liberty_7.jpg' },
+      { title: 'Antelope Canyon',            description: 'Arizona · Stunning slot canyon',        url: 'https://maps.google.com/?q=Antelope+Canyon',            image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Upper_antelope_canyon.jpg/640px-Upper_antelope_canyon.jpg' },
+      { title: 'Waikiki Beach',              description: 'Hawaii · Surfing & sunsets',            url: 'https://maps.google.com/?q=Waikiki+Beach+Hawaii',       image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Waikiki_Beach.jpg/640px-Waikiki_Beach.jpg' },
+      { title: 'Las Vegas Strip',            description: 'Nevada · Entertainment & casinos',      url: 'https://maps.google.com/?q=Las+Vegas+Strip',            image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Vegas_collage2.jpg/480px-Vegas_collage2.jpg' },
     ]
   },
   {
     name: 'india',
     items: [
-      { title: 'Taj Mahal',                    description: 'Agra · UNESCO Heritage wonder',       url: 'https://maps.google.com/?q=Taj+Mahal+Agra' },
-      { title: 'Jaipur — Pink City',           description: 'Rajasthan · Forts & palaces',         url: 'https://maps.google.com/?q=Jaipur+Pink+City' },
-      { title: 'Kerala Backwaters',            description: 'Kerala · Houseboats & palm trees',    url: 'https://maps.google.com/?q=Kerala+Backwaters' },
-      { title: 'Varanasi Ghats',               description: 'UP · Spiritual & cultural heart',     url: 'https://maps.google.com/?q=Varanasi+Ghats' },
-      { title: 'Goa Beaches',                  description: 'Goa · Sun, sea & seafood',            url: 'https://maps.google.com/?q=Goa+Beaches' },
-      { title: 'Hampi Ruins',                  description: 'Karnataka · UNESCO Heritage',         url: 'https://maps.google.com/?q=Hampi+Karnataka' },
-      { title: 'Darjeeling',                   description: 'West Bengal · Tea gardens & Himalayas', url: 'https://maps.google.com/?q=Darjeeling+West+Bengal' },
-      { title: 'Ranthambore Tiger Reserve',    description: 'Rajasthan · Wildlife safari',         url: 'https://maps.google.com/?q=Ranthambore+National+Park' },
-      { title: 'Mysore Palace',                description: 'Karnataka · Heritage palace',         url: 'https://maps.google.com/?q=Mysore+Palace' },
-      { title: 'Munnar Hills',                 description: 'Kerala · Tea plantations & mist',     url: 'https://maps.google.com/?q=Munnar+Kerala' },
+      { title: 'Taj Mahal',                  description: 'Agra · UNESCO Heritage wonder',         url: 'https://maps.google.com/?q=Taj+Mahal+Agra',             image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Taj_Mahal%2C_Agra%2C_India_edit3.jpg/640px-Taj_Mahal%2C_Agra%2C_India_edit3.jpg' },
+      { title: 'Jaipur — Pink City',         description: 'Rajasthan · Forts & palaces',           url: 'https://maps.google.com/?q=Jaipur+Pink+City',           image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Hawa_Mahal_in_Jaipur_%28high_res%29.jpg/480px-Hawa_Mahal_in_Jaipur_%28high_res%29.jpg' },
+      { title: 'Kerala Backwaters',          description: 'Kerala · Houseboats & palm trees',      url: 'https://maps.google.com/?q=Kerala+Backwaters',          image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Backwater_Kerala.jpg/640px-Backwater_Kerala.jpg' },
+      { title: 'Varanasi Ghats',             description: 'UP · Spiritual & cultural heart',       url: 'https://maps.google.com/?q=Varanasi+Ghats',             image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Varanasi%2C_India.jpg/640px-Varanasi%2C_India.jpg' },
+      { title: 'Goa Beaches',               description: 'Goa · Sun, sea & seafood',               url: 'https://maps.google.com/?q=Goa+Beaches',               image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Goa_beach.jpg/640px-Goa_beach.jpg' },
+      { title: 'Hampi Ruins',               description: 'Karnataka · UNESCO Heritage',             url: 'https://maps.google.com/?q=Hampi+Karnataka',           image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Hampi1.jpg/640px-Hampi1.jpg' },
+      { title: 'Darjeeling',                description: 'West Bengal · Tea gardens & Himalayas',   url: 'https://maps.google.com/?q=Darjeeling+West+Bengal',    image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Kanchenjunga_from_Tiger_Hill.jpg/640px-Kanchenjunga_from_Tiger_Hill.jpg' },
+      { title: 'Ranthambore Tiger Reserve',  description: 'Rajasthan · Wildlife safari',            url: 'https://maps.google.com/?q=Ranthambore+National+Park', image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Ranthambhore_Rajasthan_Tiger.jpg/640px-Ranthambhore_Rajasthan_Tiger.jpg' },
+      { title: 'Mysore Palace',             description: 'Karnataka · Heritage palace',              url: 'https://maps.google.com/?q=Mysore+Palace',             image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Mysore_Palace_Morning.jpg/640px-Mysore_Palace_Morning.jpg' },
+      { title: 'Munnar Hills',              description: 'Kerala · Tea plantations & mist',          url: 'https://maps.google.com/?q=Munnar+Kerala',             image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Munnar_Kerala_India_%28cropped%29.jpg/640px-Munnar_Kerala_India_%28cropped%29.jpg' },
     ]
   },
 ];
@@ -468,13 +468,13 @@ async function fetchPlaces() {
         }
       }
 
-      // Fall back to curated static data
+      // Fall back to curated static data (now includes Wikimedia image URLs)
       if (!rows || !rows.length) {
         if (!process.env.TRIPADVISOR_API_KEY) {
-          console.log(`[Places] ${region.name}: No TRIPADVISOR_API_KEY — using curated static data`);
+          console.log(`[Places] ${region.name}: No TRIPADVISOR_API_KEY — using curated static data with images`);
         }
         rows = region.items.map(p => ({
-          title: p.title, description: p.description, image_url: null,
+          title: p.title, description: p.description, image_url: p.image_url || null,
           url: p.url, region: region.name, type: 'place',
         }));
       }

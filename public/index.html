@@ -250,11 +250,11 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
     <div class="drawer-user" id="drawer-user">Loading...</div>
   </div>
   <div class="drawer-nav">
-    <a class="drawer-item on" id="dnav-picks" onclick="goSection('picks',this)">
-      <div class="drawer-icon">✓</div><span>Picks</span>
+    <a class="drawer-item" id="dnav-dashboard" onclick="goSection('dashboard',this)">
+      <div class="drawer-icon">🏠</div><span>Dashboard</span>
     </a>
-    <a class="drawer-item" id="dnav-plan" onclick="goSection('plan',this)">
-      <div class="drawer-icon">📋</div><span>Plan</span>
+    <a class="drawer-item" id="dnav-picks" onclick="goSection('picks',this)">
+      <div class="drawer-icon">✓</div><span>Picks</span>
     </a>
     <a class="drawer-item" id="dnav-trending" onclick="goSection('trending',this)">
       <div class="drawer-icon">🔥</div><span>Trending</span>
@@ -277,8 +277,33 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
 <!-- MAIN -->
 <div class="main-wrap">
 
-  <!-- ── PICKS SECTION ── -->
-  <section class="page-section on" id="sec-picks">
+  <!-- ── DASHBOARD SECTION (default landing) ── -->
+  <section class="page-section on" id="sec-dashboard">
+    <!-- Group selector bar -->
+    <div style="background:var(--white);border-bottom:1px solid var(--border);padding:.75rem 1.25rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:700;color:var(--text2)">Viewing:</span>
+      <div id="dash-group-tabs" style="display:flex;gap:6px;flex-wrap:wrap;flex:1"></div>
+      <button onclick="openAdd()" style="background:var(--blue);color:#fff;border:none;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-b);flex-shrink:0">+ Add pick</button>
+    </div>
+    <!-- Stats row -->
+    <div id="dash-stats" style="display:flex;gap:8px;padding:.75rem 1.25rem;flex-wrap:wrap;background:var(--beige2);border-bottom:1px solid var(--beige3)"></div>
+    <!-- Filter bar -->
+    <div class="filter-bar" style="position:sticky;top:var(--nav-h);z-index:30">
+      <button class="fpill on" onclick="setDashFilter('all',this)">All</button>
+      <button class="fpill" onclick="setDashFilter('want',this)">★ Want to</button>
+      <button class="fpill" onclick="setDashFilter('group',this)">✓ Group ok</button>
+      <button class="fpill" onclick="setDashFilter('movie',this)">🎬</button>
+      <button class="fpill" onclick="setDashFilter('food',this)">🍽</button>
+      <button class="fpill" onclick="setDashFilter('place',this)">📍</button>
+      <button class="fpill" onclick="setDashFilter('event',this)">🎭</button>
+    </div>
+    <div class="picks-grid" id="dash-grid">
+      <div class="empty"><div class="empty-icon">⏳</div>Loading your dashboard...</div>
+    </div>
+  </section>
+
+  <!-- ── PICKS SECTION (single group) ── -->
+  <section class="page-section" id="sec-picks">
     <div class="picks-page">
       <div class="picks-header">
         <div class="picks-header-top">
@@ -302,23 +327,6 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
       <div class="picks-grid" id="picks-grid">
         <div class="empty"><div class="empty-icon">⏳</div>Loading picks...</div>
       </div>
-    </div>
-  </section>
-
-  <!-- ── PLAN SECTION ── -->
-  <section class="page-section" id="sec-plan">
-    <div class="filter-bar">
-      <button class="fpill on" onclick="setPlanFilter('all',this)">All</button>
-      <button class="fpill" onclick="setPlanFilter('ok',this)">✓ Group ok</button>
-      <button class="fpill" onclick="setPlanFilter('skip',this)">✕ Has skip</button>
-      <button class="fpill" onclick="setPlanFilter('pending',this)">⏳ Pending</button>
-      <button class="fpill" onclick="setPlanFilter('movie',this)">🎬</button>
-      <button class="fpill" onclick="setPlanFilter('food',this)">🍽</button>
-      <button class="fpill" onclick="setPlanFilter('place',this)">📍</button>
-      <button class="fpill" onclick="setPlanFilter('event',this)">🎭</button>
-    </div>
-    <div class="plan-cards" id="plan-cards">
-      <div class="empty"><div class="empty-icon">⏳</div>Loading plan...</div>
     </div>
   </section>
 
@@ -553,6 +561,20 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
 
 <div class="toast" id="toast"></div>
 
+<!-- GLOBAL FAB — Add pick, always visible -->
+<button id="global-fab" onclick="openAdd()" title="Add a pick" style="
+  position:fixed; bottom:24px; right:24px; z-index:250;
+  width:56px; height:56px; border-radius:50%;
+  background:var(--blue); color:#fff; border:none; cursor:pointer;
+  font-size:26px; font-weight:700; line-height:1;
+  box-shadow:0 6px 24px rgba(124,58,237,.45);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .15s, box-shadow .15s;
+" onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 8px 32px rgba(124,58,237,.6)'"
+   onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 6px 24px rgba(124,58,237,.45)'">
+  +
+</button>
+
 <script>
 // ── STATE ──────────────────────────────────────────────────
 const BASE = window.location.origin;
@@ -604,26 +626,31 @@ const VOTE_LABELS = {
     document.getElementById('si-type').textContent = currentUser.email || 'Google account';
   }
 
-  // Restore groupId from URL if present
+  // Restore groupId — URL param first, then localStorage, then null (My Space)
   const params = new URLSearchParams(location.search);
-  currentGroupId = params.get('groupId') || null;
+  const savedGroup = localStorage.getItem('sp_last_group');
+  currentGroupId = params.get('groupId') || savedGroup || null;
 
-  // Load groups — show picker if multiple, auto-select if only one
+  // Load groups and dashboard simultaneously
   await loadGroups(false);
-
-  // Load trending data
+  loadDashboard();       // load aggregated dashboard view
   loadTrending();
+
+  // Default landing = Dashboard section
+  goSection('dashboard', document.getElementById('dnav-dashboard'));
 })();
 
 // ── SECTION NAV ───────────────────────────────────────────
 function goSection(name, btn) {
   document.querySelectorAll('.page-section').forEach(s => s.classList.remove('on'));
   document.querySelectorAll('.drawer-item').forEach(b => b.classList.remove('on'));
-  document.getElementById('sec-' + name).classList.add('on');
+  const sec = document.getElementById('sec-' + name);
+  if (sec) sec.classList.add('on');
   const dnav = document.getElementById('dnav-' + name);
   if (dnav) dnav.classList.add('on');
   closeDrawer();
-  if (name === 'plan') renderPlan();
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'picks')     { if (currentGroupId) loadPicks(); }
 }
 
 // ── DRAWER ────────────────────────────────────────────────
@@ -743,16 +770,18 @@ function showGroupPrompt(groups) {
 }
 
 function switchGroup(id) {
-  currentGroupId = String(id);
+  currentGroupId = id ? String(id) : null;
+  if (currentGroupId) localStorage.setItem('sp_last_group', currentGroupId);
+  else localStorage.removeItem('sp_last_group');
   const sel = document.getElementById('group-select');
-  sel.value = currentGroupId;
-  // Find group title from select options
-  const opt = Array.from(sel.options).find(o => o.value === currentGroupId);
-  const title = (opt?.text || '').replace(/^[🌐💬]\s*/u, '').trim();
+  if (sel) sel.value = currentGroupId || '';
+  const opt = sel ? Array.from(sel.options).find(o => o.value === currentGroupId) : null;
+  const title = opt ? (opt.text || '').replace(/^[🌐💬]\s*/u, '').trim() : '';
   document.getElementById('squad-title').textContent  = title || 'Your Squad';
   document.getElementById('topnav-squad').textContent = title || '';
-  history.pushState({}, '', `/dashboard?groupId=${currentGroupId}`);
+  history.pushState({}, '', currentGroupId ? `/dashboard?groupId=${currentGroupId}` : '/dashboard');
   loadPicks();
+  loadDashboard();
 }
 
 async function createSquad() {
@@ -812,6 +841,180 @@ async function linkTelegram() {
     }
   } catch(e) { showMsg(msg, 'Error linking group', 'error'); }
   finally { if (btn) { btn.disabled = false; btn.textContent = 'Link group'; } }
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────
+// Aggregated view: shows picks from selected group OR all groups
+// "My Space" (currentGroupId = null) shows picks the user personally added
+
+let dashFilter    = 'all';
+let dashGroupId   = 'all';   // 'all' | specific group id
+let dashAllGroups = [];      // cached group list
+let dashAllPicks  = [];      // cached picks for dashboard
+
+async function loadDashboard() {
+  const grid = document.getElementById('dash-grid');
+  const statsEl = document.getElementById('dash-stats');
+  if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Loading dashboard...</div>';
+
+  try {
+    // Fetch all user groups
+    const gRes = await fetch(BASE + '/api/groups/mine');
+    const gData = await gRes.json();
+    dashAllGroups = gData.groups || [];
+
+    // Render group selector tabs
+    renderDashGroupTabs();
+
+    // Fetch picks — from selected group or all groups
+    if (dashGroupId === 'all') {
+      // Load picks from all groups in parallel, merge
+      const allFetches = dashAllGroups.map(g =>
+        fetch(`${BASE}/api/picks?groupId=${encodeURIComponent(g.id)}`, {
+          headers: { 'x-telegram-init-data':'test','x-user-id':String(currentUser?.id||'0'),'x-user-name':currentUser?.name||'User' }
+        }).then(r => r.json()).then(d => (d.picks||[]).map(p => ({ ...p, _groupTitle: g.title, _groupId: g.id })))
+          .catch(() => [])
+      );
+      const results = await Promise.all(allFetches);
+      dashAllPicks = results.flat().sort((a, b) => new Date(b.created_at||0) - new Date(a.created_at||0));
+      results.flat().forEach(p => { myVotes[p.id] = p.my_vote || ''; });
+    } else {
+      const pRes = await fetch(`${BASE}/api/picks?groupId=${encodeURIComponent(dashGroupId)}`, {
+        headers: { 'x-telegram-init-data':'test','x-user-id':String(currentUser?.id||'0'),'x-user-name':currentUser?.name||'User' }
+      });
+      const pData = await pRes.json();
+      dashAllPicks = (pData.picks||[]);
+      dashAllPicks.forEach(p => { myVotes[p.id] = p.my_vote || ''; });
+    }
+
+    renderDashStats();
+    renderDashGrid();
+  } catch(e) {
+    console.error('[loadDashboard]', e);
+    if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Could not load dashboard.</div>';
+  }
+}
+
+function renderDashGroupTabs() {
+  const el = document.getElementById('dash-group-tabs');
+  if (!el) return;
+  let html = `<button class="fpill ${dashGroupId==='all'?'on':''}" onclick="setDashGroup('all',this)">All squads</button>`;
+  dashAllGroups.forEach(g => {
+    const icon = g.is_web_group ? '🌐' : '💬';
+    const sel  = dashGroupId === String(g.id);
+    html += `<button class="fpill ${sel?'on':''}" onclick="setDashGroup('${g.id}',this)">${icon} ${esc(g.title)}</button>`;
+  });
+  el.innerHTML = html;
+}
+
+function setDashGroup(id, btn) {
+  dashGroupId = id;
+  document.querySelectorAll('#dash-group-tabs .fpill').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  loadDashboard();
+}
+
+function setDashFilter(f, btn) {
+  dashFilter = f;
+  document.querySelectorAll('#sec-dashboard .filter-bar .fpill').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  renderDashGrid();
+}
+
+function renderDashStats() {
+  const el = document.getElementById('dash-stats');
+  if (!el) return;
+  const ok = dashAllPicks.filter(p => p.group_ok).length;
+  const nd = dashAllPicks.filter(p => !myVotes[p.id]).length;
+  el.innerHTML = `
+    <div class="stat"><div class="stat-num">${dashAllPicks.length}</div><div class="stat-lbl">Total picks</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--green)">${ok}</div><div class="stat-lbl">Group ok</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--amber)">${nd}</div><div class="stat-lbl">Need your vote</div></div>
+    <div class="stat"><div class="stat-num">${dashAllGroups.length}</div><div class="stat-lbl">Squads</div></div>`;
+}
+
+function renderDashGrid() {
+  const grid = document.getElementById('dash-grid');
+  if (!grid) return;
+
+  let list = dashAllPicks.filter(p => {
+    if (dashFilter==='want')  return myVotes[p.id]==='want';
+    if (dashFilter==='group') return p.group_ok;
+    if (dashFilter==='movie') return p.type==='movie';
+    if (dashFilter==='food')  return p.type==='food';
+    if (dashFilter==='place') return p.type==='place';
+    if (dashFilter==='event') return p.type==='event';
+    return true;
+  });
+
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty"><div class="empty-icon">🍿</div>No picks here yet! Use the + button to add one.</div>';
+    return;
+  }
+
+  grid.innerHTML = list.map(p => {
+    const tc     = TC[p.type] || TC.link;
+    const labels = VOTE_LABELS[p.type] || VOTE_LABELS.link;
+    const seen   = (p.votes||[]).filter(v=>v.status==='seen');
+    const want   = (p.votes||[]).filter(v=>v.status==='want');
+    const skip   = (p.votes||[]).filter(v=>v.status==='skip');
+    const mv     = myVotes[p.id] || '';
+    const chips  = [
+      ...seen.map(v=>`<span class="vc vc-seen">✓ ${sn(v.first_name||'?')}</span>`),
+      ...want.map(v=>`<span class="vc vc-want">★ ${sn(v.first_name||'?')}</span>`),
+      ...skip.map(v=>`<span class="vc vc-skip">✕ ${sn(v.first_name||'?')}</span>`),
+    ].join('') || '<span style="font-size:11px;color:var(--hint);font-style:italic">No votes yet</span>';
+
+    const thumbContent = p.image_url
+      ? `<img src="${esc(p.image_url)}" alt="" onerror="this.style.display='none'">`
+      : `<span class="card-thumb-emoji">${tc.emoji}</span>`;
+    const linkBtn   = p.url ? `<a href="${esc(p.url)}" target="_blank" class="card-link">🔗 Open link ↗</a>` : '';
+    const okBadge   = p.group_ok ? `<div class="card-ok">✓ Group ok</div>` : '';
+    const groupTag  = p._groupTitle ? `<span style="font-size:9px;font-weight:700;background:var(--beige2);color:var(--text2);padding:2px 6px;border-radius:8px">${esc(p._groupTitle)}</span>` : '';
+
+    return `<div class="pick-card" id="dpc-${p.id}">
+      <div class="card-thumb" style="background:${tc.grad}">
+        ${thumbContent}
+        <div class="card-thumb-overlay"></div>
+        <div class="card-thumb-info">
+          <div class="card-type-badge" style="background:${tc.tb};color:${tc.tt}">${tc.lbl}</div>
+          <div class="card-thumb-title">${esc(p.title)}</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-desc" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">${groupTag} ${esc(p.added_by_name||'')}</div>
+        ${linkBtn}${okBadge}
+        <div class="voters-row">${chips}<span class="vote-count">${seen.length+want.length+skip.length} voted</span></div>
+      </div>
+      <div class="vote-btns">
+        <button class="vbtn ${mv==='seen'?'on-seen':''}" onclick="castDashVote(${p.id},'seen')">✓ ${esc(labels.seen)}</button>
+        <button class="vbtn ${mv==='want'?'on-want':''}" onclick="castDashVote(${p.id},'want')">★ ${esc(labels.want)}</button>
+        <button class="vbtn ${mv==='skip'?'on-skip':''}" onclick="castDashVote(${p.id},'skip')">✕ ${esc(labels.skip)}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function castDashVote(pickId, status) {
+  try {
+    const r = await fetch(BASE+'/api/vote', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-telegram-init-data':'test',
+               'x-user-id':String(currentUser?.id||'0'),'x-user-name':currentUser?.name||'User'},
+      body: JSON.stringify({pickId, status})
+    });
+    const data = await r.json();
+    const idx  = dashAllPicks.findIndex(p=>p.id===pickId);
+    if (idx>=0) { dashAllPicks[idx].votes=data.votes; dashAllPicks[idx].my_vote=data.my_vote; dashAllPicks[idx].group_ok=data.group_ok; }
+    // Also update allPicks for the picks tab
+    const pidx = allPicks.findIndex(p=>p.id===pickId);
+    if (pidx>=0) { allPicks[pidx].votes=data.votes; allPicks[pidx].my_vote=data.my_vote; allPicks[pidx].group_ok=data.group_ok; }
+    myVotes[pickId] = data.my_vote||'';
+    renderDashStats(); renderDashGrid();
+    renderStats(); renderPicks();
+    showToast(data.my_vote ? 'Vote saved ✓' : 'Vote removed');
+    if (data.group_ok) setTimeout(()=>showToast('✅ Group ok!'),600);
+  } catch(e) { showToast('Vote failed — please retry'); }
 }
 
 // ── PICKS ─────────────────────────────────────────────────
@@ -1367,14 +1570,28 @@ function storeTrendItem(item) {
 
 var STREAM_FB = {
   netflix: [
-    {title:'Adolescence',        genre:'British Drama',   badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Adolescence'},
-    {title:'Stranger Things S5', genre:'Sci-fi Horror',   badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Stranger+Things'},
-    {title:'Squid Game S3',      genre:'Korean Thriller', badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Squid+Game'},
+    {title:'Adolescence',           genre:'British Drama',    badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Adolescence'},
+    {title:'Stranger Things S5',    genre:'Sci-fi Horror',    badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Stranger+Things'},
+    {title:'Squid Game S3',         genre:'Korean Thriller',  badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Squid+Game'},
+    {title:'Wednesday S2',          genre:'Dark Comedy',      badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Wednesday'},
+    {title:'Bridgerton S4',         genre:'Period Drama',     badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Bridgerton'},
+    {title:'Beef',                  genre:'Dark Comedy',      badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Beef'},
+    {title:'The Night Agent',       genre:'Action Thriller',  badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=The+Night+Agent'},
+    {title:'Lupin',                 genre:'Crime Drama',      badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Lupin'},
+    {title:'Emily in Paris',        genre:'Romantic Comedy',  badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Emily+in+Paris'},
+    {title:'Black Mirror S7',       genre:'Sci-fi Anthology', badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Black+Mirror'},
   ],
   prime: [
-    {title:'Panchayat S4', genre:'Hindi Comedy',     badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Panchayat'},
-    {title:'The Boys S5',  genre:'Superhero Dark',   badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=The+Boys'},
-    {title:'Fallout S2',   genre:'Post-apocalyptic', badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Fallout'},
+    {title:'Panchayat S4',          genre:'Hindi Comedy',     badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Panchayat'},
+    {title:'The Boys S5',           genre:'Superhero Dark',   badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=The+Boys'},
+    {title:'Fallout S2',            genre:'Post-Apocalyptic', badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Fallout'},
+    {title:'Reacher S3',            genre:'Action Thriller',  badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Reacher'},
+    {title:'The Marvelous Mrs. Maisel',genre:'Comedy Drama',  badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Mrs+Maisel'},
+    {title:'Dahaad',                genre:'Indian Crime',     badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Dahaad'},
+    {title:'Citadel: Honey Bunny',  genre:'Hindi Action',     badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Citadel+Honey+Bunny'},
+    {title:'The Rings of Power S3', genre:'Fantasy Epic',     badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Rings+of+Power'},
+    {title:'Breathe Into the Shadows',genre:'Hindi Thriller', badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Breathe+Into+the+Shadows'},
+    {title:'Jack Ryan S4',          genre:'Action Thriller',  badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Jack+Ryan'},
   ]
 };
 var TMDB_FB = [

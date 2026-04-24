@@ -405,8 +405,8 @@ async function clearTrendingNetflixRegion(region) {
 }
 
 async function clearTrendingPrimeRegion(region) {
-  const weekOf = new Date().toISOString().slice(0, 10);
-  const { error } = await supabase.from('trending_prime').delete().eq('region', region).eq('week_of', weekOf);
+  // Delete ALL rows for this region — not just today's week — prevents stale data from old schema
+  const { error } = await supabase.from('trending_prime').delete().eq('region', region);
   if (error) console.warn('[DB] clearTrendingPrime:', error.message);
 }
 
