@@ -482,5 +482,53 @@ async function getMixedStreamingTop10(region) {
 module.exports = Object.assign(module.exports, {
   upsertTrendingNetflix, upsertTrendingPrime, upsertTrendingImdb,
   getLatestNetflixTop10, getLatestPrimeTop10, getLatestImdbTop10,
-  getMixedStreamingTop10
+  getMixedStreamingTop10,
+  upsertTrendingPlaces, upsertTrendingEvents,
+  getLatestPlaces, getLatestEvents
 });
+
+async function upsertTrendingPlaces(rows) {
+  if (!rows || !rows.length) return;
+  const weekOf = new Date().toISOString().slice(0, 10);
+  for (const row of rows) {
+    await supabase.from('trending_places')
+      .upsert({ ...row, week_of: weekOf, fetched_at: new Date().toISOString() },
+               { onConflict: 'title,region,week_of' });
+  }
+  console.log(`[DB] Upserted ${rows.length} places rows`);
+}
+
+async function upsertTrendingEvents(rows) {
+  if (!rows || !rows.length) return;
+  const weekOf = new Date().toISOString().slice(0, 10);
+  for (const row of rows) {
+    await supabase.from('trending_events')
+      .upsert({ ...row, week_of: weekOf, fetched_at: new Date().toISOString() },
+               { onConflict: 'title,region,week_of' });
+  }
+  console.log(`[DB] Upserted ${rows.length} events rows`);
+}
+
+async function getLatestPlaces(region) {
+  const { data, error } = await supabase
+    .from('trending_places')
+    .select('*')
+    .eq('region', region)
+    .order('week_of', { ascending: false })
+    .order('rank', { ascending: true })
+    .limit(10);
+  if (error) { console.error('getLatestPlaces:', error.message); return []; }
+  return data || [];
+}
+
+async function getLatestEvents(region) {
+  const { data, error } = await supabase
+    .from('trending_events')
+    .select('*')
+    .eq('region', region)
+    .order('week_of', { ascending: false })
+    .order('rank', { ascending: true })
+    .limit(10);
+  if (error) { console.error('getLatestEvents:', error.message); return []; }
+  return data || [];
+}

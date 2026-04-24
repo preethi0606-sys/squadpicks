@@ -289,13 +289,47 @@ app.get('/api/trending/streaming', async (req, res) => {
   }
 });
 
-app.get('/api/trending/imdb', async (req, res) => {
+// TMDB trending (replaces IMDb scraping)
+app.get('/api/trending/tmdb', async (req, res) => {
   try {
     const category = req.query.category || 'top_movies';
+    const data = await getDb().getLatestImdbTop10(category);  // reuses trending_imdb table
+    res.json({ ok: true, data, source: data.length ? 'db' : 'empty', ts: new Date().toISOString() });
+  } catch (e) {
+    console.error('[GET /trending/tmdb]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Legacy alias — keep for any old clients
+app.get('/api/trending/imdb', async (req, res) => {
+  const category = req.query.category || 'top_movies';
+  try {
     const data = await getDb().getLatestImdbTop10(category);
     res.json({ ok: true, data, ts: new Date().toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Places top 10 — location-aware
+app.get('/api/trending/places', async (req, res) => {
+  try {
+    const region = req.query.region || 'canada';
+    const data   = await getDb().getLatestPlaces(region);
+    res.json({ ok: true, data, source: data.length ? 'db' : 'empty', region, ts: new Date().toISOString() });
   } catch (e) {
-    console.error('[GET /trending/imdb]', e.message);
+    console.error('[GET /trending/places]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Events top 10 — location-aware
+app.get('/api/trending/events', async (req, res) => {
+  try {
+    const region = req.query.region || 'canada';
+    const data   = await getDb().getLatestEvents(region);
+    res.json({ ok: true, data, source: data.length ? 'db' : 'empty', region, ts: new Date().toISOString() });
+  } catch (e) {
+    console.error('[GET /trending/events]', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
