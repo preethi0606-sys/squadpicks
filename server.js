@@ -197,9 +197,9 @@ app.post('/api/picks', telegramAuth, async (req, res) => {
   try {
     const db = getDb(), links = getLinks();
     const { url, groupId, groupTitle, manualType, manualTitle, manualImageUrl } = req.body;
-    const chatId = groupId || req.tgUser.chatId;
+    const chatId = String(groupId || req.tgUser.chatId || '').trim();
     if (!url || !chatId) return res.status(400).json({ error: 'url and groupId required' });
-    await db.ensureGroup(chatId, groupTitle || 'SquadPicks Group');
+    await db.ensureGroup(chatId, groupTitle || req.tgUser.first_name + "'s Group" || 'SquadPicks Group');
 
     // Fetch metadata first so we know the resolved URL
     let meta;

@@ -4,39 +4,68 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>SquadPicks</title>
-<!-- Load Telegram WebApp script FIRST so initDataUnsafe is available -->
+<!-- Telegram WebApp script must load and initialise BEFORE we read initData -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script>
-(function() {
-  try {
-    var tg      = window.Telegram && window.Telegram.WebApp;
-    var groupId = '';
-
-    // Priority 1: groupId from Telegram start_param (set by buildVoteKeyboard in index.js)
-    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
-      groupId = String(tg.initDataUnsafe.start_param);
-    }
-
-    // Priority 2: groupId from URL params (e.g. ?startapp=GROUP_ID or ?groupId=GROUP_ID)
-    if (!groupId) {
-      var params = new URLSearchParams(location.search);
-      groupId = params.get('startapp') || params.get('groupId') || '';
-    }
-
-    // Redirect to the Full App dashboard with groupId preserved
-    var dest = '/dashboard' + (groupId ? '?groupId=' + encodeURIComponent(groupId) : '');
-    window.location.replace(dest);
-  } catch(e) {
-    window.location.replace('/dashboard');
-  }
-})();
-</script>
 </head>
-<body style="background:#6B21A8;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:'DM Sans',sans-serif;color:#fff">
-  <div style="text-align:center">
+<body style="background:#6B21A8;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;color:#fff">
+  <div style="text-align:center" id="msg">
     <div style="font-size:40px;margin-bottom:12px">⚡</div>
     <div style="font-size:18px;font-weight:600">Opening SquadPicks...</div>
     <div style="font-size:13px;opacity:.7;margin-top:6px">Your squad. Any plan. One app.</div>
   </div>
+
+<script>
+// Wait for Telegram WebApp to be ready, THEN redirect.
+// This ensures tg.initData is populated before we leave this page.
+(function() {
+  var tg = window.Telegram && window.Telegram.WebApp;
+
+  function doRedirect() {
+    var groupId = '';
+    var initData = '';
+
+    if (tg) {
+      // Signal to Telegram that the Mini App is ready
+      if (tg.ready) tg.ready();
+
+      // Get the initData for auth
+      initData = tg.initData || '';
+
+      // Get groupId from start_param — bot sends e.g. 'g1001234567890' for -1001234567890
+      var startParam = (tg.initDataUnsafe && tg.initDataUnsafe.start_param) || '';
+      if (startParam) {
+        // Decode the 'g' prefix back to a minus sign for negative group IDs
+        groupId = startParam.replace(/^g(\d+)$/, '-$1');
+      }
+    }
+
+    // Fallback: read from URL params
+    if (!groupId) {
+      var params = new URLSearchParams(location.search);
+      var sp = params.get('startapp') || params.get('groupId') || '';
+      if (sp) groupId = sp.replace(/^g(\d+)$/, '-$1');
+    }
+
+    // Build destination URL, passing initData so the dashboard can auth without a cookie
+    var dest = '/dashboard';
+    var qs = [];
+    if (groupId) qs.push('groupId=' + encodeURIComponent(groupId));
+    if (initData) qs.push('tgInitData=' + encodeURIComponent(initData));
+    if (qs.length) dest += '?' + qs.join('&');
+
+    window.location.replace(dest);
+  }
+
+  // Give Telegram WebApp SDK up to 800ms to initialise
+  // (it fires 'ready' synchronously but initData may need a tick)
+  if (tg && tg.initData) {
+    // Already ready
+    doRedirect();
+  } else {
+    // Wait a tick for the SDK to populate initData
+    setTimeout(doRedirect, 400);
+  }
+})();
+</script>
 </body>
 </html>

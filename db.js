@@ -9,10 +9,19 @@ const supabase = createClient(
 // ─── GROUPS ────────────────────────────────────────────────
 
 async function ensureGroup(chatId, title) {
+  // Cast to number — Supabase BIGINT columns require numeric comparison, not string
+  const numId = Number(chatId);
+  if (!numId || isNaN(numId)) { console.warn('ensureGroup: invalid chatId', chatId); return; }
+  // Only create the group if it doesn't exist — never overwrite the existing title
+  const { data: existing } = await supabase
+    .from('groups').select('id').eq('id', numId).maybeSingle();
+  if (existing) return; // group already exists, leave title untouched
   const { error } = await supabase
     .from('groups')
-    .upsert({ id: chatId, title }, { onConflict: 'id' });
-  if (error) console.error('ensureGroup error:', error.message);
+    .insert({ id: numId, title: title || 'SquadPicks Group' });
+  if (error && !error.message.includes('duplicate')) {
+    console.error('ensureGroup error:', error.message);
+  }
 }
 
 // Returns only real Telegram groups (negative IDs) — excludes private/DM chats (positive IDs)

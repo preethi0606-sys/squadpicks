@@ -559,7 +559,13 @@ function formatFilmiCraftCard(pick, votes) { return formatCard(pick, votes); }
 function buildVoteKeyboard(pickId, groupId) {
   const botUsername = process.env.BOT_USERNAME        || 'squadpicks_bot';
   const shortName   = process.env.MINI_APP_SHORT_NAME || 'Squadpicks';
-  const startParam  = groupId ? `?startapp=${groupId}` : '';
+  // Telegram startapp param: prefix negative group IDs with 'g' to make them URL-safe
+  // e.g. -1001234567890 → 'g1001234567890' (decoded on the receiving end in app.html)
+  let startParam = '';
+  if (groupId) {
+    const safeId = String(groupId).replace(/^-/, 'g'); // strip minus, prefix g
+    startParam = `?startapp=${safeId}`;
+  }
   return {
     inline_keyboard: [
       [
