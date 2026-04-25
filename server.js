@@ -856,6 +856,77 @@ app.post('/api/picks/notify', telegramAuth, async (req, res) => {
 });
 
 // ─── API: TELEGRAM LOGIN (for website) ─────────────────────
+
+// ─── TELEGRAM MINI APP AUTH — SERVER-SIDE REDIRECT (reliable cookie) ───────
+// app.html redirects here: GET /auth/telegram-miniapp?initData=...&groupId=...
+// The server verifies initData, creates the session, then redirects to /dashboard.
+// This is the reliable path because the server sets Set-Cookie on a GET redirect,
+// which Telegram's in-app WebView always honours (unlike fetch()-based auth where
+// the WebView sometimes drops the Set-Cookie response header).
+app.get('/auth/telegram-miniapp', async (req, res) => {
+  try {
+    const initData = req.query.initData || '';
+    const groupId  = req.query.groupId  || '';
+
+    // --- Verify initData HMAC ---
+    const params = new URLSearchParams(initData);
+    const hash   = params.get('hash');
+
+    let authOk = false;
+    if (hash && initData) {
+      const entries = [];
+      params.forEach((v, k) => { if (k !== 'hash') entries.push(`${k}=${v}`); });
+      const dataCheckStr = entries.sort().join('
+');
+      const secret = crypto.createHmac('sha256', 'WebAppData')
+        .update(process.env.TELEGRAM_TOKEN || '').digest();
+      const expected = crypto.createHmac('sha256', secret)
+        .update(dataCheckStr).digest('hex');
+      authOk = (expected === hash);
+      // Allow in non-production for testing
+      if (!authOk && process.env.NODE_ENV !== 'production') authOk = true;
+    }
+
+    if (!authOk) {
+      console.warn('[TG MiniApp GET] initData verification failed');
+      return res.redirect('/login?error=tgauth');
+    }
+
+    // --- Parse user from initData ---
+    const userRaw = params.get('user');
+    if (!userRaw) return res.redirect('/login?error=nouser');
+    const tgUser = JSON.parse(userRaw);
+
+    // --- Upsert user in DB ---
+    const db = getDb();
+    const dbUser = await db.upsertTelegramUser({
+      telegram_id: String(tgUser.id),
+      first_name:  tgUser.first_name || tgUser.username || 'Member',
+      username:    tgUser.username || ''
+    });
+
+    if (dbUser) {
+      req.session.userId    = dbUser.id;
+      req.session.userName  = tgUser.first_name || tgUser.username || 'Member';
+      req.session.loginType = 'telegram';
+      await new Promise((resolve, reject) =>
+        req.session.save(err => err ? reject(err) : resolve())
+      );
+    }
+
+    // --- Redirect to dashboard with groupId ---
+    const dest = groupId
+      ? `/dashboard?groupId=${encodeURIComponent(groupId)}`
+      : '/dashboard';
+
+    console.log(`[TG MiniApp GET] Authed user ${tgUser.id} (${tgUser.first_name}), redirecting to ${dest}`);
+    res.redirect(dest);
+  } catch(e) {
+    console.error('[TG MiniApp GET Auth]', e.message);
+    res.redirect('/login?error=tgauth');
+  }
+});
+
 // ─── TELEGRAM MINI APP AUTH (initData from Telegram.WebApp) ───────────────
 // Called by dashboard/index.html when it detects Telegram.WebApp.initData
 // Different from the Login Widget endpoint — uses HMAC-SHA256 of "WebAppData"

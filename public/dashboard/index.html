@@ -684,48 +684,58 @@ const VOTE_LABELS = {
   const tgInitData = (tg && tg.initData && tg.initData.length > 0 ? tg.initData : null)
                    || params.get('tgInitData') || null;
 
-  // If app.html already authenticated via initData, the session cookie is set.
-  // Just verify the session exists.
-  if (!currentUser) {
-    try {
-      const r   = await fetch(BASE + '/api/session');
-      const ses = await r.json();
-      if (ses.ok && ses.user) {
-        currentUser = ses.user;
-      }
-    } catch(e) {}
-  }
+  // ── AUTH ────────────────────────────────────────────────────────────────────
+  // Primary path: session cookie was set by GET /auth/telegram-miniapp (server-side).
+  // The Telegram in-app WebView reliably saves cookies set on HTTP redirects.
+  // We just check if the session is already valid.
+  try {
+    const r   = await fetch(BASE + '/api/session', { credentials: 'include' });
+    const ses = await r.json();
+    if (ses.ok && ses.user) currentUser = ses.user;
+  } catch(e) { console.warn('[session check]', e.message); }
 
-  // If still not authed and we have initData, try Telegram webapp auth here too
+  // Fallback path: tgInitData is in the URL (old flow or direct navigation).
+  // Try authenticating via POST as a safety net.
   if (!currentUser && tgInitData) {
     try {
       const tgRes = await fetch(BASE + '/api/auth/telegram-webapp', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ initData: tgInitData })
       });
       const tgData = await tgRes.json();
       if (tgData.ok && tgData.user) {
         currentUser = tgData.user;
-        if (tg && tg.ready) tg.ready();
       }
-    } catch(e) { console.warn('[Telegram auth]', e.message); }
+    } catch(e) { console.warn('[Telegram auth fallback]', e.message); }
   }
 
-  // Not authenticated at all
+  // Still not authed — show appropriate error
   if (!currentUser) {
     const isInsideTg = !!(tgInitData || (tg && tg.initData));
     if (isInsideTg) {
-      // Inside Telegram webview — don't redirect, show an inline sign-in prompt
+      // Inside Telegram but auth failed — likely a new user who was never in a web session.
+      // Redirect back through server-side auth using the current Telegram initData.
+      const currentInitData = (tg && tg.initData) || tgInitData;
+      const currentGroupId_ = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param)
+        ? (String(tg.initDataUnsafe.start_param).replace(/^g(\d+)$/, '-$1'))
+        : (new URLSearchParams(location.search).get('groupId') || '');
+      if (currentInitData) {
+        let retryUrl = '/auth/telegram-miniapp?initData=' + encodeURIComponent(currentInitData);
+        if (currentGroupId_) retryUrl += '&groupId=' + encodeURIComponent(currentGroupId_);
+        window.location.replace(retryUrl);
+        return;
+      }
+      // No initData available at all — show a helpful message
       document.body.innerHTML = `
         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center;background:#F5F3FF;font-family:'DM Sans',sans-serif">
           <div style="font-size:48px;margin-bottom:16px">🔐</div>
           <div style="font-size:20px;font-weight:700;color:#6B21A8;margin-bottom:8px">Sign in to SquadPicks</div>
           <div style="font-size:14px;color:#7C5AB8;margin-bottom:24px;max-width:300px">
-            Open SquadPicks in your browser to sign in with Google — then come back here.
+            Tap the button below to sign in, then return to Telegram.
           </div>
-          <a href="${BASE}/login" target="_blank" style="background:#7C3AED;color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-size:15px;font-weight:700;display:inline-block">Sign in with Google →</a>
-          <div style="font-size:12px;color:#9D86D4;margin-top:16px">After signing in, re-open this chat in Telegram</div>
+          <a href="${BASE}/login" target="_blank" style="background:#7C3AED;color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-size:15px;font-weight:700;display:inline-block">Open SquadPicks →</a>
         </div>`;
       return;
     }

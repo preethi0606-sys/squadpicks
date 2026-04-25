@@ -4,66 +4,107 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>SquadPicks</title>
-<!-- Telegram WebApp script must load and initialise BEFORE we read initData -->
+<!-- Telegram WebApp SDK must load BEFORE we read initData -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#6B21A8;display:flex;align-items:center;justify-content:center;
+       height:100vh;font-family:'DM Sans',system-ui,sans-serif;color:#fff}
+  .wrap{text-align:center;padding:2rem}
+  .logo{font-size:48px;margin-bottom:12px}
+  .title{font-size:20px;font-weight:700;margin-bottom:6px}
+  .sub{font-size:13px;opacity:.7}
+  .dots{margin-top:20px;display:flex;justify-content:center;gap:6px}
+  .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.5);
+       animation:pulse 1.2s ease-in-out infinite}
+  .dot:nth-child(2){animation-delay:.2s}
+  .dot:nth-child(3){animation-delay:.4s}
+  @keyframes pulse{0%,80%,100%{transform:scale(.6);opacity:.35}40%{transform:scale(1);opacity:1}}
+  .err{margin-top:20px;font-size:13px;opacity:.8;display:none}
+</style>
 </head>
-<body style="background:#6B21A8;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;color:#fff">
-  <div style="text-align:center" id="msg">
-    <div style="font-size:40px;margin-bottom:12px">⚡</div>
-    <div style="font-size:18px;font-weight:600">Opening SquadPicks...</div>
-    <div style="font-size:13px;opacity:.7;margin-top:6px">Your squad. Any plan. One app.</div>
-  </div>
-
+<body>
+<div class="wrap">
+  <div class="logo">🎬</div>
+  <div class="title">Opening SquadPicks…</div>
+  <div class="sub">Your squad. Any plan. One app.</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  <div class="err" id="err">Taking longer than expected… please wait</div>
+</div>
 <script>
-// Wait for Telegram WebApp to be ready, THEN redirect.
-// This ensures tg.initData is populated before we leave this page.
-(function() {
+/**
+ * app.html — Telegram Mini App entry point
+ *
+ * FIX: Previously the dashboard tried to auth via fetch() POST to
+ * /api/auth/telegram-webapp. Telegram's in-app WebView was silently
+ * dropping the Set-Cookie header on fetch responses, so the session
+ * never stuck and users always hit the login page.
+ *
+ * NEW APPROACH: Redirect to GET /auth/telegram-miniapp?initData=...&groupId=...
+ * The SERVER verifies initData, saves the session, then does a 302 redirect
+ * to /dashboard?groupId=X. A cookie set on an HTTP redirect is always
+ * honoured by Telegram's WebView. Problem solved.
+ *
+ * Group ID encoding: Telegram forbids "-" in startapp params.
+ * Bot sends -1001234567890 as g1001234567890. We decode it here.
+ */
+(function () {
   var tg = window.Telegram && window.Telegram.WebApp;
 
+  function decodeGroupId(raw) {
+    if (!raw) return '';
+    var s = String(raw).trim();
+    return /^g\d+$/.test(s) ? '-' + s.slice(1) : s;
+  }
+
   function doRedirect() {
-    var groupId = '';
     var initData = '';
+    var groupId  = '';
 
     if (tg) {
-      // Signal to Telegram that the Mini App is ready
-      if (tg.ready) tg.ready();
-
-      // Get the initData for auth
+      tg.ready();
+      tg.expand();
       initData = tg.initData || '';
-
-      // Get groupId from start_param — bot sends e.g. 'g1001234567890' for -1001234567890
-      var startParam = (tg.initDataUnsafe && tg.initDataUnsafe.start_param) || '';
-      if (startParam) {
-        // Decode the 'g' prefix back to a minus sign for negative group IDs
-        groupId = startParam.replace(/^g(\d+)$/, '-$1');
-      }
+      var sp = (tg.initDataUnsafe && tg.initDataUnsafe.start_param) || '';
+      groupId = decodeGroupId(sp);
     }
 
-    // Fallback: read from URL params
+    // Fallback: groupId from URL params (testing / direct link)
     if (!groupId) {
-      var params = new URLSearchParams(location.search);
-      var sp = params.get('startapp') || params.get('groupId') || '';
-      if (sp) groupId = sp.replace(/^g(\d+)$/, '-$1');
+      var p = new URLSearchParams(location.search);
+      groupId = decodeGroupId(p.get('startapp') || p.get('groupId') || '');
     }
 
-    // Build destination URL, passing initData so the dashboard can auth without a cookie
-    var dest = '/dashboard';
-    var qs = [];
-    if (groupId) qs.push('groupId=' + encodeURIComponent(groupId));
-    if (initData) qs.push('tgInitData=' + encodeURIComponent(initData));
-    if (qs.length) dest += '?' + qs.join('&');
+    // No Telegram context — not inside Mini App
+    if (!initData) {
+      console.warn('[app.html] No initData — going direct to dashboard');
+      window.location.replace(groupId
+        ? '/dashboard?groupId=' + encodeURIComponent(groupId)
+        : '/dashboard');
+      return;
+    }
 
+    // Server-side auth: verify initData + create session cookie + redirect to dashboard
+    // This is reliable because the Set-Cookie on a GET redirect is always honoured
+    // by Telegram's WebView, unlike Set-Cookie on a fetch() response.
+    var dest = '/auth/telegram-miniapp?initData=' + encodeURIComponent(initData);
+    if (groupId) dest += '&groupId=' + encodeURIComponent(groupId);
+
+    console.log('[app.html] -> server auth redirect');
     window.location.replace(dest);
   }
 
-  // Give Telegram WebApp SDK up to 800ms to initialise
-  // (it fires 'ready' synchronously but initData may need a tick)
-  if (tg && tg.initData) {
-    // Already ready
+  // Show a hint if things take longer than 3 seconds
+  setTimeout(function () {
+    var el = document.getElementById('err');
+    if (el) el.style.display = 'block';
+  }, 3000);
+
+  // If SDK already populated initData, redirect immediately; else wait 800ms
+  if (tg && tg.initData && tg.initData.length > 0) {
     doRedirect();
   } else {
-    // Wait a tick for the SDK to populate initData
-    setTimeout(doRedirect, 400);
+    setTimeout(doRedirect, 800);
   }
 })();
 </script>

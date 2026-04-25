@@ -1,5 +1,5 @@
 # SquadPicks — Project Knowledge Base
-**Version:** 3.5 | **Last updated:** April 2026
+**Version:** 3.6 | **Last updated:** April 2026
 **Repo:** https://github.com/preethi0606-sys/squadpicks
 **Deploy:** Railway (railway.app) | **DB:** Supabase (PostgreSQL)
 
@@ -226,6 +226,7 @@ TRUNCATE trending_events;
 ### Auth
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
+| GET | `/auth/telegram-miniapp` | — | **Primary Telegram Mini App auth.** Accepts `?initData=&groupId=`. Verifies HMAC, upserts user, saves session, redirects to `/dashboard?groupId=X`. Cookie-reliable path. |
 | GET | `/auth/google` | — | Start Google OAuth |
 | GET | `/auth/google/callback` | — | OAuth callback → sets session → `/dashboard` |
 | POST | `/api/auth/telegram` | — | Telegram Login Widget |
@@ -335,20 +336,32 @@ function getMiniAppUrl(chatId) {
 
 ## 8. Full App (`public/dashboard/index.html`)
 
-### Init Flow (v3.5)
+### Init Flow (v3.6) — Server-side auth (reliable cookie)
 ```
-1. Read ?tgInitData= or check window.Telegram.WebApp.initData
-2. POST /api/auth/telegram-webapp OR GET /api/session for Google
-3. If neither authed → redirect to /login
-4. decodeGId(params.get('groupId')) — decode g-prefix if present
-5. Also try tg.initDataUnsafe.start_param as fallback groupId source
+TELEGRAM FLOW:
+  Telegram → app.html → GET /auth/telegram-miniapp?initData=...&groupId=...
+           → server verifies HMAC, upserts user, saves session, 302 → /dashboard?groupId=X
+           → dashboard checks GET /api/session → gets currentUser from cookie ✓
+
+GOOGLE FLOW:
+  /login → Google OAuth → /auth/google/callback → session cookie → /dashboard
+
+DASHBOARD INIT:
+1. GET /api/session → currentUser (works because cookie was set on server-side redirect)
+2. Fallback: if tgInitData= in URL → POST /api/auth/telegram-webapp (safety net)
+3. If still not authed + inside Telegram → retry via /auth/telegram-miniapp with current initData
+4. If not authed + not Telegram → redirect to /login
+5. decodeGId(params.get('groupId')) — decode g-prefix
 6. currentGroupId = urlGroupId || localStorage('sp_last_group')
-7. Save urlGroupId to localStorage if present
-8. await loadGroups(false)
-9. If urlGroupId → update dropdown, title, history to that squad
-10. loadDashboard() + loadTrending()
-11. goSection('dashboard')
+7. await loadGroups(false) → if urlGroupId: update dropdown + title
+8. loadDashboard() + loadTrending() → goSection('dashboard')
 ```
+
+**Why server-side redirect fixes the cookie issue:**
+Telegram's in-app WebView silently drops `Set-Cookie` headers on `fetch()` responses.
+It DOES honour cookies set on HTTP redirects (302). So `GET /auth/telegram-miniapp`
+verifies the initData and calls `req.session.save()` BEFORE the redirect — the cookie
+arrives correctly and the dashboard finds a valid session on its first `/api/session` call.
 
 ```js
 function decodeGId(raw) {
@@ -499,6 +512,7 @@ curl -X POST https://YOUR-APP.up.railway.app/api/admin/scrape \
 | Group renamed to "SquadPicks Group" | BIGINT vs string type mismatch in ensureGroup | `Number(chatId)` cast + send `groupTitle` |
 | Mini App → login page | app.html redirected before SDK populated initData | Passes `tgInitData=` in URL; dashboard reads from URL param |
 | "Open Squad Picks" → wrong group | g-prefix not decoded; `urlGroupId` not used to set active tab | `decodeGId()` in init; set `currentGroupId` + update dropdown/title after `loadGroups()` |
+| "Open Squad Picks" → login page | Telegram WebView drops `Set-Cookie` on `fetch()` responses; session never sticks | New `GET /auth/telegram-miniapp` route — server verifies initData, saves session, then 302 redirects to dashboard. Cookie set on redirect is always honoured. |
 | getMiniAppUrl sent raw negative ID | Telegram startapp can't have "-" | `encodeGroupId()` wraps `-` IDs with `g` prefix |
 | Prime shows 3 cards | Wrong `week_of` in clear query | Clear ALL rows for region unconditionally |
 | Prime images missing | region mismatch `ca` vs `us` | Server tries `['us','canada','ca']` in order |
@@ -521,4 +535,4 @@ curl -X POST https://YOUR-APP.up.railway.app/api/admin/scrape \
 
 ---
 
-*End of document — v3.5, April 2026*
+*End of document — v3.6, April 2026*
