@@ -106,11 +106,13 @@ async function getUserByEmail(email) {
   return data;
 }
 
-async function addPendingInvite({ groupId, email, invitedBy }) {
+async function addPendingInvite({ groupId, email, invitedBy, token, expiresAt }) {
   const { error } = await supabase
     .from('group_members')
-    .upsert({ group_id: groupId, email, status: 'invited', invited_by: invitedBy },
-             { onConflict: 'group_id,email' });
+    .upsert({
+      group_id: groupId, email, status: 'invited', invited_by: invitedBy,
+      invite_token: token || null, invite_expires_at: expiresAt || null
+    }, { onConflict: 'group_id,email' });
   if (error) console.error('addPendingInvite error:', error.message);
 }
 

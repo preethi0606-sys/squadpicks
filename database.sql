@@ -205,3 +205,35 @@ ALTER TABLE trending_imdb ADD COLUMN IF NOT EXISTS tmdb_url TEXT;
 -- TRUNCATE trending_prime;
 -- TRUNCATE trending_imdb;
 -- TRUNCATE trending_events;
+
+-- ─── v3.3 ADDITIONS ──────────────────────────────────────────────────────────
+
+-- Group member roles: 'member' | 'admin' | 'owner'
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member';
+
+-- Invite token for approval flow
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS invite_token TEXT;
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS invite_expires_at TIMESTAMPTZ;
+
+-- YouTube channels per group
+CREATE TABLE IF NOT EXISTS group_channels (
+  id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  group_id   BIGINT NOT NULL,
+  channel_id TEXT NOT NULL,
+  channel_name TEXT,
+  channel_url  TEXT,
+  added_by   UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(group_id, channel_id)
+);
+
+-- User notification preferences
+CREATE TABLE IF NOT EXISTS user_preferences (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id         UUID REFERENCES users(id) UNIQUE,
+  notify_pick_add BOOLEAN DEFAULT true,
+  notify_group_ok BOOLEAN DEFAULT true,
+  notify_digest   BOOLEAN DEFAULT true,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);

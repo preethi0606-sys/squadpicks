@@ -1,119 +1,113 @@
 # SquadPicks — Project Knowledge Base
 
-*Last updated: April 2026 — v3.2. Update this doc whenever a feature is confirmed built or a design decision is locked in.*
+*Last updated: April 2026 — v3.3. Update this doc whenever a feature is confirmed built.*
 
 ---
 
 ## 1. App Overview & Purpose
 
-**SquadPicks** is a group activity coordination app — works via Telegram bot AND via Google login on the web. No Telegram required for web users.
+**SquadPicks** is a group activity coordination app — works via Telegram bot AND via Google login on the web.
 
-**Tagline:** *"Your squad. Any plan. One bot."*
+**Tagline:** *"Your squad. Any plan. One app."*
 
-**How it works (Telegram path):**
-1. Someone pastes any link (TMDB, IMDB, Google Maps, Zomato, YouTube, Eventbrite, etc.) into a Telegram group
-2. The bot auto-detects the type (movie / show / food / place / event / video) and creates a vote card
-3. Squad members vote — labels are context-aware per content type
-4. When nobody has vetoed, the card gets a **"Group ok"** badge
-5. The **"🚀 Open in SquadPicks"** button opens the Mini App with the group pre-loaded
-
-**How it works (Google / Full App path):**
-1. User signs in with Google at `/login` → "Continue with Google" button
-2. Creates a Google squad or links a Telegram group via "My Squads"
-3. Adds picks with category selection and votes via the Full App at `/dashboard`
-4. Full Plan / Picks / Trending / Settings experience with live data
-
-**Two completely separate post-login experiences:**
-- **Telegram login** → `/app?groupId=xxx` (Mini App — Plan/Picks/Trending/Settings tabs)
-- **Google login** → `/dashboard` (Full App — drawer nav, squad management, picks grid)
+**Two entry points, one codebase:**
+- **Telegram Mini App** (`/app`) → immediately redirects to `/dashboard` (the Full App). The mini app is just a redirect. There is only one UI: the Full App.
+- **Google login** → `/dashboard` (Full App). Hamburger drawer nav. Dashboard, Trending, Settings.
 
 ---
 
 ## 2. Confirmed Features
 
 ### Telegram Bot
-- **Universal link detection** — TMDB, IMDB (resolved via TMDB), Letterboxd, YouTube, Google Maps (short + long URLs), Yelp, Zomato, Swiggy, Eventbrite, BookMyShow, Netflix, Hotstar, SonyLiv, Prime Video
-- **Auto-type detection** — classifies into: `movie | show | food | place | event | video | link`
-- **Vote cards** — bot replies directly to the user's original URL message (not a new separate message)
-- **Vote labels are context-aware by type:**
-  - Movie/Show → Seen/Been · Want to · Not for me
-  - Food → Tried it · Want to try · Skip it
-  - Place → Been there · Want to go · Not for me
-  - Event → Attended · Want to go · Not going
-  - Video → Seen it · Want to watch · Not for me
-- **Group ok detection** — auto-detects when all voters have voted with no skips
-- **Card updates** — bot edits the original Telegram message when anyone votes
-- **"🚀 Open in SquadPicks" button** — always shown in every card as row 2 of inline keyboard
-- **`/groupid` command** — shows current group's Telegram ID in a copyable `<code>` block + link to Full App. In private chat: shows user's own chat ID.
-- **Typing indicator** — `sendChatAction('typing')` while fetching metadata; no intermediate message
+- Universal link detection: TMDB, IMDB (via TMDB), YouTube (oEmbed), Google Maps (redirect follow), Facebook/Instagram, Zomato, Yelp, Eventbrite, Netflix, Hotstar, SonyLiv, Prime Video, TikTok, Twitter/X
+- Auto-type detection: `movie | show | food | place | event | video | link`
+- Vote cards reply to the original URL message. Vote labels are context-aware by type.
+- Group ok = 50% threshold: `Math.ceil(activeMembers × 0.5)` positive (want/seen) votes, zero skips
+- Auto-vote "want" for the person who adds a pick
+- `/groupid` command: shows group ID in copyable `<code>` block
 
 ### Link Detection & Metadata (`links.js`)
-
-| URL pattern | Detected type | Metadata source |
-|-------------|--------------|-----------------|
+| URL Pattern | Type | Handler |
+|-------------|------|---------|
 | `themoviedb.org/movie/*` | movie | TMDB API by ID |
 | `themoviedb.org/tv/*` | show | TMDB API by ID |
 | `imdb.com/title/tt*` | movie | TMDB `/find` by IMDB ID |
-| `youtube.com/watch`, `youtu.be/`, `/shorts`, `/live` | video | YouTube oEmbed API (free, no key) |
+| `youtube.com/watch`, `youtu.be/`, `/shorts`, `/live` | video | YouTube oEmbed (free, no key) |
 | `maps.app.goo.gl`, `maps.google.com`, `goo.gl/maps` | place | Redirect-follow + place name extraction |
-| `letterboxd.com` | movie | ogs |
-| `netflix.com`, `primevideo.com`, `hotstar.com`, `sonyliv.com` | show | ogs |
-| `yelp.com`, `zomato.com`, `swiggy.com`, `opentable.com`, `doordash.com`, `ubereats.com` | food | ogs |
-| `tripadvisor.com` | place | ogs |
-| `eventbrite.com`, `bookmyshow.com`, `meetup.com`, `ticketmaster.com` | event | ogs |
-| Everything else | link | ogs |
+| `facebook.com/share/*`, `fb.com/*` | link | `fetchFacebookMeta()` — facebookexternalhit UA + OG scrape |
+| `facebook.com/events/*` | event | OGS with bot UA |
+| `instagram.com/reel/*` | video | OGS with bot UA |
+| `instagram.com/*` | link | OGS with bot UA |
+| `tiktok.com` | video | OGS |
+| `twitter.com`, `x.com` | link | OGS |
+| `netflix.com`, `primevideo.com`, `hotstar.com`, `sonyliv.com` | show | OGS |
+| `yelp.com`, `zomato.com`, `swiggy.com`, etc. | food | OGS |
+| `tripadvisor.com` | place | OGS |
+| `eventbrite.com`, `bookmyshow.com`, `meetup.com`, `ticketmaster.com` | event | OGS |
 
-**YouTube oEmbed** — `fetchYoutubeMeta(url)`: calls `youtube.com/oembed?url=...&format=json`. Free, no key, returns title + channel + thumbnail. ogs is blocked by YouTube consent walls.
+**Facebook share URLs** (`facebook.com/share/r/CODE`): `fetchFacebookMeta()` follows redirect with facebookexternalhit UA, extracts OG tags. `cleanFbTitle()` strips likes counts before pipe/bullet separators (e.g. `"1.2K likes · Venue Name"` → `"Venue Name"`). Decodes HTML entities.
 
-**Google Maps** — `fetchGoogleMapsMeta(url)`: follows redirect chain (`maps.app.goo.gl` is multi-hop). Extracts place name from: `/maps/place/Name/` path → `?q=Name` param → `og:title` scrape. Always returns something.
+**Duplicate URL check:** `POST /api/picks` calls `fetchMeta()` first to get the resolved `sourceUrl`, then checks both the original URL and `sourceUrl` against the DB. Returns HTTP 409 `{ duplicate: true, error: "Title was already added" }` if found.
 
-**TMDB functions:**
-- `fetchTmdbByUrl(url)` — direct `themoviedb.org` links, fetches full details by ID
-- `fetchTmdbByImdbId(imdbId)` — IMDB URLs, calls `/find?external_source=imdb_id`
-- `fetchTmdbByTitle(title, type)` — title search for scraper enrichment. `type` = `'movie' | 'tv' | 'multi'`
+### Email Notifications (`server.js`)
+- **`sendPickNotification()`** — emails all active group members when a new pick is added. Non-blocking (`.catch()` so it never fails the pick-add request). Uses Resend API.
+- **`sendInviteEmail()`** — emails an invite with a unique token link. Invitee must click "Accept invite" before they join the group.
+- Both require `RESEND_API_KEY` and `RESEND_FROM_EMAIL` in Railway. Without them, emails are logged to console but the app still works.
 
-**IMDB** — detected and handled via TMDB. No web scraping of IMDB. "Movie on IMDB" fallback string is gone.
+### Invite & Approval Flow (`server.js`, `db.js`)
+- `POST /api/groups/invite` creates a DB record with `status='invited'`, a random 32-byte hex token, and 7-day expiry. Sends email with the acceptance link.
+- `GET /api/groups/accept-invite/:token` — recipient clicks the link → token verified → `status` updated to `'active'` → redirect to the group dashboard.
+- Existing users go through the same flow (status starts as `'invited'`, not `'active'`).
+- `applyPendingInvites()` called on every Google login to auto-join any pending email invites.
 
-### URL & Image Retention
-- `fetchMeta()` returns `sourceUrl` (original URL), `imageUrl`, `title`, `description`
-- `savePick()` stores URL in `picks.url` + image in `picks.image_url`
-- Plan tab: pick titles are clickable links (↗). Picks tab: real thumbnail; emoji fallback.
+### Mini App → Full App (`public/app.html`)
+- `app.html` is now a 5-line redirect. It reads `start_param` from Telegram WebApp or `?groupId=` from the URL and redirects to `/dashboard?groupId=...`.
+- No separate codebase. Both Telegram Mini App and browser users see the same Full App.
 
-### Authentication
-- **Telegram login:** Hash verification → `req.session.save()` → redirect to `/app?groupId=xxx`
-- **Google OAuth:** Native fetch (no Passport.js) → `/auth/google` → callback → `/dashboard`. `applyPendingInvites()` on every login.
-- **Session:** `trust proxy: 1`, `secure: true`, `sameSite: 'none'` in production. Logout clears both `connect.sid` and `tg_user_id` cookies.
-- **Route guards:** `/dashboard` → requires session; Telegram session → redirects to `/app`. `/login` → already-authenticated users skip to correct destination.
+### Full App — Dashboard (`public/dashboard/index.html`)
+**Navigation:** Hamburger drawer → Dashboard · Trending · Settings · My Squads
 
-### Google Squads & Squad Management
+**Dashboard (default landing):**
+- Group tabs at top: "All squads" + individual squad tabs
+- Picks from all squads aggregated when "All squads" selected (parallel fetch + merge)
+- Deduplicates by title (case-insensitive) when showing all squads
+- Stats row: Total picks · Group ok · Need your vote · Squads
+- Filter pills: All / ★ Want to / ✓ Group ok / 🎬 🍽 📍 🎭 type filters
+- Vote buttons on each card — `castDashVote()` syncs to DB
 
-**Squad types:**
-- **Google Squad** (`is_web_group = true`) — created in Full App, managed in-app, invite by Gmail
-- **Telegram Squad** (`is_web_group = false`) — linked Telegram group where bot is active; ID found via `/groupid`
+**Trending (5 tabs):**
+- 🎬 **Movies** — Netflix Top 10 + Prime Video + TMDB Popular
+- 🎭 **Events** — Ticketmaster by GPS location (auto-detect), category sections (Concerts/Sports/Arts/Family)
+- 📍 **Places** — TripAdvisor API or Wikimedia curated static (10 per region, Canada/US/India)
+- 📺 **Channels** — YouTube channels configured per squad. Select squad from dropdown → shows channels. "+ Add channel" opens a prompt. Calls `/api/groups/:id/channels`.
+- 🌍 **Community** — group-ok picks from squads the current user is NOT in. Calls `/api/trending/community`.
 
-**My Squads panel (3 tabs):** 📋 My Squads (list + manage) · 🌐 New Google Squad · 💬 Link Telegram (multiple groups supported, shows already-linked list)
+**Settings (functional):**
+- Profile card — shows name and email from session
+- Squads — links to My Squads panel (manage/rename/invite/delete)
+- Notifications — toggle switches for: New picks / Group ok / Weekly digest. Saved to `user_preferences` table via `/api/preferences`.
+- Account — Plan badge (Free), Share SquadPicks (copies link), Telegram Bot link, Sign out
 
-**Squad detail:** rename (owner) · invite by Gmail · members list with remove · delete squad (cascades to picks)
+**Global FAB:** Purple circle fixed bottom-right, always visible, opens Add Pick modal on every screen.
 
-### Add Pick — Full App
-- Category buttons: 🎬 Movie · 📺 Show · 🍽 Restaurant · 📍 Place · 🎭 Event · 🔗 Other
-- URL field: auto-fetches title + image via `GET /api/meta?url=` (700ms debounce)
-- Title field: auto-filled, editable
-- Preview strip: thumbnail + title + description
-- `POST /api/picks` accepts `manualType` and `manualTitle`
+**Add Pick modal:**
+- Category: 🎬 Movie · 📺 Show · 🍽 Restaurant · 📍 Place · 🎭 Event · 🔗 Other
+- URL field: auto-fetches title + image (700ms debounce → `/api/meta?url=`)
+- Auto-votes "want" for adder on save
+- Duplicate check: shows `⚠️ "Title" was already added` toast (HTTP 409), keeps modal open
 
-### Trending Page
+**Squad Management (My Squads panel):**
+- 📋 My Squads tab — lists all squads with Manage/View buttons
+- 🌐 New Google Squad — create by name
+- 💬 Link Telegram — paste group ID (must start with minus, e.g. `-1001234567890`)
+- Squad detail: rename, invite by email (sends approval email), members list with roles, admin toggle, remove
 
-**Movies section:**
-- **Netflix Top 10** — from official XLSX (`netflix.com/tudum/top10/data/all-weeks-global.xlsx`), Monday cron. Canada + US + India. TMDB poster enrichment.
-- **Prime Video** — TMDB discover `/discover/tv` + `/discover/movie` with `with_watch_providers=9`. Cross-checked against `/watch/providers` per item for accuracy.
-- **TMDB Popular** — `/movie/popular` + `/tv/popular` updated daily. Stored in `trending_imdb` table.
-
-**Events section:** Ticketmaster Discovery API for Canada + US. Insider.in for India. **Auto-detects user GPS location** (`navigator.geolocation`) — no dropdown. Falls back to: Toronto (CA), San Francisco (US), New Delhi (IN) based on `navigator.language`. India always uses Insider.in data.
-
-**Places section:** TripAdvisor Content API (`TRIPADVISOR_API_KEY`) for live nearby attractions by lat/lng. Falls back to curated static lists for all 3 regions. Region inferred from `navigator.language`.
-
-**"+ Add" button:** Stores items in `window._trendItems` map (avoids `JSON.stringify` in onclick attributes which breaks on quotes). `addTrendPickDirect(itemId)` adds directly to the selected squad via `POST /api/picks`, updates Picks and Plan tabs immediately.
+**Admin Management:**
+- `group_members.role` column: `'owner'` | `'admin'` | `'member'`
+- Only the owner can promote/demote members to admin
+- Admins can manage members (view, remove non-owner members) but cannot delete the group or change ownership
+- `PATCH /api/groups/:id/members/:memberId/role` — owner only
+- Members list shows Owner/Admin badges and "Make admin" / "Revoke admin" buttons
 
 ---
 
@@ -122,52 +116,47 @@
 | Layer | Technology |
 |-------|-----------|
 | Runtime | Node.js 20+ |
-| Bot framework | node-telegram-bot-api v0.66 |
+| Bot | node-telegram-bot-api v0.66 |
 | Web server | Express v5 |
-| Database | Supabase (PostgreSQL) via @supabase/supabase-js |
-| Deployment | Railway (nixpacks, auto-deploy from GitHub) |
-| Movie/TV database | **TMDB API** (primary — replaces IMDB scraping and OMDB) |
-| Web scraping | node-fetch v3 + cheerio |
-| Cron jobs | node-cron v4 |
-| YouTube API | googleapis v171 (channel monitoring) |
+| Database | Supabase (PostgreSQL) |
+| Movie/TV | TMDB API (primary — replaces IMDB + OMDB) |
+| Scraping | node-fetch v3 + cheerio |
+| Cron | node-cron v4 |
+| YouTube monitoring | googleapis v171 |
 | YouTube metadata | YouTube oEmbed API (free, no key) |
-| Link metadata | open-graph-scraper v6 (non-TMDB/YouTube/Maps URLs) |
-| Netflix data | Official XLSX — `netflix.com/tudum/top10` |
+| OG metadata | open-graph-scraper v6 |
+| Netflix data | Official XLSX from netflix.com/tudum/top10 |
 | Events (CA/US) | Ticketmaster Discovery API (free, 5000/day) |
-| Events (India) | Insider.in public API (free, no key) |
-| Places | TripAdvisor Content API (free, 5000/month) — falls back to curated static |
+| Events (India) | Insider.in public API (free) |
+| Places | TripAdvisor Content API (free, 5000/month) → Wikimedia fallback |
+| Email | Resend API (free, 3000/month) |
 | Sessions | express-session v1.18 |
-| Google OAuth | Native fetch — no Passport.js |
-| Mini App | Vanilla HTML/CSS/JS (`public/app.html`) |
-| Full App | Vanilla HTML/CSS/JS (`public/dashboard/index.html`) |
-| Fonts | Fraunces (serif, headings) + DM Sans (body) via Google Fonts |
+| Google OAuth | Native fetch (no Passport.js) |
+| UI | Vanilla HTML/CSS/JS — one file: `public/dashboard/index.html` |
+| Fonts | Fraunces (headings) + DM Sans (body) via Google Fonts |
 
 ---
 
-## 4. Project File Structure
+## 4. File Structure
 
 ```
 squadpicks-bot/
-│
-├── index.js          — Bot: commands, handleLink, cron wiring, server start
-├── server.js         — Express API, Google OAuth, session, all routes
+├── index.js          — Bot: commands, handleLink, cron start
+├── server.js         — Express API, OAuth, all routes, email functions
 ├── db.js             — All Supabase queries (two-query pattern, no FK joins)
-├── links.js          — detectType, fetchMeta, TMDB functions, YouTube oEmbed, Google Maps
+├── links.js          — detectType, fetchMeta, TMDB, YouTube, Google Maps, Facebook
 ├── youtube.js        — YouTube channel monitor (Friday cron)
 ├── digest.js         — Sunday weekly digest cron
-├── scraper.js        — Netflix XLSX + TMDB popular + Prime + TripAdvisor + Ticketmaster/Insider
+├── scraper.js        — Netflix XLSX + TMDB popular + Prime + TripAdvisor + Ticketmaster
 ├── streaming.js      — Static fallback streaming data
-│
-├── database.sql      — Full Supabase schema + migrations
-├── package.json      — node-fetch ^3.3.2 (must be v3 for dynamic import() syntax)
-├── package-lock.json — Required for Railway npm ci / npm install
-├── railway.toml      — builder = nixpacks, buildCommand = npm install
-├── Procfile          — web: node index.js
-├── .env.example      — all env vars documented
-│
+├── database.sql      — Full schema + all migrations (v3.3 latest)
+├── package.json      — node-fetch ^3.3.2
+├── package-lock.json — Required for Railway
+├── railway.toml      — builder = nixpacks
+├── .env.example      — All env vars documented
 └── public/
-    ├── app.html              — Telegram Mini App
-    ├── dashboard/index.html  — Full App (Google login)
+    ├── app.html              — Telegram Mini App (redirects to /dashboard)
+    ├── dashboard/index.html  — The Full App (single file, all UI)
     ├── login.html            — Google + Telegram login
     ├── index.html            — Landing page
     └── styles.css            — Shared styles
@@ -178,245 +167,201 @@ squadpicks-bot/
 | Table | Purpose |
 |-------|---------|
 | `groups` | Telegram + web groups (`is_web_group`, `owner_id`) |
-| `picks` | All picks — `url`, `image_url`, `type`, `title`, `description`, `added_by_*`, `reviewer_*` |
-| `votes` | Per-person votes (`pick_id`, `user_id`, `status`: seen/want/skip) |
-| `posted_videos` | Dedup for YouTube videos already posted |
-| `trending_netflix` | Netflix Top 10 by region + week (images from TMDB) |
-| `trending_prime` | Prime Video top 10 (from TMDB discover, images from TMDB) |
-| `trending_imdb` | TMDB popular movies/shows (stored here — table renamed conceptually to "tmdb_trending") |
-| `trending_places` | Top attractions per region (TripAdvisor or curated static) |
-| `trending_events` | Upcoming events per region (Ticketmaster/Insider) |
-| `users` | Google + Telegram users (`google_id`, `telegram_id`, `email`, `name`, `avatar`) |
-| `group_members` | Squad membership (`user_id`, `email`, `status`: active/invited, `invited_by`) |
+| `picks` | All picks — url, image_url, type, title, description, added_by_* |
+| `votes` | Per-person votes — `status`: seen/want/skip |
+| `users` | Google + Telegram users |
+| `group_members` | Squad membership — `status` (invited/active), `role` (owner/admin/member), `invite_token`, `invite_expires_at` |
+| `group_channels` | YouTube channels per squad — `channel_id`, `channel_name`, `channel_url` |
+| `user_preferences` | Notification toggles per user — `notify_pick_add`, `notify_group_ok`, `notify_digest` |
+| `trending_netflix` | Netflix Top 10 by region + week |
+| `trending_prime` | Prime Video top 10 (TMDB discover, region='us') |
+| `trending_imdb` | TMDB popular movies/shows (stored here) |
+| `trending_places` | Top attractions — `url` (maps), `tripadvisor_url`, `image_url` (Wikimedia) |
+| `trending_events` | Events by region + category (concerts/sports/arts/family) |
+| `posted_videos` | Dedup for YouTube video posts |
 
-**Supabase SQL needed for new tables:**
+### v3.3 SQL Migrations (run in Supabase SQL Editor)
 ```sql
-CREATE TABLE IF NOT EXISTS trending_places (
+-- Roles
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member';
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS invite_token TEXT;
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS invite_expires_at TIMESTAMPTZ;
+
+-- YouTube channels per group
+CREATE TABLE IF NOT EXISTS group_channels (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  rank INT, title TEXT, description TEXT, image_url TEXT, url TEXT,
-  region TEXT, type TEXT DEFAULT 'place',
-  week_of DATE, fetched_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(title, region, week_of)
+  group_id BIGINT NOT NULL, channel_id TEXT NOT NULL,
+  channel_name TEXT, channel_url TEXT, added_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(group_id, channel_id)
 );
-CREATE TABLE IF NOT EXISTS trending_events (
+
+-- Notification preferences
+CREATE TABLE IF NOT EXISTS user_preferences (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  rank INT, title TEXT, description TEXT, image_url TEXT, url TEXT,
-  region TEXT, type TEXT DEFAULT 'event',
-  week_of DATE, fetched_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(title, region, week_of)
+  user_id UUID REFERENCES users(id) UNIQUE,
+  notify_pick_add BOOLEAN DEFAULT true, notify_group_ok BOOLEAN DEFAULT true,
+  notify_digest BOOLEAN DEFAULT true, updated_at TIMESTAMPTZ DEFAULT NOW()
 );
--- FK constraints
-ALTER TABLE group_members ADD CONSTRAINT fk_group_members_groups
-  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE;
-ALTER TABLE picks ADD CONSTRAINT picks_group_id_fkey
-  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE;
+
+-- TripAdvisor link in places
+ALTER TABLE trending_places ADD COLUMN IF NOT EXISTS tripadvisor_url TEXT;
+
+-- Stale data cleanup (uncomment to run)
+-- TRUNCATE trending_places;
+-- TRUNCATE trending_prime;
+-- TRUNCATE trending_imdb;
+-- TRUNCATE trending_events;
 ```
 
 ### API Endpoints
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/api/health` | Health check |
-| GET | `/api/session` | Current session user |
-| POST | `/api/auth/logout` | Destroy session + clear cookies |
-| GET | `/logout` | Direct-nav logout |
-| GET | `/auth/google` | Start Google OAuth |
-| GET | `/auth/google/callback` | Google OAuth → `/dashboard` |
-| POST | `/api/auth/telegram` | Verify Telegram widget → `/app?groupId=xxx` |
-| GET | `/api/groups` | All real groups (Mini App) |
-| GET | `/api/groups/mine` | User's own groups (Full App) |
-| POST | `/api/groups/create` | Create Google squad |
-| PATCH | `/api/groups/:id/rename` | Rename squad (owner only) |
-| DELETE | `/api/groups/:id` | Delete Google squad (owner only) |
-| GET | `/api/groups/:id/members` | List squad members |
-| DELETE | `/api/groups/:id/members/:memberId` | Remove member (owner only) |
-| POST | `/api/groups/link-telegram` | Link Telegram group (multiple supported) |
-| POST | `/api/groups/invite` | Invite member by email |
-| GET | `/api/meta?url=` | Metadata preview for Add Pick modal |
-| GET | `/api/picks?groupId=` | Get group picks with votes |
-| POST | `/api/picks` | Add pick (accepts `manualType`, `manualTitle`) |
-| POST | `/api/vote` | Cast/toggle vote + update Telegram card |
-| GET | `/api/summary?groupId=` | Group ok/skip/pending summary |
-| GET | `/api/fcpicks` | Latest Filmi Craft reviewed picks |
-| GET | `/api/trending/streaming?region=` | `{ netflix:[...], prime:[...], source }` |
-| GET | `/api/trending/tmdb?category=` | TMDB popular movies/shows |
-| GET | `/api/trending/imdb?category=` | Legacy alias for tmdb endpoint |
-| GET | `/api/trending/places?region=` | Top places by region |
-| GET | `/api/trending/events?region=` | Events by region (DB) |
-| GET | `/api/trending/events/nearby?lat=&lng=&region=` | Events by GPS coordinates (live from Ticketmaster) |
-| POST | `/api/admin/scrape` | Manual scrape trigger (x-admin-secret header) |
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | `/api/health` | — | Health check |
+| GET | `/api/session` | — | Current session |
+| POST | `/api/auth/logout` | — | Destroy session |
+| GET | `/auth/google` | — | Start OAuth |
+| GET | `/auth/google/callback` | — | OAuth → `/dashboard` |
+| POST | `/api/auth/telegram` | — | Telegram widget → `/app` |
+| GET | `/api/picks?groupId=` | tg | Get picks with votes |
+| POST | `/api/picks` | tg | Add pick (duplicate check, auto-vote, email notify) |
+| POST | `/api/vote` | tg | Cast/toggle vote |
+| GET | `/api/meta?url=` | — | Metadata preview |
+| GET | `/api/groups/mine` | session | User's squads |
+| POST | `/api/groups/create` | session | Create Google squad |
+| PATCH | `/api/groups/:id/rename` | session | Rename (owner only) |
+| DELETE | `/api/groups/:id` | session | Delete (owner only) |
+| GET | `/api/groups/:id/members` | session | List members with roles |
+| DELETE | `/api/groups/:id/members/:memberId` | session | Remove member |
+| PATCH | `/api/groups/:id/members/:memberId/role` | session | Promote/demote admin (owner only) |
+| POST | `/api/groups/invite` | session | Invite by email (sends approval email) |
+| GET | `/api/groups/accept-invite/:token` | — | Accept invite link |
+| GET | `/api/groups/:id/channels` | session | List YouTube channels |
+| POST | `/api/groups/:id/channels` | session | Add YouTube channel |
+| DELETE | `/api/groups/:id/channels/:channelId` | session | Remove channel |
+| GET | `/api/preferences` | session | Load notification prefs |
+| POST | `/api/preferences` | session | Save notification prefs |
+| GET | `/api/trending/streaming` | — | Netflix + Prime data |
+| GET | `/api/trending/tmdb?category=` | — | TMDB popular |
+| GET | `/api/trending/places?region=` | — | Places by region |
+| GET | `/api/trending/events?region=` | — | Events by region (DB) |
+| GET | `/api/trending/events/nearby?lat=&lng=` | — | Events by GPS |
+| GET | `/api/trending/community` | session | Group-ok picks from other squads |
+| POST | `/api/admin/scrape` | x-admin-secret | Manual scrape trigger |
 
 ---
 
 ## 5. Design System
 
-### Colour Palette
-
+### Colours
 ```css
---navy:    #6B21A8   /* Header, drawer bg, primary dark */
---blue:    #7C3AED   /* Primary buttons, active elements */
---blue2:   #8B5CF6   /* Hover / lighter accent */
---beige:   #F5F3FF   /* Page background */
---beige2:  #EDE9FE   /* Chip backgrounds, reviewer strip */
---beige3:  #DDD6FE   /* Borders, dividers */
---text:    #1E1333   /* Primary text */
---text2:   #3B1F6B   /* Secondary text */
---text3:   #7C5AB8   /* Muted text */
---white:   #FFFFFF   /* Card backgrounds */
---green:   #059669   /* Group ok badge */
---red:     #DC2626   /* Skip / danger */
---amber:   #D97706   /* Pending / want */
+--navy:#6B21A8  --blue:#7C3AED  --blue2:#8B5CF6
+--beige:#F5F3FF --beige2:#EDE9FE --beige3:#DDD6FE
+--text:#1E1333  --text2:#3B1F6B --text3:#7C5AB8
+--green:#059669 --red:#DC2626   --amber:#D97706
 ```
 
 ### Typography
-- **Headings / logo:** Fraunces (serif, 400–900)
-- **Body / UI:** DM Sans (sans-serif, 400–600)
+- Headings: **Fraunces** (serif, Google Fonts)
+- Body/UI: **DM Sans** (sans-serif, Google Fonts)
 
-### Component Rules
-- **Pick cards** — 170px image header, gradient overlay, title + type badge float on top, vote buttons at bottom
-- **Plan cards** — 72px left thumbnail, clickable title (↗), voter chips
-- **Trending poster cards** — 150×220px (increased from 120×175). `object-fit:cover` for all images.
-- **Wide cards** (places/events) — 210×130px image top, title + description body, Add + View buttons
-- **Group ok badge** — green, shown when all voters have voted with no skips
-- **"🚀 Open in SquadPicks"** — Telegram bot cards only. Never inside Mini App/Full App UI.
-- **"● LIVE" badge** — green, on Trending rows when data is from DB
-- **Mobile nav** — hamburger drawer on both Mini App and Full App
-- **Vote labels** — content-type specific throughout all views
-- **Trending items store** — `window._trendItems` map + `storeTrendItem()`. Never use `JSON.stringify` in onclick attributes.
+### Key Components
+- **Dashboard pick cards** — 170px image header, gradient overlay, type badge, voter chips, vote buttons
+- **Trending poster cards** — 150×220px, `object-fit:cover`. Stream badge (top-left), rank (top-right), score (bottom-right)
+- **Wide cards** (places/events) — 210×130px image, 3 action buttons: + Add / 📍 Maps / ★ TripAdvisor
+- **Trend row** — horizontal scroll with thin visible scrollbar + right-fade gradient hint
+- **Places grid** — CSS `grid; auto-fill; minmax(180px,1fr)` — wraps responsively
+- **Toggle switches** — notification preferences in Settings
+- **Global FAB** — `position:fixed; bottom:24px; right:24px; z-index:250`
 
 ---
 
 ## 6. Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `TELEGRAM_TOKEN` | ✅ | From @BotFather /newbot |
-| `SUPABASE_URL` | ✅ | Supabase project URL |
-| `SUPABASE_KEY` | ✅ | Supabase anon/public key |
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `TELEGRAM_TOKEN` | ✅ | From @BotFather |
+| `SUPABASE_URL` | ✅ | Project URL |
+| `SUPABASE_KEY` | ✅ | anon/public key |
 | `YOUTUBE_API_KEY` | ✅ | Google Cloud → YouTube Data API v3 |
-| `BOT_USERNAME` | ✅ | Bot username without @ |
-| `BOT_NAME` | ✅ | Display name e.g. `SquadPicks` |
+| `BOT_USERNAME` | ✅ | Without @ |
+| `BOT_NAME` | ✅ | Display name |
 | `MINI_APP_URL` | ✅ | `https://YOUR-APP.up.railway.app` |
 | `MINI_APP_SHORT_NAME` | ✅ | BotFather short name e.g. `Squadpicks` |
-| `RAILWAY_PUBLIC_DOMAIN` | ✅ | `YOUR-APP.up.railway.app` (no https://) |
-| `APP_URL` | ✅ | `https://YOUR-APP.up.railway.app` |
-| `GOOGLE_CLIENT_ID` | ✅ | Google Cloud OAuth 2.0 |
-| `GOOGLE_CLIENT_SECRET` | ✅ | Google Cloud OAuth 2.0 |
-| `SESSION_SECRET` | ✅ | Random 32+ char string |
+| `RAILWAY_PUBLIC_DOMAIN` | ✅ | Without https:// |
+| `APP_URL` | ✅ | With https:// |
+| `GOOGLE_CLIENT_ID` | ✅ | OAuth 2.0 |
+| `GOOGLE_CLIENT_SECRET` | ✅ | OAuth 2.0 |
+| `SESSION_SECRET` | ✅ | 32+ random chars |
 | `FILMICRAFT_CHANNEL_ID` | ✅ | `UClF9UTljviumfJf7t-VR5tg` |
 | `FILMICRAFT_CHANNEL_NAME` | ✅ | `Filmi Craft` |
 | `ADMIN_SECRET` | ✅ | Protects `/api/admin/scrape` |
-| `TMDB_API_KEY` | ✅ | TMDB Read Access Token (v4, starts `eyJ...`). https://www.themoviedb.org/settings/api |
-| `TICKETMASTER_API_KEY` | ✅ | Free at https://developer.ticketmaster.com. 5000 calls/day. Required for live events (CA/US). |
-| `TRIPADVISOR_API_KEY` | ⚪ Optional | Free at https://tripadvisor.com/developers. 5000 calls/month. Enhances Places tab. |
-| `RAPIDAPI_KEY` | ⚪ Optional | RapidAPI streaming fallback |
-| `NODE_ENV` | ⚪ Optional | `production` |
-
-**Removed:** `OMDB_API_KEY`, `OPENTRIPMAP_API_KEY` — delete from Railway if set.
-
-### Quick-copy for Railway Raw Editor
-```
-TELEGRAM_TOKEN=
-SUPABASE_URL=
-SUPABASE_KEY=
-YOUTUBE_API_KEY=
-FILMICRAFT_CHANNEL_ID=UClF9UTljviumfJf7t-VR5tg
-FILMICRAFT_CHANNEL_NAME=Filmi Craft
-BOT_USERNAME=squadpicks_bot
-BOT_NAME=SquadPicks
-MINI_APP_URL=https://YOUR-APP.up.railway.app
-APP_URL=https://YOUR-APP.up.railway.app
-MINI_APP_SHORT_NAME=Squadpicks
-RAILWAY_PUBLIC_DOMAIN=YOUR-APP.up.railway.app
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-SESSION_SECRET=
-ADMIN_SECRET=
-TMDB_API_KEY=eyJ...
-TICKETMASTER_API_KEY=
-TRIPADVISOR_API_KEY=
-NODE_ENV=production
-```
+| `TMDB_API_KEY` | ✅ | v4 Read Access Token (starts `eyJ...`). https://themoviedb.org/settings/api |
+| `TICKETMASTER_API_KEY` | ✅ | Free at https://developer.ticketmaster.com |
+| `RESEND_API_KEY` | ⚪ Recommended | Free at https://resend.com — 3000 emails/month |
+| `RESEND_FROM_EMAIL` | ⚪ | e.g. `SquadPicks <noreply@yourdomain.com>` |
+| `TRIPADVISOR_API_KEY` | ⚪ | Free at https://tripadvisor.com/developers — 5000/month |
+| `NODE_ENV` | ⚪ | `production` |
 
 ---
 
-## 7. Deployment
+## 7. Critical Technical Decisions
 
-- **Platform:** Railway — nixpacks builder, `npm install`, `node index.js`
-- **Deploy:** Push to GitHub → Railway auto-redeploys (~60s)
-- **Health check:** `GET /api/health`
-- **Mini App URL:** `t.me/squadpicks_bot/Squadpicks`
+| Topic | Decision |
+|-------|----------|
+| **Single UI** | `app.html` redirects to `/dashboard`. There is only one frontend codebase. |
+| **Picks page** | Removed. Dashboard is the primary view with group switching and aggregation. |
+| **Group ok threshold** | `Math.ceil(activeMembers × 0.5)` positive votes + zero skips. Computed in server.js on every `GET /api/picks` and `POST /api/vote`. |
+| **Invite approval** | Status starts as `'invited'`, not `'active'`. User must click the email link to become active. Token expires in 7 days. |
+| **Pick email notify** | `sendPickNotification()` is always non-blocking — called with `.catch()` so it never fails the pick-add response. |
+| **Duplicate URL check** | Runs AFTER `fetchMeta()` so both original and resolved URLs are checked. Facebook share short links resolve to different final URLs each time — we check both. |
+| **Facebook titles** | `cleanFbTitle()` splits on `|·•` separator and takes the LAST segment (the real name, not the likes count). |
+| **TMDB as sole movie source** | IMDB URLs → TMDB `/find`. OMDB removed. No IMDB scraping. |
+| **Prime region** | Scraper stores Prime data as `region='us'`. Server endpoint always tries `'us'` first when fetching Prime. |
+| **Places images** | Wikimedia Commons URLs in `PLACES_STATIC` client-side fallback. DB `trending_places.image_url` from TripAdvisor API or Wikimedia. Run `TRUNCATE trending_places;` then manual scrape to repopulate. |
+| **TripAdvisor link** | With API key: `tripadvisor.com/Attraction_Review-g-dLOCATION_ID` (real page). Without: `tripadvisor.com/Search?q=Title` (search page). |
+| **Community trending** | `GET /api/trending/community` fetches `group_ok=true` picks from groups the user is NOT in. The `group_ok` column must be kept updated in the `picks` table. |
+| **YouTube channels** | Stored in `group_channels` table per squad. Shown as cards with Watch button (link to channel). |
+| **Admin roles** | `group_members.role`: owner → admin → member. Only owner can promote/demote. Admins can manage members. Neither can change ownership. |
+| **Supabase FK joins** | Always two plain queries. Never `select('col, table(col)')`. |
+| **node-fetch v3** | `import('node-fetch')` dynamic ESM syntax. `res.arrayBuffer()` not `res.buffer()`. |
+| **TMDB rate limit** | 40 req/10s. Scraper adds 300ms between calls. |
 
-### Deploy checklist (first time)
-1. Run `database.sql` in Supabase SQL Editor
-2. Run the new table + FK constraint SQL (Section 4)
-3. Set all env vars in Railway
-4. Register Mini App: `/newapp` → URL: `https://YOUR-APP.up.railway.app/app` → Short name: `Squadpicks`
-5. Register domain for Login Widget: `/setdomain` → `YOUR-APP.up.railway.app` (no https://)
-6. Google OAuth: add redirect URI `https://YOUR-APP.up.railway.app/auth/google/callback`
-7. Add yourself as Test User in Google Cloud OAuth consent screen
-8. Add bot to Telegram group, paste a link to test
+---
 
-### Cron schedule
-| Schedule | What runs |
-|----------|-----------|
-| Monday 10:00 UTC | Netflix XLSX download + TMDB poster enrichment |
-| Thursday 20:30 UTC | Full scrape: TMDB popular + Prime provider check + TripAdvisor places + Ticketmaster/Insider events |
-| Friday (configurable) | YouTube channel monitor (Filmi Craft) |
-| Sunday (configurable) | Weekly digest |
-| Startup (15s delay) | Always runs full scrape on deploy to ensure fresh data |
+## 8. Deployment
 
-### Manual scrape trigger
+- **Platform:** Railway — nixpacks, `npm install`, `node index.js`
+- **Repo:** https://github.com/preethi0606-sys/squadpicks
+- **Cron:** Monday 10:00 UTC (Netflix) · Thursday 20:30 UTC (full scrape) · Startup 15s (always runs)
+
+### Manual scrape
 ```bash
 curl -X POST https://YOUR-APP.up.railway.app/api/admin/scrape \
   -H "x-admin-secret: YOUR_ADMIN_SECRET"
 ```
 
----
-
-## 8. GitHub Repo
-
-**URL:** https://github.com/preethi0606-sys/squadpicks
-
----
-
-## 9. Known Caveats & Technical Decisions
-
-| Topic | Decision |
-|-------|----------|
-| **Telegram vs Google routing** | Intentionally different. Telegram → `/app`. Google → `/dashboard`. Never swap. |
-| **`web_app` vs `url` in Telegram cards** | `web_app` restricted to private chats by Telegram. Group cards use `url`. |
-| **Supabase FK joins** | Always two plain queries, never `select('col, table(col)')`. FK join requires schema cache — two queries always work. |
-| **node-fetch v3** | Must be `^3.3.2`. Code uses `import('node-fetch')` dynamic ESM syntax (v3-only). v2 uses `require()`. |
-| **`res.arrayBuffer()` not `res.buffer()`** | node-fetch v3 removed `buffer()`. Use `arrayBuffer()` + `Buffer.from()` for XLSX download. |
-| **IMDB scraping** | Never done. IMDB blocks cloud IPs. All IMDB URLs resolved via TMDB `/find?external_source=imdb_id`. |
-| **OMDB** | Removed. TMDB is sole movie/TV source. |
-| **Prime Video data** | TMDB discover API with `with_watch_providers=9`, cross-checked per-item via `/watch/providers`. More accurate than discover alone. |
-| **TMDB popular vs trending** | `/movie/popular` is the right endpoint — updated daily, reflects what people are actually watching. `/trending/week` is broader. |
-| **Netflix title "01Thrash" bug** | XLSX sometimes encodes rank + title with no separator. Fixed via regex: `^\d{1,3}([A-Z].*)$` captures from uppercase letter onward. |
-| **`JSON.stringify` in onclick** | Never put `JSON.stringify(obj)` in an HTML onclick attribute. Use `window._trendItems` map + `storeTrendItem()` instead. |
-| **Events geolocation** | `navigator.geolocation.getCurrentPosition()` with 5s fallback timer. Denied → default city from `navigator.language`. India → always Insider.in (Ticketmaster doesn't cover India). |
-| **TripAdvisor places** | Free tier (5000/month). Requires separate photo API call per location. Falls back to curated static lists when no key or quota exceeded. |
-| **Startup scrape** | Runs on every deploy (15s delay) to ensure fresh data with latest code fixes. Not conditional. |
-| **TMDB rate limit** | 40 req/10s on free tier. Scraper adds 300ms between calls. Prime provider check adds 120ms between per-item checks. |
-| **Google Maps short URLs** | Multi-hop redirect chain. `redirect: 'follow'` required. Place name extracted from final URL path. |
-| **YouTube oEmbed** | Free, no key. More reliable than ogs which gets blocked by YouTube consent walls. |
-| **Session memory store** | Resets on deploy. Use connect-redis for persistence. |
-| **`/api/trending/streaming` shape** | `{ netflix: [...], prime: [...], source }`. Breaking change from v1 `{ data: { all: [...] } }`. |
+### After deploying v3.3 — run in Supabase SQL Editor
+```sql
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member';
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS invite_token TEXT;
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS invite_expires_at TIMESTAMPTZ;
+CREATE TABLE IF NOT EXISTS group_channels (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  group_id BIGINT NOT NULL, channel_id TEXT NOT NULL,
+  channel_name TEXT, channel_url TEXT, added_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(group_id, channel_id)
+);
+CREATE TABLE IF NOT EXISTS user_preferences (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) UNIQUE,
+  notify_pick_add BOOLEAN DEFAULT true, notify_group_ok BOOLEAN DEFAULT true,
+  notify_digest BOOLEAN DEFAULT true, updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE trending_places ADD COLUMN IF NOT EXISTS tripadvisor_url TEXT;
+TRUNCATE trending_places;
+TRUNCATE trending_prime;
+```
 
 ---
 
-## 10. Planned / Future Features
-
-- **WhatsApp integration** — Phase 2
-- **iOS app** — longer-term
-- **Pricing tier enforcement** — Free/Squad+/Community limits defined, not yet enforced
-- **Per-group YouTube channels in DB** — currently browser localStorage
-- **Email sending for invites** — table ready, Nodemailer/Resend not wired up
-- **Redis session store** — replace in-memory express-session
-- **Real-time vote updates** — WebSocket or SSE so votes appear instantly for all members
-- **TMDB direct URL as primary format** — paste `themoviedb.org/movie/...` instead of IMDB
-
----
-
-*End of document. Update whenever a feature is confirmed built or a design decision is locked in.*
+*End of document. v3.3 — April 2026*

@@ -193,6 +193,12 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
 .pvc-skip{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.15)}
 
 /* ── SETTINGS SECTION ── */
+.toggle-sw{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0}
+.toggle-sw input{opacity:0;width:0;height:0}
+.toggle-track{position:absolute;inset:0;background:#DDD6FE;border-radius:12px;cursor:pointer;transition:background .2s}
+.toggle-track::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.toggle-sw input:checked + .toggle-track{background:var(--blue)}
+.toggle-sw input:checked + .toggle-track::after{transform:translateX(20px)}
 .settings-wrap{padding:1rem 1.25rem 5rem;max-width:600px}
 .settings-section{background:var(--white);border-radius:var(--r);overflow:hidden;margin-bottom:16px;border:1px solid var(--border)}
 .settings-hdr{padding:10px 14px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.05em;text-transform:uppercase}
@@ -262,9 +268,6 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
     <a class="drawer-item" id="dnav-dashboard" onclick="goSection('dashboard',this)">
       <div class="drawer-icon">🏠</div><span>Dashboard</span>
     </a>
-    <a class="drawer-item" id="dnav-picks" onclick="goSection('picks',this)">
-      <div class="drawer-icon">✓</div><span>Picks</span>
-    </a>
     <a class="drawer-item" id="dnav-trending" onclick="goSection('trending',this)">
       <div class="drawer-icon">🔥</div><span>Trending</span>
     </a>
@@ -310,32 +313,7 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
     </div>
   </section>
 
-  <!-- ── PICKS SECTION (single group) ── -->
-  <section class="page-section" id="sec-picks">
-    <div class="picks-page">
-      <div class="picks-header">
-        <div class="picks-header-top">
-          <div class="squad-title" id="squad-title">Your Squad</div>
-          <select class="group-select" id="group-select" onchange="switchGroup(this.value)">
-            <option value="">Loading...</option>
-          </select>
-        </div>
-        <div class="stats-row" id="stats-row"></div>
-      </div>
-      <div class="filter-bar">
-        <button class="fpill on" onclick="setFilter('all',this)">All</button>
-        <button class="fpill" onclick="setFilter('want',this)">★ Want to</button>
-        <button class="fpill" onclick="setFilter('group',this)">✓ Group ok</button>
-        <button class="fpill" onclick="setFilter('movie',this)">🎬 Movies</button>
-        <button class="fpill" onclick="setFilter('food',this)">🍽 Food</button>
-        <button class="fpill" onclick="setFilter('place',this)">📍 Places</button>
-        <button class="fpill" onclick="setFilter('event',this)">🎭 Events</button>
-      </div>
-      <div class="picks-grid" id="picks-grid">
-        <div class="empty"><div class="empty-icon">⏳</div>Loading picks...</div>
-      </div>
-    </div>
-  </section>
+  <!-- ── PICKS SECTION REMOVED — Dashboard is primary view ── -->
 
   <!-- ── TRENDING SECTION ── -->
   <section class="page-section" id="sec-trending">
@@ -345,6 +323,8 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
         <button class="tcb-btn on" onclick="setTrendCat('movies',this)">🎬 Movies</button>
         <button class="tcb-btn" onclick="setTrendCat('events',this)">🎭 Events</button>
         <button class="tcb-btn" onclick="setTrendCat('places',this)">📍 Places</button>
+        <button class="tcb-btn" onclick="setTrendCat('channels',this)">📺 Channels</button>
+        <button class="tcb-btn" onclick="setTrendCat('community',this)">🌍 Community</button>
       </div>
 
       <!-- Movies -->
@@ -374,24 +354,48 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
         <div id="tr-places"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
       </div>
 
+      <!-- YouTube Channels -->
+      <div class="trend-cat-section" id="tcat-channels">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem;flex-wrap:wrap">
+          <div class="trend-sec-hdr" style="margin:0">📺 Squad YouTube Channels</div>
+          <select id="channel-group-sel" onchange="loadChannelVideos(this.value)" style="background:var(--beige);border:1.5px solid var(--beige3);border-radius:8px;padding:4px 10px;font-size:12px;color:var(--text);font-family:var(--font-b);outline:none;cursor:pointer">
+            <option value="">Select a squad...</option>
+          </select>
+        </div>
+        <div id="tr-channels"><div style="color:var(--muted);font-size:13px;padding:.5rem 0">Select a squad to see their YouTube channels</div></div>
+      </div>
+
+      <!-- Community Trending -->
+      <div class="trend-cat-section" id="tcat-community">
+        <div style="margin-bottom:.75rem">
+          <div class="trend-sec-hdr" style="margin:0 0 4px">🌍 Trending in the Community</div>
+          <div style="font-size:11px;color:var(--muted)">Group-ok picks from squads you're not in</div>
+        </div>
+        <div id="tr-community"><div class="trend-loading"><div class="trend-spin"></div>Loading community picks...</div></div>
+      </div>
+
     </div>
   </section>
 
   <!-- ── SETTINGS SECTION ── -->
   <section class="page-section" id="sec-settings">
     <div class="settings-wrap">
-      <div class="settings-section" id="identity-card" style="display:none">
-        <div class="settings-hdr">Signed in as</div>
+
+      <!-- Profile card -->
+      <div class="settings-section">
+        <div class="settings-hdr">Profile</div>
         <div class="settings-row" style="cursor:default">
-          <div class="si-icon" id="si-av" style="width:36px;height:36px;border-radius:50%;background:var(--beige2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--navy)">?</div>
-          <div class="si-lbl"><h4 id="si-name">Member</h4><p id="si-type">Google account</p></div>
+          <div class="si-icon" id="si-av" style="width:42px;height:42px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff">?</div>
+          <div class="si-lbl"><h4 id="si-name">Loading...</h4><p id="si-email" style="font-size:12px;color:var(--muted)"></p></div>
         </div>
       </div>
+
+      <!-- Squads -->
       <div class="settings-section">
-        <div class="settings-hdr">Squad</div>
+        <div class="settings-hdr">Squads</div>
         <div class="settings-row" onclick="openGroupPanel('manage')" style="cursor:pointer">
           <div class="si-icon">👥</div>
-          <div class="si-lbl"><h4>My Squads</h4><p>Manage, rename, invite members, delete</p></div>
+          <div class="si-lbl"><h4>My Squads</h4><p>Manage members, admins, rename, delete</p></div>
           <span class="si-arrow">›</span>
         </div>
         <div class="settings-row" onclick="openGroupPanel('google')" style="cursor:pointer">
@@ -401,25 +405,47 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
         </div>
         <div class="settings-row" onclick="openGroupPanel('telegram')" style="cursor:pointer">
           <div class="si-icon">💬</div>
-          <div class="si-lbl"><h4>Link Telegram Group</h4><p>Add one or more Telegram groups</p></div>
-          <span class="si-arrow">›</span>
-        </div>
-        <div class="settings-row" style="cursor:default">
-          <div class="si-icon">🔔</div>
-          <div class="si-lbl"><h4>Notifications</h4><p>Weekly digest · Friday picks</p></div>
+          <div class="si-lbl"><h4>Link Telegram Group</h4><p>Connect your Telegram group</p></div>
           <span class="si-arrow">›</span>
         </div>
       </div>
+
+      <!-- Notifications -->
+      <div class="settings-section">
+        <div class="settings-hdr">Notifications</div>
+        <div class="settings-row">
+          <div class="si-icon">🎬</div>
+          <div class="si-lbl"><h4>New picks</h4><p>Email when someone adds to your squad</p></div>
+          <label class="toggle-sw"><input type="checkbox" id="pref-pick-add" onchange="savePref('notify_pick_add',this.checked)"><span class="toggle-track"></span></label>
+        </div>
+        <div class="settings-row">
+          <div class="si-icon">✅</div>
+          <div class="si-lbl"><h4>Group ok</h4><p>Email when a pick reaches consensus</p></div>
+          <label class="toggle-sw"><input type="checkbox" id="pref-group-ok" onchange="savePref('notify_group_ok',this.checked)"><span class="toggle-track"></span></label>
+        </div>
+        <div class="settings-row">
+          <div class="si-icon">📅</div>
+          <div class="si-lbl"><h4>Weekly digest</h4><p>Sunday summary of your squad picks</p></div>
+          <label class="toggle-sw"><input type="checkbox" id="pref-digest" onchange="savePref('notify_digest',this.checked)"><span class="toggle-track"></span></label>
+        </div>
+      </div>
+
+      <!-- Account -->
       <div class="settings-section">
         <div class="settings-hdr">Account</div>
         <div class="settings-row" style="cursor:default">
           <div class="si-icon">✨</div>
-          <div class="si-lbl"><h4>Squad+ Plan</h4><p>Free · Upgrade for more</p></div>
+          <div class="si-lbl"><h4>Plan</h4><p>Free tier</p></div>
+          <span style="font-size:11px;font-weight:700;background:#E9D5FF;color:#6B21A8;padding:3px 8px;border-radius:10px">Free</span>
+        </div>
+        <div class="settings-row" onclick="copyShareLink()" style="cursor:pointer">
+          <div class="si-icon">🔗</div>
+          <div class="si-lbl"><h4>Share SquadPicks</h4><p>Invite friends to the app</p></div>
           <span class="si-arrow">›</span>
         </div>
-        <div class="settings-row" style="cursor:default">
-          <div class="si-icon">❓</div>
-          <div class="si-lbl"><h4>Help</h4><p>How to use SquadPicks</p></div>
+        <div class="settings-row" onclick="window.open('https://t.me/squadpicks_bot','_blank')" style="cursor:pointer">
+          <div class="si-icon">🤖</div>
+          <div class="si-lbl"><h4>Telegram Bot</h4><p>Add bot to your Telegram groups</p></div>
           <span class="si-arrow">›</span>
         </div>
         <button class="settings-signout" onclick="doSignOut()">
@@ -427,6 +453,7 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
           <div class="settings-signout-lbl"><h4>Sign out</h4><p>Return to login page</p></div>
         </button>
       </div>
+
     </div>
   </section>
 
@@ -588,6 +615,7 @@ const BASE = window.location.origin;
 let currentUser  = null;
 let currentGroupId = null;
 let allPicks     = [];
+let allGroups    = [];   // all user's squads — shared between dashboard, channels dropdown
 let myVotes      = {};
 let planFilter   = 'all';
 let picksFilter  = 'all';
@@ -657,15 +685,8 @@ function goSection(name, btn) {
   if (dnav) dnav.classList.add('on');
   closeDrawer();
   if (name === 'dashboard') loadDashboard();
-  if (name === 'picks') {
-    if (currentGroupId) {
-      loadPicks();
-    } else {
-      // No group selected yet — show a helpful prompt instead of crashing
-      const grid = document.getElementById('picks-grid');
-      if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px">Choose a squad first</div><div style="font-size:13px;color:var(--muted);margin-bottom:16px">Use the group selector in the header to pick a squad, or go to Dashboard to see all picks.</div><button onclick="goSection(\'dashboard\',document.getElementById(\'dnav-dashboard\'))" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font-b)">Go to Dashboard</button></div>';
-    }
-  }
+  if (name === 'trending')  loadTrending();
+  if (name === 'settings')  loadSettings();
 }
 
 // ── DRAWER ────────────────────────────────────────────────
@@ -708,23 +729,20 @@ async function loadGroups(autoSelectFirst) {
       sel.innerHTML = html;
 
       if (currentGroupId && groups.find(g => String(g.id) === String(currentGroupId))) {
-        // URL already has a valid groupId — load it directly
         const active = groups.find(g => String(g.id) === String(currentGroupId));
         document.getElementById('squad-title').textContent  = active.title;
         document.getElementById('topnav-squad').textContent = active.title;
         sel.value = String(currentGroupId);
-        await loadPicks();
+        // Dashboard will load via goSection
       } else if (groups.length === 1 || autoSelectFirst) {
-        // Only one group — auto-select it
         currentGroupId = String(groups[0].id);
         const active = groups[0];
         document.getElementById('squad-title').textContent  = active.title;
         document.getElementById('topnav-squad').textContent = active.title;
         sel.value = currentGroupId;
         history.replaceState({}, '', `/dashboard?groupId=${currentGroupId}`);
-        await loadPicks();
+        // Dashboard loads on init
       } else {
-        // Multiple groups, none selected — prompt user to pick one
         document.getElementById('squad-title').textContent  = 'Select a squad';
         document.getElementById('topnav-squad').textContent = '';
         showGroupPrompt(groups);
@@ -732,7 +750,8 @@ async function loadGroups(autoSelectFirst) {
     } else {
       sel.innerHTML = '<option value="">No squads yet</option>';
       document.getElementById('squad-title').textContent  = 'No squads yet';
-      document.getElementById('picks-grid').innerHTML = `
+      const dg = document.getElementById('dash-grid');
+      if (dg) dg.innerHTML = `
         <div class="empty">
           <div class="empty-icon">👥</div>
           <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px">No squads yet</div>
@@ -745,7 +764,7 @@ async function loadGroups(autoSelectFirst) {
 
 // Show a prominent group-picker when user has multiple groups but none selected
 function showGroupPrompt(groups) {
-  const grid = document.getElementById('picks-grid');
+  const grid = document.getElementById('dash-grid');
   const webGroups = groups.filter(g =>  g.is_web_group);
   const tgGroups  = groups.filter(g => !g.is_web_group);
 
@@ -795,7 +814,6 @@ function switchGroup(id) {
   document.getElementById('squad-title').textContent  = title || 'Your Squad';
   document.getElementById('topnav-squad').textContent = title || '';
   history.pushState({}, '', currentGroupId ? `/dashboard?groupId=${currentGroupId}` : '/dashboard');
-  loadPicks();
   loadDashboard();
 }
 
@@ -877,6 +895,7 @@ async function loadDashboard() {
     const gRes = await fetch(BASE + '/api/groups/mine');
     const gData = await gRes.json();
     dashAllGroups = gData.groups || [];
+    allGroups = dashAllGroups; // share reference for channels dropdown
 
     // Render group selector tabs
     renderDashGroupTabs();
@@ -1037,198 +1056,18 @@ async function castDashVote(pickId, status) {
     if (pidx>=0) { allPicks[pidx].votes=data.votes; allPicks[pidx].my_vote=data.my_vote; allPicks[pidx].group_ok=data.group_ok; }
     myVotes[pickId] = data.my_vote||'';
     renderDashStats(); renderDashGrid();
-    renderStats(); renderPicks();
     showToast(data.my_vote ? 'Vote saved ✓' : 'Vote removed');
     if (data.group_ok) setTimeout(()=>showToast('✅ Group ok!'),600);
   } catch(e) { showToast('Vote failed — please retry'); }
 }
 
-// ── PICKS ─────────────────────────────────────────────────
-async function loadPicks() {
-  if (!currentGroupId) {
-    const grid = document.getElementById('picks-grid');
-    if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">👥</div>Select a squad to see picks</div>';
-    return;
-  }
-  const grid = document.getElementById('picks-grid');
-  if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Loading picks...</div>';
-  try {
-    const r = await fetch(`${BASE}/api/picks?groupId=${encodeURIComponent(currentGroupId)}`, {
-      headers: {
-        'x-telegram-init-data': 'test',
-        'x-user-id':   String(currentUser?.id  || '0'),
-        'x-user-name': currentUser?.name || 'User',
-        'x-chat-id':   String(currentGroupId),
-      }
-    });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const data = await r.json();
-    allPicks = data.picks || [];
-    allPicks.forEach(p => { myVotes[p.id] = p.my_vote || ''; });
-    renderStats();
-    renderPicks();
-    // sync to dashboard if it's loaded
-    if (document.getElementById('sec-dashboard')?.classList.contains('on')) loadDashboard();
-  } catch(e) {
-    console.error('[loadPicks]', e);
-    if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Could not load picks. <button onclick="loadPicks()" style="color:var(--blue);background:none;border:none;cursor:pointer;font-family:var(--font-b);font-weight:600;font-size:13px">Retry</button></div>';
-  }
-}
-
-function renderStats() {
-  const ok = allPicks.filter(p=>p.group_ok).length;
-  const nd = allPicks.filter(p=>!myVotes[p.id]).length;
-  document.getElementById('stats-row').innerHTML = `
-    <div class="stat"><div class="stat-num">${allPicks.length}</div><div class="stat-lbl">Total</div></div>
-    <div class="stat"><div class="stat-num" style="color:var(--green)">${ok}</div><div class="stat-lbl">Group ok</div></div>
-    <div class="stat"><div class="stat-num" style="color:var(--amber)">${nd}</div><div class="stat-lbl">Need vote</div></div>`;
-}
-
-function setFilter(f, btn) {
-  picksFilter = f;
-  document.querySelectorAll('.filter-bar .fpill').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  renderPicks();
-}
-
-function renderPicks() {
-  const grid = document.getElementById('picks-grid');
-  let list = allPicks.filter(p => {
-    if (picksFilter==='want')  return myVotes[p.id]==='want';
-    if (picksFilter==='group') return p.group_ok;
-    if (picksFilter==='movie') return p.type==='movie';
-    if (picksFilter==='food')  return p.type==='food';
-    if (picksFilter==='place') return p.type==='place';
-    if (picksFilter==='event') return p.type==='event';
-    return true;
-  });
-  if (!list.length) {
-    grid.innerHTML = '<div class="empty"><div class="empty-icon">🍿</div>No picks here yet!</div>';
-    return;
-  }
-  grid.innerHTML = list.map(p => {
-    const tc     = TC[p.type] || TC.link;
-    const labels = VOTE_LABELS[p.type] || VOTE_LABELS.link;
-    const seen   = (p.votes||[]).filter(v=>v.status==='seen');
-    const want   = (p.votes||[]).filter(v=>v.status==='want');
-    const skip   = (p.votes||[]).filter(v=>v.status==='skip');
-    const mv     = myVotes[p.id] || '';
-    const chips  = [
-      ...seen.map(v=>`<span class="vc vc-seen">✓ ${sn(v.first_name||'?')}</span>`),
-      ...want.map(v=>`<span class="vc vc-want">★ ${sn(v.first_name||'?')}</span>`),
-      ...skip.map(v=>`<span class="vc vc-skip">✕ ${sn(v.first_name||'?')}</span>`),
-    ].join('') || '<span style="font-size:11px;color:var(--hint);font-style:italic">No votes yet</span>';
-
-    // Thumbnail — real image or emoji
-    const thumbContent = p.image_url
-      ? `<img src="${esc(p.image_url)}" alt="" onerror="this.style.display='none'">`
-        + `<span class="card-thumb-emoji" style="display:none">${tc.emoji}</span>`
-      : `<span class="card-thumb-emoji">${tc.emoji}</span>`;
-
-    const linkBtn = p.url
-      ? `<a href="${esc(p.url)}" target="_blank" class="card-link">🔗 Open link ↗</a>`
-      : '';
-    const okBadge = p.group_ok ? `<div class="card-ok">✓ Group ok</div>` : '';
-
-    return `<div class="pick-card" id="pc-${p.id}">
-      <div class="card-thumb" style="background:${tc.grad}">
-        ${thumbContent}
-        <div class="card-thumb-overlay"></div>
-        <div class="card-thumb-info">
-          <div class="card-type-badge" style="background:${tc.tb};color:${tc.tt}">${tc.lbl}</div>
-          <div class="card-thumb-title">${esc(p.title)}</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="card-desc">${esc(p.description||'')}</div>
-        <div class="card-by">Added by ${esc(p.added_by_name||'someone')}</div>
-        ${linkBtn}${okBadge}
-        <div class="voters-row">${chips}<span class="vote-count">${seen.length+want.length+skip.length} voted</span></div>
-      </div>
-      <div class="vote-btns">
-        <button class="vbtn ${mv==='seen'?'on-seen':''}" onclick="castVote(${p.id},'seen')">✓ ${esc(labels.seen)}</button>
-        <button class="vbtn ${mv==='want'?'on-want':''}" onclick="castVote(${p.id},'want')">★ ${esc(labels.want)}</button>
-        <button class="vbtn ${mv==='skip'?'on-skip':''}" onclick="castVote(${p.id},'skip')">✕ ${esc(labels.skip)}</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function castVote(pickId, status) {
-  try {
-    const r    = await fetch(BASE+'/api/vote', {
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-telegram-init-data':'test','x-user-id':String(currentUser?.id||'0'),'x-user-name':currentUser?.name||'User'},
-      body: JSON.stringify({pickId, status})
-    });
-    const data = await r.json();
-    const idx  = allPicks.findIndex(p=>p.id===pickId);
-    if (idx>=0) { allPicks[idx].votes=data.votes; allPicks[idx].my_vote=data.my_vote; allPicks[idx].group_ok=data.group_ok; }
-    myVotes[pickId] = data.my_vote||'';
-    renderStats(); renderPicks(); renderPlan();
-    showToast(data.my_vote ? 'Vote saved ✓' : 'Vote removed');
-    if (data.group_ok) setTimeout(()=>showToast('✅ Group ok!'),600);
-  } catch(e) { showToast('Vote failed — please retry'); }
-}
-
-// ── PLAN ──────────────────────────────────────────────────
-function setPlanFilter(f, btn) {
-  planFilter = f;
-  document.querySelectorAll('#sec-plan .fpill').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  renderPlan();
-}
-
-function renderPlan() {
-  const el = document.getElementById('plan-cards');
-  const types = ['movie','show','food','place','event','link'];
-  let filtered = allPicks.filter(p => {
-    if (planFilter==='ok')      return p.group_ok && !(p.votes||[]).some(v=>v.status==='skip');
-    if (planFilter==='skip')    return (p.votes||[]).some(v=>v.status==='skip');
-    if (planFilter==='pending') return !(p.votes||[]).length;
-    if (types.includes(planFilter)) return p.type===planFilter;
-    return true;
-  });
-  if (!filtered.length) { el.innerHTML='<div class="empty"><div class="empty-icon">📋</div>Nothing here yet</div>'; return; }
-  const groups = {}; types.forEach(t=>groups[t]=[]);
-  filtered.forEach(p=>(groups[p.type]||groups.link).push(p));
-  const tn={movie:'Movies',show:'Shows',food:'Restaurants',place:'Places',event:'Events',link:'Links'};
-  let html='';
-  types.forEach(t=>{
-    if (!groups[t].length) return;
-    const tc=TC[t]||TC.link;
-    html+=`<div class="plan-group-title">${tc.emoji} ${tn[t]}<span class="plan-count">${groups[t].length}</span></div>`;
-    groups[t].forEach(p=>{
-      const v1=(p.votes||[]).filter(v=>v.status==='seen');
-      const v2=(p.votes||[]).filter(v=>v.status==='want');
-      const v3=(p.votes||[]).filter(v=>v.status==='skip');
-      const badge = p.group_ok ? '<span class="pb pb-ok">✓ Group ok</span>'
-        : v3.length ? `<span class="pb pb-skip">✕ ${v3.length} skip</span>`
-        : !p.votes?.length ? '<span class="pb pb-wait">⏳ no votes</span>' : '';
-      const chips = [
-        ...v1.map(v=>`<span class="pvc pvc-ok">✓ ${sn(v.first_name)}</span>`),
-        ...v2.map(v=>`<span class="pvc pvc-want">★ ${sn(v.first_name)}</span>`),
-        ...v3.map(v=>`<span class="pvc pvc-skip">✕ ${sn(v.first_name)}</span>`),
-      ].join('');
-      const titleEl = p.url
-        ? `<a href="${esc(p.url)}" target="_blank">${esc(p.title||'Untitled')}</a>`
-        : esc(p.title||'Untitled');
-      const thumbContent = p.image_url
-        ? `<img src="${esc(p.image_url)}" alt="" onerror="this.style.display='none'"><span class="pcard-thumb-emoji" style="display:none">${tc.emoji}</span>`
-        : `<span class="pcard-thumb-emoji">${tc.emoji}</span>`;
-      html+=`<div class="pcard">
-        <div class="pcard-thumb" style="background:${tc.grad}">${thumbContent}</div>
-        <div class="pcard-body">
-          <div class="pcard-title">${titleEl}</div>
-          <div class="pcard-meta">${esc(p.description||'')} · by ${esc(p.added_by_name||'someone')}</div>
-          <div class="pcard-badges">${badge}</div>
-          <div class="pcard-voters">${chips}</div>
-        </div></div>`;
-    });
-  });
-  el.innerHTML = html;
-}
-
+// ── PICKS PAGE REMOVED — Dashboard is the primary view ──────
+// These stubs prevent any stale onclick references from crashing
+function loadPicks() { loadDashboard(); }
+function renderPicks() {}
+function renderStats() {}
+function setFilter() {}
+function castVote(pickId, status) { castDashVote(pickId, status); }
 // ── ADD PICK ──────────────────────────────────────────────
 let addPickType = 'movie';
 let addFetchTimer = null;
@@ -1316,13 +1155,11 @@ async function saveAdd() {
       return; // keep modal open so user can change URL
     }
     if (data.pick) {
-      allPicks.unshift({ ...data.pick, votes: [{user_id: String(currentUser?.id||'0'), status:'want', first_name: currentUser?.name||'You'}], my_vote:'want', group_ok:false });
+      const newPick = { ...data.pick, votes: [{user_id: String(currentUser?.id||'0'), status:'want', first_name: currentUser?.name||'You'}], my_vote:'want', group_ok:false };
+      if (!allPicks.find(p => p.id === newPick.id)) allPicks.unshift(newPick);
       myVotes[data.pick.id] = 'want';
     }
     closeAdd();
-    picksFilter = 'all';
-    document.querySelectorAll('#sec-picks .filter-bar .fpill').forEach((b,i) => b.classList.toggle('on', i===0));
-    renderStats(); renderPicks();
     loadDashboard();
     showToast('Pick added! 🎉');
   } catch(e) { showToast('Could not add pick'); }
@@ -1330,8 +1167,9 @@ async function saveAdd() {
 }
 
 // ── GROUP PANEL ───────────────────────────────────────────
-let managingGroupId   = null;
+let managingGroupId    = null;
 let managingGroupIsWeb = false;
+let managingGroupOwnerId = null;
 
 function openGroupPanel(tab) {
   closeDrawer();
@@ -1378,7 +1216,7 @@ async function loadSquadList() {
             <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.title)}</div>
             <div style="font-size:11px;color:var(--muted)">Google Squad</div>
           </div>
-          <button onclick="openSquadDetail('${g.id}','${esc(g.title)}',true)" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-b)">Manage</button>
+          <button onclick="openSquadDetail('${g.id}','${esc(g.title)}',true,'${g.owner_id||''}')" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-b)">Manage</button>
         </div>`;
       });
     }
@@ -1401,9 +1239,10 @@ async function loadSquadList() {
 }
 
 // ── SQUAD DETAIL VIEW ─────────────────────────────────────
-async function openSquadDetail(groupId, title, isWebGroup) {
-  managingGroupId    = groupId;
-  managingGroupIsWeb = isWebGroup;
+async function openSquadDetail(groupId, title, isWebGroup, ownerId) {
+  managingGroupId      = groupId;
+  managingGroupIsWeb   = isWebGroup;
+  managingGroupOwnerId = ownerId || null;
 
   document.getElementById('gp-manage').classList.remove('on');
   document.getElementById('gp-manage').style.display = 'none';
@@ -1431,15 +1270,27 @@ async function loadSquadMembers(groupId) {
     const d = await r.json();
     const members = d.members || [];
     if (!members.length) { el.innerHTML = '<div style="font-size:13px;color:var(--muted)">No members yet</div>'; return; }
-    el.innerHTML = members.map(m => `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+    const isOwner = currentUser && members.some(m => m.email === currentUser.email && (m.role === 'owner' || m.memberId === managingGroupOwnerId));
+    el.innerHTML = members.map(m => {
+      const roleTag = m.role === 'owner' ? '<span style="font-size:10px;font-weight:700;background:#E9D5FF;color:#6B21A8;padding:2px 7px;border-radius:8px">Owner</span>'
+                    : m.role === 'admin' ? '<span style="font-size:10px;font-weight:700;background:#FEF3C7;color:#D97706;padding:2px 7px;border-radius:8px">Admin</span>'
+                    : '';
+      const pendingTag = m.status === 'invited' ? '<span style="font-size:10px;color:#D97706;font-weight:600">Pending</span>' : '';
+      const adminBtn = (managingGroupIsWeb && isOwner && m.role !== 'owner')
+        ? `<button onclick="toggleMemberAdmin('${managingGroupId}','${m.memberId}','${m.role||'member'}')" style="background:none;border:1px solid var(--beige3);border-radius:6px;padding:3px 8px;font-size:10px;color:var(--text2);cursor:pointer;font-family:var(--font-b)">${m.role==='admin'?'Revoke admin':'Make admin'}</button>`
+        : '';
+      const removeBtn = (managingGroupIsWeb && (isOwner || currentUser?.email === m.email) && m.role !== 'owner')
+        ? `<button onclick="removeMemberFromSquad('${m.memberId}')" style="background:none;border:1px solid rgba(220,38,38,.2);border-radius:6px;padding:3px 8px;font-size:10px;color:var(--red);cursor:pointer;font-family:var(--font-b)">Remove</button>`
+        : '';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
         <div style="width:32px;height:32px;border-radius:50%;background:var(--beige2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--navy);flex-shrink:0">${(m.name||'?').charAt(0).toUpperCase()}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(m.name||'Member')}</div>
-          <div style="font-size:11px;color:var(--muted)">${esc(m.email||'')} ${m.status==='invited'?'<span style="color:#D97706;font-weight:600">· Pending</span>':''}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px">${esc(m.name||'Member')} ${roleTag}</div>
+          <div style="font-size:11px;color:var(--muted)">${esc(m.email||'')} ${pendingTag}</div>
         </div>
-        ${managingGroupIsWeb ? `<button onclick="removeMemberFromSquad('${m.memberId}')" style="background:none;border:1px solid rgba(220,38,38,.2);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--red);cursor:pointer;font-family:var(--font-b)">Remove</button>` : ''}
-      </div>`).join('');
+        <div style="display:flex;gap:4px">${adminBtn}${removeBtn}</div>
+      </div>`;
+    }).join('');
   } catch(e) { el.innerHTML = '<div style="font-size:13px;color:var(--red)">Failed to load members</div>'; }
 }
 
@@ -1696,6 +1547,8 @@ function setTrendCat(cat, btn) {
   document.querySelectorAll('.tcb-btn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
   document.querySelectorAll('.trend-cat-section').forEach(s => s.classList.toggle('on', s.id === 'tcat-' + cat));
+  if (cat === 'channels')  populateChannelGroupDropdown();
+  if (cat === 'community') loadCommunityTrending();
 }
 
 function detectUserRegion() {
@@ -1966,7 +1819,7 @@ async function addTrendPickDirect(itemId) {
   if (!item) { showToast('Item not found'); return; }
   if (!currentGroupId) {
     showToast('Select a squad first');
-    goSection('picks', document.getElementById('dnav-picks'));
+    goSection('dashboard', document.getElementById('dnav-dashboard'));
     return;
   }
 
@@ -2003,14 +1856,11 @@ async function addTrendPickDirect(itemId) {
       return;
     }
     if (data.pick) {
-      var newPick = Object.assign({}, data.pick, { votes: [], my_vote: '', group_ok: false });
-      // Ensure image_url is set (sometimes DB row has null if save had issue)
+      var newPick = Object.assign({}, data.pick, { votes: [], my_vote: 'want', group_ok: false });
       if (!newPick.image_url && imageUrl) newPick.image_url = imageUrl;
       if (!allPicks.find(p => p.id === newPick.id)) allPicks.unshift(newPick);
-      myVotes[newPick.id] = '';
-      renderStats();
-      renderPicks();
-      renderPlan();
+      myVotes[newPick.id] = 'want';
+      loadDashboard();
       showToast('"' + title + '" added! \u2705');
     } else {
       showToast(data.error || 'Could not add pick');
@@ -2019,6 +1869,165 @@ async function addTrendPickDirect(itemId) {
     console.error('[addTrendPickDirect]', e);
     showToast('Connection error \u2014 please try again');
   }
+}
+
+// ── SETTINGS ──────────────────────────────────────────────
+
+async function loadSettings() {
+  // Profile
+  if (currentUser) {
+    const av = document.getElementById('si-av');
+    if (av) av.textContent = (currentUser.name||'?').charAt(0).toUpperCase();
+    const nm = document.getElementById('si-name');
+    if (nm) nm.textContent = currentUser.name || 'Member';
+    const em = document.getElementById('si-email');
+    if (em) em.textContent = currentUser.email || '';
+  }
+  // Load notification prefs
+  try {
+    const r = await fetch(BASE + '/api/preferences');
+    const d = await r.json();
+    if (d.prefs) {
+      const pa = document.getElementById('pref-pick-add');
+      const go = document.getElementById('pref-group-ok');
+      const di = document.getElementById('pref-digest');
+      if (pa) pa.checked = d.prefs.notify_pick_add !== false;
+      if (go) go.checked = d.prefs.notify_group_ok !== false;
+      if (di) di.checked = d.prefs.notify_digest !== false;
+    }
+  } catch(e) { console.warn('[loadSettings]', e); }
+}
+
+async function savePref(key, value) {
+  try {
+    await fetch(BASE + '/api/preferences', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [key]: value })
+    });
+    showToast(value ? '✅ Notification enabled' : '🔕 Notification disabled');
+  } catch(e) { showToast('Could not save preference'); }
+}
+
+function copyShareLink() {
+  const link = window.location.origin;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(link).then(() => showToast('Link copied! Share with friends 🔗'));
+  } else {
+    showToast(link);
+  }
+}
+
+// ── YOUTUBE CHANNELS ──────────────────────────────────────
+
+async function populateChannelGroupDropdown() {
+  const sel = document.getElementById('channel-group-sel');
+  if (!sel || !allGroups || !allGroups.length) return;
+  const defaultOption = '<option value="">Select a squad...</option>';
+  sel.innerHTML = defaultOption + allGroups.map(g =>
+    `<option value="${g.id}">${g.title}</option>`
+  ).join('');
+}
+
+async function loadChannelVideos(groupId) {
+  const el = document.getElementById('tr-channels');
+  if (!groupId) {
+    if (el) el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:.5rem 0">Select a squad to see their YouTube channels</div>';
+    return;
+  }
+  if (el) el.innerHTML = '<div class="trend-loading"><div class="trend-spin"></div>Loading channels...</div>';
+  try {
+    const r = await fetch(BASE + '/api/groups/' + encodeURIComponent(groupId) + '/channels');
+    const d = await r.json();
+    const channels = d.channels || [];
+    if (!channels.length) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:.5rem 0">No channels added yet. Click "+ Add channel" to add a YouTube channel for this squad.</div>';
+      return;
+    }
+    // Show each channel as an embedded link card
+    el.innerHTML = '<div style="display:flex;flex-direction:column;gap:12px">' + channels.map(ch => `
+      <div style="background:var(--white);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px;border:1px solid var(--border)">
+        <div style="font-size:28px">📺</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${esc(ch.channel_name || ch.channel_id)}</div>
+          <div style="font-size:12px;color:var(--muted)">${esc(ch.channel_url || 'YouTube Channel')}</div>
+        </div>
+        <a href="${esc(ch.channel_url || 'https://youtube.com/channel/' + ch.channel_id)}" target="_blank" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;font-family:var(--font-b)">Watch</a>
+      </div>`).join('') + '</div>';
+  } catch(e) {
+    if (el) el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:.5rem 0">Could not load channels</div>';
+  }
+}
+
+async function openChannelManager() {
+  const groupId = document.getElementById('channel-group-sel')?.value;
+  if (!groupId) { showToast('Select a squad first'); return; }
+  const channelUrl = prompt('Enter the YouTube channel URL:\n(e.g. https://youtube.com/@FilmiCraft or https://youtube.com/channel/UC...)');
+  if (!channelUrl) return;
+  // Extract channel ID from URL
+  let channelId = channelUrl.trim();
+  let channelName = channelUrl.replace('https://','').replace('http://','').split('/').filter(Boolean).pop() || channelUrl;
+  // Clean up @handle
+  if (channelId.includes('@')) channelName = channelId.split('@').pop().split('/')[0];
+  try {
+    const r = await fetch(BASE + '/api/groups/' + encodeURIComponent(groupId) + '/channels', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channelId, channelName, channelUrl: channelUrl.trim() })
+    });
+    const d = await r.json();
+    if (d.ok) { showToast('Channel added! ✅'); loadChannelVideos(groupId); }
+    else showToast(d.error || 'Could not add channel');
+  } catch(e) { showToast('Connection error'); }
+}
+
+// ── COMMUNITY TRENDING ────────────────────────────────────
+
+async function loadCommunityTrending() {
+  const el = document.getElementById('tr-community');
+  if (!el) return;
+  el.innerHTML = '<div class="trend-loading"><div class="trend-spin"></div>Loading community picks...</div>';
+  try {
+    const r = await fetch(BASE + '/api/trending/community');
+    const d = await r.json();
+    const picks = d.picks || [];
+    if (!picks.length) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem;text-align:center"><div style="font-size:28px;margin-bottom:8px">🌍</div>No community picks yet. As more squads use SquadPicks, group-ok picks from other squads will appear here.</div>';
+      return;
+    }
+    el.innerHTML = '<div class="places-grid">' + picks.map(p => {
+      var tc = TC[p.type] || TC.link;
+      var tid = storeTrendItem({ ...p, tmdb_url: p.url });
+      var imgHtml = p.image_url
+        ? '<img src="' + esc(p.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
+        : '<span style="font-size:36px">' + tc.emoji + '</span>';
+      return '<div class="tc-wide">'
+        + '<div class="tc-wide-img">' + imgHtml + '</div>'
+        + '<div class="tc-wide-body">'
+        + '<div class="tc-wide-title">' + esc(p.title) + '</div>'
+        + '<div class="tc-wide-meta">✅ Group ok · ' + esc(p.group_title || 'Another squad') + '</div>'
+        + '</div>'
+        + '<div class="tc-poster-actions">'
+        + '<button class="tc-pa-btn" onclick="addTrendPickDirect(\'' + tid + '\')" style="color:var(--blue)">+ Add</button>'
+        + '</div></div>';
+    }).join('') + '</div>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem">Could not load community picks</div>';
+  }
+}
+
+// ── ADMIN MANAGEMENT IN SQUAD DETAIL ─────────────────────
+
+async function toggleMemberAdmin(groupId, memberId, currentRole) {
+  const newRole = currentRole === 'admin' ? 'member' : 'admin';
+  try {
+    const r = await fetch(`${BASE}/api/groups/${groupId}/members/${memberId}/role`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: newRole })
+    });
+    const d = await r.json();
+    if (d.ok) { showToast(newRole === 'admin' ? '⭐ Made admin' : 'Removed admin'); openGroupDetail(groupId); }
+    else showToast(d.error || 'Could not update role');
+  } catch(e) { showToast('Connection error'); }
 }
 
 // ── SIGN OUT ──────────────────────────────────────────────
