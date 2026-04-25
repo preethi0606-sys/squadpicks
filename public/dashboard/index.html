@@ -463,6 +463,13 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
 <div class="overlay" id="add-modal" onclick="if(event.target===this)closeAdd()">
   <div class="modal">
     <h3>Add a pick</h3>
+    <!-- Squad selector — always visible so user knows exactly where it's going -->
+    <div class="field" style="margin-bottom:12px">
+      <label>Squad</label>
+      <select id="add-group-select" style="width:100%;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--text);font-family:var(--font-b);outline:none;cursor:pointer;appearance:auto">
+        <option value="">Select a squad...</option>
+      </select>
+    </div>
     <!-- Step 1: Category -->
     <div style="margin-bottom:1rem">
       <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Category</div>
@@ -478,15 +485,15 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
     <!-- Step 2: Link (optional) -->
     <div class="field">
       <label>Link <span style="font-size:11px;font-weight:400;color:var(--hint)">(optional — paste URL for auto title &amp; image)</span></label>
-      <input id="add-url" placeholder="https://www.imdb.com/title/... or any URL"/>
+      <input id="add-url" placeholder="https://www.themoviedb.org/... or any URL"/>
     </div>
-    <!-- Step 3: Manual title (shown when no link or as override) -->
+    <!-- Step 3: Manual title -->
     <div class="field" id="add-title-field">
       <label>Title <span style="font-size:11px;font-weight:400;color:var(--hint)" id="add-title-hint">(auto-filled from link, or type manually)</span></label>
       <input id="add-title" placeholder="e.g. Interstellar, Miku Restaurant..."/>
     </div>
     <!-- Fetched preview -->
-    <div id="add-preview" style="display:none;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:10px 12px;margin-bottom:12px;display:none;align-items:center;gap:10px">
+    <div id="add-preview" style="display:none;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:10px 12px;margin-bottom:12px;align-items:center;gap:10px">
       <img id="add-preview-img" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0" src="" alt=""/>
       <div>
         <div id="add-preview-title" style="font-size:13px;font-weight:700;color:var(--text)"></div>
@@ -640,35 +647,65 @@ const VOTE_LABELS = {
 
 // ── INIT ──────────────────────────────────────────────────
 (async function init() {
-  // Always check server session first
-  try {
-    const r   = await fetch(BASE + '/api/session');
-    const ses = await r.json();
-    if (!ses.ok || !ses.user) { window.location.href = '/login'; return; }
-    currentUser = ses.user;
-  } catch(e) { window.location.href = '/login'; return; }
+  // Detect if we're inside a Telegram Mini App
+  const tg = window.Telegram && window.Telegram.WebApp;
+  const tgInitData = tg && tg.initData && tg.initData.length > 0 ? tg.initData : null;
+
+  // If inside Telegram, try to auth via initData first
+  if (tgInitData) {
+    try {
+      const tgRes = await fetch(BASE + '/api/auth/telegram-webapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tgInitData })
+      });
+      const tgData = await tgRes.json();
+      if (tgData.ok && tgData.user) {
+        currentUser = tgData.user;
+        // Tell Telegram the Mini App is ready
+        if (tg.ready) tg.ready();
+      }
+    } catch(e) {
+      console.warn('[Telegram auth] Failed:', e.message);
+    }
+  }
+
+  // Now check the server session (covers both Google and Telegram auth)
+  if (!currentUser) {
+    try {
+      const r   = await fetch(BASE + '/api/session');
+      const ses = await r.json();
+      if (!ses.ok || !ses.user) { window.location.href = '/login'; return; }
+      currentUser = ses.user;
+    } catch(e) { window.location.href = '/login'; return; }
+  }
 
   // Populate UI identity
   const name   = currentUser.name || 'Member';
   const initLetter = name.charAt(0).toUpperCase();
   document.getElementById('topnav-av').textContent = initLetter;
-  document.getElementById('drawer-user').textContent = name + ' · Google';
+  document.getElementById('drawer-user').textContent = name + (tgInitData ? ' · Telegram' : ' · Google');
   const idCard = document.getElementById('identity-card');
   if (idCard) {
     idCard.style.display = 'block';
     document.getElementById('si-av').textContent   = initLetter;
     document.getElementById('si-name').textContent = name;
-    document.getElementById('si-type').textContent = currentUser.email || 'Google account';
+    document.getElementById('si-type').textContent = currentUser.email || (tgInitData ? 'Telegram account' : 'Google account');
   }
 
-  // Restore groupId — URL param first, then localStorage, then null (My Space)
+  // Restore groupId — URL param first (from Mini App redirect), then localStorage
   const params = new URLSearchParams(location.search);
   const savedGroup = localStorage.getItem('sp_last_group');
   currentGroupId = params.get('groupId') || savedGroup || null;
 
-  // Load groups and dashboard simultaneously
+  // If we got groupId from the Telegram start_param (via app.html redirect), use it
+  if (!currentGroupId && tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+    currentGroupId = tg.initDataUnsafe.start_param;
+  }
+
+  // Load groups and dashboard
   await loadGroups(false);
-  loadDashboard();       // load aggregated dashboard view
+  loadDashboard();
   loadTrending();
 
   // Default landing = Dashboard section
@@ -1078,11 +1115,24 @@ function setAddCat(btn) {
   addPickType = btn.dataset.type;
 }
 
-function openAdd() {
-  if (!currentGroupId) { showToast('Select a squad first'); return; }
+function openAdd(preselectedGroupId) {
+  // Populate squad dropdown from allGroups
+  const sel = document.getElementById('add-group-select');
+  if (sel && allGroups.length) {
+    const targetId = preselectedGroupId || currentGroupId || '';
+    sel.innerHTML = '<option value="">Select a squad...</option>' +
+      allGroups.map(g => {
+        const icon = g.is_web_group ? '🌐' : '💬';
+        const sel_ = String(g.id) === String(targetId) ? ' selected' : '';
+        return `<option value="${g.id}"${sel_}>${icon} ${esc(g.title)}</option>`;
+      }).join('');
+  } else if (sel) {
+    sel.innerHTML = '<option value="">No squads yet — create one first</option>';
+  }
   document.getElementById('add-modal').classList.add('open');
   document.getElementById('add-url').focus();
 }
+
 function closeAdd() {
   document.getElementById('add-modal').classList.remove('open');
   document.getElementById('add-url').value = '';
@@ -1137,8 +1187,11 @@ function detectTypeFromUrl(url) {
 async function saveAdd() {
   const url   = document.getElementById('add-url').value.trim();
   const title = document.getElementById('add-title').value.trim();
+  // Read group from the dropdown — not from currentGroupId
+  const groupSel  = document.getElementById('add-group-select');
+  const targetGroupId = groupSel ? groupSel.value : currentGroupId;
   if (!url && !title) { showToast('Enter a link or title'); return; }
-  if (!currentGroupId) { showToast('Select a squad first'); return; }
+  if (!targetGroupId) { showToast('Select a squad first'); groupSel && groupSel.focus(); return; }
   const btn = document.getElementById('add-save');
   btn.disabled = true; btn.textContent = 'Adding...';
   try {
@@ -1146,18 +1199,28 @@ async function saveAdd() {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'x-telegram-init-data':'test',
                  'x-user-id': String(currentUser?.id||'0'), 'x-user-name': currentUser?.name||'User',
-                 'x-chat-id': currentGroupId },
-      body: JSON.stringify({ url: url || title, groupId: currentGroupId, manualType: addPickType, manualTitle: title || undefined })
+                 'x-chat-id': targetGroupId },
+      body: JSON.stringify({ url: url || title, groupId: targetGroupId, manualType: addPickType, manualTitle: title || undefined })
     });
     const data = await r.json();
     if (r.status === 409 || data.duplicate) {
       showToast('⚠️ ' + (data.error || 'Already in this squad!'));
-      return; // keep modal open so user can change URL
+      return;
     }
     if (data.pick) {
       const newPick = { ...data.pick, votes: [{user_id: String(currentUser?.id||'0'), status:'want', first_name: currentUser?.name||'You'}], my_vote:'want', group_ok:false };
       if (!allPicks.find(p => p.id === newPick.id)) allPicks.unshift(newPick);
       myVotes[data.pick.id] = 'want';
+      // Switch to the group the pick was added to
+      if (targetGroupId !== currentGroupId) {
+        currentGroupId = targetGroupId;
+        localStorage.setItem('sp_last_group', targetGroupId);
+        // Update group tabs on dashboard
+        const dashTabs = document.getElementById('dash-group-tabs');
+        if (dashTabs) {
+          dashTabs.querySelectorAll('.fpill').forEach(b => b.classList.toggle('on', b.textContent.includes(data.pick.group_title || '') || b.textContent === 'All squads'));
+        }
+      }
     }
     closeAdd();
     loadDashboard();

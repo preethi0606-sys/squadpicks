@@ -856,6 +856,65 @@ app.post('/api/picks/notify', telegramAuth, async (req, res) => {
 });
 
 // ─── API: TELEGRAM LOGIN (for website) ─────────────────────
+// ─── TELEGRAM MINI APP AUTH (initData from Telegram.WebApp) ───────────────
+// Called by dashboard/index.html when it detects Telegram.WebApp.initData
+// Different from the Login Widget endpoint — uses HMAC-SHA256 of "WebAppData"
+
+app.post('/api/auth/telegram-webapp', async (req, res) => {
+  try {
+    const { initData } = req.body;
+    if (!initData) return res.status(400).json({ ok: false, error: 'initData required' });
+
+    // Verify: secret = HMAC-SHA256("WebAppData", bot_token); check = HMAC-SHA256(secret, data_check_string)
+    const params  = new URLSearchParams(initData);
+    const hash    = params.get('hash');
+    if (!hash) return res.status(400).json({ ok: false, error: 'Missing hash' });
+
+    // Build data-check string: all params except hash, sorted, joined with \n
+    const entries = [];
+    params.forEach((v, k) => { if (k !== 'hash') entries.push(`${k}=${v}`); });
+    const dataCheckStr = entries.sort().join('\n');
+
+    const secret = crypto.createHmac('sha256', 'WebAppData')
+      .update(process.env.TELEGRAM_TOKEN || '').digest();
+    const expected = crypto.createHmac('sha256', secret)
+      .update(dataCheckStr).digest('hex');
+
+    if (expected !== hash) {
+      // Allow in dev/test mode
+      const isDev = process.env.NODE_ENV !== 'production';
+      if (!isDev) return res.status(401).json({ ok: false, error: 'Invalid initData' });
+    }
+
+    // Parse the user object from initData
+    const userRaw = params.get('user');
+    if (!userRaw) return res.status(400).json({ ok: false, error: 'No user in initData' });
+    const tgUser = JSON.parse(userRaw);
+
+    // Upsert user in DB and create session
+    const db = getDb();
+    const dbUser = await db.upsertTelegramUser({
+      telegram_id: String(tgUser.id),
+      first_name:  tgUser.first_name || tgUser.username || 'Member',
+      username:    tgUser.username || ''
+    });
+    if (dbUser) {
+      req.session.userId    = dbUser.id;
+      req.session.userName  = tgUser.first_name || tgUser.username;
+      req.session.loginType = 'telegram';
+      await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
+    }
+    res.json({
+      ok:   true,
+      user: { id: String(tgUser.id), name: tgUser.first_name || 'Member', username: tgUser.username || '' }
+    });
+  } catch(e) {
+    console.error('[Telegram WebApp Auth]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ─── TELEGRAM LOGIN WIDGET (website button, not Mini App) ─────────────────
 app.post('/api/auth/telegram', async (req, res) => {
   try {
     const user = req.body;
