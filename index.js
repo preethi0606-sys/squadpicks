@@ -86,10 +86,19 @@ bot.on('message', async (msg) => {
 // web_app buttons only work in private chats.
 // In groups we use a regular url button with the t.me/botname/appname link.
 // Telegram automatically opens it as a Mini App inside the app.
+// encodeGroupId: Telegram startapp params cannot contain "-"
+// Negative group IDs like -1001234567890 become g1001234567890
+// Both app.html and dashboard/index.html decode with /^g(\d+)$/ → '-$1'
+function encodeGroupId(chatId) {
+  const s = String(chatId);
+  return s.startsWith('-') ? 'g' + s.slice(1) : s;
+}
+
 function getMiniAppUrl(chatId) {
-  const botUsername = process.env.BOT_USERNAME || 'squadpicks_bot';
+  const botUsername = process.env.BOT_USERNAME     || 'squadpicks_bot';
   const appName     = process.env.MINI_APP_SHORT_NAME || 'Squadpicks';
-  return `https://t.me/${botUsername}/${appName}?startapp=${chatId}`;
+  const safeId      = encodeGroupId(chatId);
+  return `https://t.me/${botUsername}/${appName}?startapp=${safeId}`;
 }
 
 function buildPickKeyboard(pickId, chatId, isGroup) {

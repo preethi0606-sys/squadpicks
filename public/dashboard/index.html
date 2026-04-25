@@ -410,6 +410,35 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
         </div>
       </div>
 
+      <!-- YouTube Channels -->
+      <div class="settings-section" id="settings-yt-section">
+        <div class="settings-hdr">📺 YouTube Channels</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Add YouTube channels your squad follows — they appear in Trending → Channels</div>
+
+        <!-- Squad selector -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">Squad</label>
+          <select id="settings-yt-squad" onchange="settingsLoadChannels(this.value)"
+            style="flex:1;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:var(--font-b);outline:none;cursor:pointer">
+            <option value="">— choose a squad —</option>
+          </select>
+        </div>
+
+        <!-- Channel list -->
+        <div id="settings-yt-list" style="margin-bottom:10px"></div>
+
+        <!-- Add channel form -->
+        <div id="settings-yt-form" style="display:none;gap:8px;align-items:center">
+          <input id="settings-yt-input" type="text" placeholder="YouTube URL, @handle, or channel ID"
+            style="flex:1;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--text);font-family:var(--font-b);outline:none"
+            onkeydown="if(event.key==='Enter')settingsAddChannel()"
+            onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--beige3)'"/>
+          <button onclick="settingsAddChannel()"
+            style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-b);white-space:nowrap">+ Add</button>
+        </div>
+        <div id="settings-yt-err" style="display:none;font-size:12px;color:var(--red);margin-top:6px;padding:6px 10px;background:rgba(220,38,38,.07);border-radius:8px"></div>
+      </div>
+
       <!-- Notifications -->
       <div class="settings-section">
         <div class="settings-hdr">Notifications</div>
@@ -718,15 +747,28 @@ const VOTE_LABELS = {
     document.getElementById('si-type').textContent = currentUser.email || (isTelegram ? 'Telegram account' : 'Google account');
   }
 
-  // GroupId: URL param first (from Mini App redirect), then localStorage
-  const savedGroup = localStorage.getItem('sp_last_group');
-  currentGroupId = params.get('groupId') || savedGroup || null;
-
-  // Also try Telegram start_param if no groupId (decode 'g' prefix from buildVoteKeyboard)
-  if (!currentGroupId && tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
-    const raw = String(tg.initDataUnsafe.start_param);
-    currentGroupId = /^g\d+$/.test(raw) ? '-' + raw.slice(1) : raw;
+  // ── GroupId resolution ────────────────────────────────────────────────────
+  // Priority: URL ?groupId= param → Telegram start_param → localStorage
+  // g-prefix encoding: bot sends g1001234567890 for -1001234567890 because
+  // Telegram startapp params can't contain "-". Decode it back here.
+  function decodeGId(raw) {
+    if (!raw) return null;
+    const s = String(raw).trim();
+    return /^g\d+$/.test(s) ? '-' + s.slice(1) : s;
   }
+
+  let urlGroupId = decodeGId(params.get('groupId'));
+
+  // Fallback: Telegram start_param (when opened directly inside Telegram without going via app.html)
+  if (!urlGroupId && tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+    urlGroupId = decodeGId(tg.initDataUnsafe.start_param);
+  }
+
+  const savedGroup = localStorage.getItem('sp_last_group');
+  currentGroupId = urlGroupId || savedGroup || null;
+
+  // Persist the decoded groupId so next visit remembers the squad
+  if (urlGroupId) localStorage.setItem('sp_last_group', urlGroupId);
 
   // Clean tgInitData from URL bar so the raw token isn't visible
   if (params.has('tgInitData')) {
@@ -735,8 +777,26 @@ const VOTE_LABELS = {
     history.replaceState({}, '', location.pathname + (clean.toString() ? '?' + clean.toString() : ''));
   }
 
-  // Load groups and dashboard
+  // Load groups, then immediately activate the correct squad tab if we have one
   await loadGroups(false);
+
+  // If Telegram opened us with a specific group, make sure the dashboard shows it
+  if (urlGroupId) {
+    currentGroupId = urlGroupId;
+    // Update the group selector dropdown to match
+    const sel = document.getElementById('group-select');
+    if (sel) sel.value = String(urlGroupId);
+    // Sync the squad title in the header
+    const activeGroup = (allGroups || []).find(g => String(g.id) === String(urlGroupId));
+    if (activeGroup) {
+      const sqt = document.getElementById('squad-title');
+      const tns = document.getElementById('topnav-squad');
+      if (sqt) sqt.textContent = activeGroup.title;
+      if (tns) tns.textContent = activeGroup.title;
+    }
+    history.replaceState({}, '', `/dashboard?groupId=${urlGroupId}`);
+  }
+
   loadDashboard();
   loadTrending();
 
@@ -1979,6 +2039,9 @@ async function addTrendPickDirect(itemId) {
 // ── SETTINGS ──────────────────────────────────────────────
 
 async function loadSettings() {
+  // Populate YouTube Channels squad dropdown in Settings
+  settingsPopulateSquadDropdown();
+
   // Profile
   if (currentUser) {
     const av = document.getElementById('si-av');
@@ -2083,6 +2146,134 @@ async function openChannelManager() {
     if (d.ok) { showToast('Channel added! ✅'); loadChannelVideos(groupId); }
     else showToast(d.error || 'Could not add channel');
   } catch(e) { showToast('Connection error'); }
+}
+
+// ── SETTINGS: YouTube Channels manager ───────────────────
+
+function settingsPopulateSquadDropdown() {
+  const sel = document.getElementById('settings-yt-squad');
+  if (!sel) return;
+  const groups = allGroups || [];
+  sel.innerHTML = '<option value="">— choose a squad —</option>' +
+    groups.map(g => `<option value="${g.id}">${esc(g.title)}</option>`).join('');
+  // Auto-select current group if available
+  if (currentGroupId) {
+    sel.value = String(currentGroupId);
+    if (sel.value) settingsLoadChannels(currentGroupId);
+  }
+}
+
+function settingsParseChannelInput(raw) {
+  const s = (raw || '').trim();
+  if (!s) return null;
+  // Raw UC... channel ID
+  if (/^UC[\w-]{22}$/.test(s)) {
+    return { channel_id: s, channel_url: 'https://www.youtube.com/channel/' + s, channel_name: s };
+  }
+  // @handle without URL
+  if (s.startsWith('@')) {
+    const name = s.slice(1).split('/')[0];
+    return { channel_id: s, channel_url: 'https://www.youtube.com/' + s, channel_name: name };
+  }
+  // Full URL
+  try {
+    const url = new URL(s.startsWith('http') ? s : 'https://' + s);
+    if (!url.hostname.includes('youtube.com')) return null;
+    const parts = url.pathname.split('/').filter(Boolean);
+    if (parts[0] === 'channel' && parts[1]) {
+      return { channel_id: parts[1], channel_url: 'https://www.youtube.com/channel/' + parts[1], channel_name: parts[1] };
+    }
+    if (parts[0] && parts[0].startsWith('@')) {
+      const name = parts[0].slice(1);
+      return { channel_id: parts[0], channel_url: 'https://www.youtube.com/' + parts[0], channel_name: name };
+    }
+    if ((parts[0] === 'c' || parts[0] === 'user') && parts[1]) {
+      return { channel_id: '@' + parts[1], channel_url: 'https://www.youtube.com/c/' + parts[1], channel_name: parts[1] };
+    }
+  } catch(_) {}
+  return null;
+}
+
+async function settingsLoadChannels(groupId) {
+  const listEl = document.getElementById('settings-yt-list');
+  const formEl = document.getElementById('settings-yt-form');
+  const errEl  = document.getElementById('settings-yt-err');
+  if (!listEl) return;
+  if (!groupId) {
+    listEl.innerHTML = '';
+    if (formEl) formEl.style.display = 'none';
+    return;
+  }
+  if (formEl) formEl.style.display = 'flex';
+  if (errEl)  errEl.style.display  = 'none';
+  listEl.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:4px 0">Loading…</div>';
+  try {
+    const r = await fetch(BASE + '/api/groups/' + encodeURIComponent(groupId) + '/channels');
+    const d = await r.json();
+    const channels = d.channels || [];
+    if (!channels.length) {
+      listEl.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:4px 0">No channels yet — add one below</div>';
+      return;
+    }
+    listEl.innerHTML = channels.map(ch => `
+      <div id="sytch-${esc(ch.id)}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--beige);border:1px solid var(--beige3);border-radius:10px;margin-bottom:8px">
+        <div style="font-size:22px;flex-shrink:0">▶</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ch.channel_name || ch.channel_id)}</div>
+          <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ch.channel_url || '')}</div>
+        </div>
+        <a href="${esc(ch.channel_url || 'https://youtube.com')}" target="_blank"
+          style="background:var(--beige2);color:var(--blue);border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;font-family:var(--font-b);flex-shrink:0">Watch</a>
+        <button onclick="settingsRemoveChannel('${esc(String(groupId))}','${esc(ch.id)}')"
+          style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;padding:4px;border-radius:6px;flex-shrink:0" title="Remove">✕</button>
+      </div>`).join('');
+  } catch(e) {
+    listEl.innerHTML = '<div style="font-size:13px;color:var(--red);padding:4px 0">Failed to load channels</div>';
+  }
+}
+
+async function settingsAddChannel() {
+  const groupId = document.getElementById('settings-yt-squad')?.value;
+  const input   = document.getElementById('settings-yt-input');
+  const errEl   = document.getElementById('settings-yt-err');
+  if (errEl) errEl.style.display = 'none';
+  if (!groupId) { settingsYtErr('Please select a squad first.'); return; }
+  const raw = input ? input.value.trim() : '';
+  if (!raw) { settingsYtErr('Please enter a YouTube channel URL or @handle.'); return; }
+  const parsed = settingsParseChannelInput(raw);
+  if (!parsed) { settingsYtErr('Could not recognise a YouTube channel from that input. Try https://youtube.com/@ChannelName'); return; }
+  try {
+    const r = await fetch(BASE + '/api/groups/' + encodeURIComponent(groupId) + '/channels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channelId: parsed.channel_id, channelName: parsed.channel_name, channelUrl: parsed.channel_url })
+    });
+    const d = await r.json();
+    if (!r.ok) { settingsYtErr(d.error || 'Could not add channel.'); return; }
+    if (input) input.value = '';
+    await settingsLoadChannels(groupId);
+    showToast('Channel added ✓');
+  } catch(e) { settingsYtErr('Network error — please try again.'); }
+}
+
+async function settingsRemoveChannel(groupId, channelRowId) {
+  if (!confirm('Remove this channel from your squad?')) return;
+  try {
+    const r = await fetch(BASE + '/api/groups/' + encodeURIComponent(groupId) + '/channels/' + encodeURIComponent(channelRowId), {
+      method: 'DELETE'
+    });
+    const el = document.getElementById('sytch-' + channelRowId);
+    if (el) el.remove();
+    await settingsLoadChannels(groupId);
+    showToast('Channel removed');
+  } catch(e) { showToast('Could not remove channel'); }
+}
+
+function settingsYtErr(msg) {
+  const el = document.getElementById('settings-yt-err');
+  if (!el) return;
+  el.textContent  = msg;
+  el.style.display = 'block';
 }
 
 // ── COMMUNITY TRENDING ────────────────────────────────────
