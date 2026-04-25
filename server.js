@@ -876,8 +876,7 @@ app.get('/auth/telegram-miniapp', async (req, res) => {
     if (hash && initData) {
       const entries = [];
       params.forEach((v, k) => { if (k !== 'hash') entries.push(`${k}=${v}`); });
-      const dataCheckStr = entries.sort().join('
-');
+      const dataCheckStr = entries.sort().join('\n');
       const secret = crypto.createHmac('sha256', 'WebAppData')
         .update(process.env.TELEGRAM_TOKEN || '').digest();
       const expected = crypto.createHmac('sha256', secret)
