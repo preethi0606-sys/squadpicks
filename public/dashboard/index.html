@@ -2429,7 +2429,7 @@ async function loadWeeklyDigest(groupId) {
     const r = await fetch('/api/weekly-digest?groupId=' + encodeURIComponent(groupId), { credentials: 'include' });
     const d = await r.json();
     if (!d.ok || (!d.seen.length && !d.wantGroupOk.length)) {
-      main.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:var(--muted)"><div style="font-size:36px;margin-bottom:12px">🎯</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">No activity yet</div><div style="font-size:13px">Once your squad starts voting and marking things as seen, they'll appear here.</div></div>';
+      main.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:var(--muted)"><div style="font-size:36px;margin-bottom:12px">🎯</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">No activity yet</div><div style="font-size:13px">Once your squad starts voting and marking things as seen, they&#39;ll appear here.</div></div>';
       return;
     }
     const TC2 = { movie:'🎬', show:'📺', food:'🍽', place:'📍', event:'🎭', video:'▶️', link:'🔗' };
