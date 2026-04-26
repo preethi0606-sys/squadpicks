@@ -409,6 +409,80 @@ async function removeGroupMember(memberId, groupId, requestingOwnerId) {
   return true;
 }
 
+// ─── RATINGS ───────────────────────────────────────────────
+
+async function upsertRating({ pickId, userId, stars }) {
+  const { data, error } = await supabase
+    .from('ratings')
+    .upsert({ pick_id: pickId, user_id: userId, stars, updated_at: new Date().toISOString() },
+             { onConflict: 'pick_id,user_id' })
+    .select().single();
+  if (error) { console.error('upsertRating error:', error.message); return null; }
+  return data;
+}
+
+async function getPickRatings(pickIds) {
+  if (!pickIds || !pickIds.length) return {};
+  const { data, error } = await supabase
+    .from('ratings')
+    .select('pick_id, stars, user_id')
+    .in('pick_id', pickIds);
+  if (error) { console.error('getPickRatings error:', error.message); return {}; }
+  // Return map: pickId -> { avg, count, userStar }
+  const map = {};
+  (data || []).forEach(r => {
+    if (!map[r.pick_id]) map[r.pick_id] = { total: 0, count: 0, stars: [] };
+    map[r.pick_id].total += r.stars;
+    map[r.pick_id].count += 1;
+    map[r.pick_id].stars.push({ user_id: r.user_id, stars: r.stars });
+  });
+  Object.keys(map).forEach(id => {
+    map[id].avg = Math.round((map[id].total / map[id].count) * 10) / 10;
+  });
+  return map;
+}
+
+async function getWeeklyDigest(groupId) {
+  // Picks voted on (seen) in the last 14 days
+  const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: votes } = await supabase
+    .from('votes')
+    .select('pick_id, status, first_name, user_id')
+    .eq('status', 'seen')
+    .gte('created_at', since);
+
+  const seenPickIds = [...new Set((votes||[]).map(v => v.pick_id))];
+  if (!seenPickIds.length) return { seen: [], wantGroupOk: [] };
+
+  // Get picks for this group that were seen
+  const { data: seenPicks } = await supabase
+    .from('picks')
+    .select('id, title, type, image_url, url, group_ok')
+    .eq('group_id', Number(groupId))
+    .in('id', seenPickIds);
+
+  // Group ok picks we haven't done yet (want to do this week)
+  const { data: upcoming } = await supabase
+    .from('picks')
+    .select('id, title, type, image_url, url')
+    .eq('group_id', Number(groupId))
+    .eq('group_ok', true)
+    .not('id', 'in', `(${seenPickIds.length ? seenPickIds.join(',') : '00000000-0000-0000-0000-000000000000'})`);
+
+  // Attach voter names to seen picks
+  const voterMap = {};
+  (votes||[]).forEach(v => {
+    if (!voterMap[v.pick_id]) voterMap[v.pick_id] = [];
+    voterMap[v.pick_id].push(v.first_name || 'Member');
+  });
+
+  const seenWithVoters = (seenPicks||[]).map(p => ({
+    ...p, seenBy: voterMap[p.id] || []
+  }));
+
+  return { seen: seenWithVoters, wantGroupOk: (upcoming||[]).slice(0, 6) };
+}
+
 module.exports = {
   ensureGroup, getAllGroups, getUserGroups,
   savePick, getPickByUrl, updatePickMessageId, getPick, getGroupPicks,
@@ -418,6 +492,7 @@ module.exports = {
   wasVideoPosted, markVideoPosted,
   upsertGoogleUser, upsertTelegramUser, getUserById, getUserByEmail,
   createWebGroup, addGroupMember, addGroupMemberByEmail, getUserGroups,
+  upsertRating, getPickRatings, getWeeklyDigest,
   addPendingInvite, applyPendingInvites,
   renameGroup, deleteGroup, getGroupMembers, removeGroupMember
 };

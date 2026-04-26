@@ -237,3 +237,15 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- v4.0: Star ratings (1-5 stars, one per user per pick, after they've seen it)
+CREATE TABLE IF NOT EXISTS ratings (
+  id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  pick_id    UUID REFERENCES picks(id) ON DELETE CASCADE,
+  user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
+  stars      INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 5),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(pick_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ratings_pick_id ON ratings(pick_id);

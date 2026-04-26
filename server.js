@@ -750,6 +750,58 @@ app.get('/api/trending/community', requireWebAuth, async (req, res) => {
   } catch(e) { console.error('[community trending]', e.message); res.status(500).json({ error: e.message }); }
 });
 
+// ─── RATINGS ───────────────────────────────────────────────
+
+// POST /api/ratings — upsert a star rating for a pick
+app.post('/api/ratings', requireWebAuth, async (req, res) => {
+  try {
+    const { pickId, stars } = req.body;
+    if (!pickId || !stars || stars < 1 || stars > 5)
+      return res.status(400).json({ error: 'pickId and stars (1-5) required' });
+    const rating = await getDb().upsertRating({ pickId, userId: req.session.userId, stars: Number(stars) });
+    res.json({ ok: true, rating });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/ratings?pickIds=id1,id2,... — get avg ratings + user's own rating
+app.get('/api/ratings', requireWebAuth, async (req, res) => {
+  try {
+    const pickIds = (req.query.pickIds || '').split(',').filter(Boolean);
+    const map = await getDb().getPickRatings(pickIds);
+    // Attach the current user's own star to each entry
+    const uid = req.session.userId;
+    Object.keys(map).forEach(pid => {
+      const mine = map[pid].stars.find(s => s.user_id === uid);
+      map[pid].myStars = mine ? mine.stars : 0;
+      delete map[pid].stars; // don't expose individual user_ids
+    });
+    res.json({ ok: true, ratings: map });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/weekly-digest?groupId= — seen this week + upcoming group-ok picks
+app.get('/api/weekly-digest', requireWebAuth, async (req, res) => {
+  try {
+    const { groupId } = req.query;
+    if (!groupId) return res.status(400).json({ error: 'groupId required' });
+    const digest = await getDb().getWeeklyDigest(groupId);
+    // Enrich with ratings
+    const allIds = [...digest.seen.map(p => p.id), ...digest.wantGroupOk.map(p => p.id)];
+    const ratingsMap = await getDb().getPickRatings(allIds);
+    const uid = req.session.userId;
+    const attachRating = p => {
+      const r = ratingsMap[p.id] || {};
+      return { ...p, avgRating: r.avg || 0, ratingCount: r.count || 0,
+               myStars: (r.stars || []).find(s => s.user_id === uid)?.stars || 0 };
+    };
+    res.json({
+      ok: true,
+      seen:        digest.seen.map(attachRating),
+      wantGroupOk: digest.wantGroupOk.map(attachRating)
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── USER PREFERENCES ──────────────────────────────────────
 
 app.get('/api/preferences', requireWebAuth, async (req, res) => {

@@ -199,9 +199,35 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
 .toggle-track::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 .toggle-sw input:checked + .toggle-track{background:var(--blue)}
 .toggle-sw input:checked + .toggle-track::after{transform:translateX(20px)}
-.settings-wrap{padding:1rem 1.25rem 5rem;max-width:600px}
-.settings-section{background:var(--white);border-radius:var(--r);overflow:hidden;margin-bottom:16px;border:1px solid var(--border)}
-.settings-hdr{padding:10px 14px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.05em;text-transform:uppercase}
+/* Settings master-detail layout */
+.settings-outer{display:flex;height:calc(100vh - 56px);overflow:hidden}
+.settings-menu{width:260px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--white)}
+.settings-detail{flex:1;overflow-y:auto;padding:1.5rem;background:var(--beige)}
+@media(max-width:640px){
+  .settings-outer{display:block;height:auto}
+  .settings-menu{width:100%;border-right:none;border-bottom:1px solid var(--border)}
+  .settings-detail{display:none;padding:1rem}
+  .settings-detail.mobile-open{display:block}
+}
+.smenu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;
+  border-bottom:1px solid var(--border);transition:background .12s;user-select:none}
+.smenu-item:hover{background:var(--beige)}
+.smenu-item.active{background:var(--beige2);border-left:3px solid var(--blue)}
+.smenu-item.active .smenu-label{color:var(--blue);font-weight:700}
+.smenu-icon{font-size:20px;width:32px;text-align:center;flex-shrink:0}
+.smenu-label{flex:1;font-size:14px;font-weight:500;color:var(--text)}
+.smenu-arrow{color:var(--muted);font-size:16px}
+.smenu-back{display:none;align-items:center;gap:8px;padding:12px 16px;cursor:pointer;
+  background:var(--beige2);border-bottom:1px solid var(--border);font-size:13px;
+  font-weight:600;color:var(--blue)}
+@media(max-width:640px){.smenu-back{display:flex}}
+/* Detail panel cards */
+.sdet-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:1rem;
+  font-family:var(--font-d)}
+.settings-section{background:var(--white);border-radius:var(--r);overflow:hidden;
+  margin-bottom:14px;border:1px solid var(--border)}
+.settings-hdr{padding:10px 14px;border-bottom:1px solid var(--border);font-size:11px;
+  font-weight:700;color:var(--text2);letter-spacing:.05em;text-transform:uppercase}
 .settings-row{padding:13px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
 .settings-row:last-child{border-bottom:none}
 .si-icon{font-size:18px;width:36px;text-align:center;flex-shrink:0}
@@ -209,9 +235,41 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
 .si-lbl h4{font-size:14px;font-weight:600;color:var(--text);margin-bottom:1px}
 .si-lbl p{font-size:12px;color:var(--muted)}
 .si-arrow{color:var(--muted);font-size:16px}
-.settings-signout{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;width:100%;background:none;border:none;font-family:var(--font-b);text-align:left}
+.settings-signout{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;
+  width:100%;background:none;border:none;font-family:var(--font-b);text-align:left}
 .settings-signout-lbl h4{font-size:14px;font-weight:600;color:#DC2626}
 .settings-signout-lbl p{font-size:12px;color:#f87171}
+/* Star rating widget */
+.star-row{display:flex;gap:3px;align-items:center}
+.star{font-size:18px;cursor:pointer;transition:transform .1s;line-height:1}
+.star:hover{transform:scale(1.2)}
+.star.lit{color:#F59E0B}
+.star.dim{color:#DDD6FE}
+/* Weekly digest */
+.digest-section{margin-bottom:1.5rem}
+.digest-section-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.06em;margin-bottom:.75rem}
+.digest-card{display:flex;gap:12px;background:var(--white);border-radius:12px;
+  padding:12px;margin-bottom:10px;border:1px solid var(--border);align-items:center}
+.digest-thumb{width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--beige2)}
+.digest-thumb-emoji{width:52px;height:52px;border-radius:10px;flex-shrink:0;background:var(--beige2);
+  display:flex;align-items:center;justify-content:center;font-size:22px}
+.digest-info{flex:1;min-width:0}
+.digest-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.digest-sub{font-size:11px;color:var(--muted);margin-bottom:5px}
+.digest-stars{display:flex;gap:2px;align-items:center}
+/* Community top-rated */
+.comm-rated-card{background:var(--white);border-radius:12px;border:1px solid var(--border);
+  overflow:hidden;margin-bottom:10px;display:flex;gap:0}
+.comm-rated-img{width:80px;height:80px;object-fit:cover;flex-shrink:0}
+.comm-rated-img-ph{width:80px;height:80px;flex-shrink:0;background:var(--beige2);
+  display:flex;align-items:center;justify-content:center;font-size:28px}
+.comm-rated-body{flex:1;padding:10px 12px;min-width:0}
+.comm-rated-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.comm-rated-meta{font-size:11px;color:var(--muted);margin-bottom:5px}
+.comm-rated-stars{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--amber)}
 
 /* ── MODALS ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center;padding:1.25rem}
@@ -308,6 +366,11 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
       <button class="fpill" onclick="setDashFilter('place',this)">📍</button>
       <button class="fpill" onclick="setDashFilter('event',this)">🎭</button>
     </div>
+    <!-- Weekly Digest strip -->
+    <div id="weekly-digest-wrap" style="padding:0 1.25rem;margin-bottom:.5rem;display:none">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">📅 Squad Recap</div>
+      <div id="weekly-digest-content" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px"></div>
+    </div>
     <div class="picks-grid" id="dash-grid">
       <div class="empty"><div class="empty-icon">⏳</div>Loading your dashboard...</div>
     </div>
@@ -379,111 +442,150 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
 
   <!-- ── SETTINGS SECTION ── -->
   <section class="page-section" id="sec-settings">
-    <div class="settings-wrap">
+    <div class="settings-outer">
 
-      <!-- Profile card -->
-      <div class="settings-section">
-        <div class="settings-hdr">Profile</div>
-        <div class="settings-row" style="cursor:default">
-          <div class="si-icon" id="si-av" style="width:42px;height:42px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff">?</div>
-          <div class="si-lbl"><h4 id="si-name">Loading...</h4><p id="si-email" style="font-size:12px;color:var(--muted)"></p></div>
+      <!-- LEFT: Menu -->
+      <div class="settings-menu" id="settings-menu">
+        <div class="smenu-item active" data-panel="profile" onclick="openSettingsPanel('profile',this)">
+          <div class="smenu-icon">👤</div>
+          <div class="smenu-label">Profile</div>
+          <span class="smenu-arrow">›</span>
+        </div>
+        <div class="smenu-item" data-panel="squads" onclick="openSettingsPanel('squads',this)">
+          <div class="smenu-icon">👥</div>
+          <div class="smenu-label">Squads</div>
+          <span class="smenu-arrow">›</span>
+        </div>
+        <div class="smenu-item" data-panel="youtube" onclick="openSettingsPanel('youtube',this)">
+          <div class="smenu-icon">📺</div>
+          <div class="smenu-label">YouTube Channels</div>
+          <span class="smenu-arrow">›</span>
+        </div>
+        <div class="smenu-item" data-panel="notifications" onclick="openSettingsPanel('notifications',this)">
+          <div class="smenu-icon">🔔</div>
+          <div class="smenu-label">Notifications</div>
+          <span class="smenu-arrow">›</span>
+        </div>
+        <div class="smenu-item" data-panel="account" onclick="openSettingsPanel('account',this)">
+          <div class="smenu-icon">⚙️</div>
+          <div class="smenu-label">Account</div>
+          <span class="smenu-arrow">›</span>
         </div>
       </div>
 
-      <!-- Squads -->
-      <div class="settings-section">
-        <div class="settings-hdr">Squads</div>
-        <div class="settings-row" onclick="openGroupPanel('manage')" style="cursor:pointer">
-          <div class="si-icon">👥</div>
-          <div class="si-lbl"><h4>My Squads</h4><p>Manage members, admins, rename, delete</p></div>
-          <span class="si-arrow">›</span>
-        </div>
-        <div class="settings-row" onclick="openGroupPanel('google')" style="cursor:pointer">
-          <div class="si-icon">🌐</div>
-          <div class="si-lbl"><h4>New Google Squad</h4><p>Create a squad, invite by Gmail</p></div>
-          <span class="si-arrow">›</span>
-        </div>
-        <div class="settings-row" onclick="openGroupPanel('telegram')" style="cursor:pointer">
-          <div class="si-icon">💬</div>
-          <div class="si-lbl"><h4>Link Telegram Group</h4><p>Connect your Telegram group</p></div>
-          <span class="si-arrow">›</span>
-        </div>
-      </div>
+      <!-- RIGHT: Detail panel -->
+      <div class="settings-detail" id="settings-detail">
+        <!-- Back button (mobile only) -->
+        <div class="smenu-back" onclick="closeSettingsPanel()">‹ Settings</div>
 
-      <!-- YouTube Channels -->
-      <div class="settings-section" id="settings-yt-section">
-        <div class="settings-hdr">📺 YouTube Channels</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Add YouTube channels your squad follows — they appear in Trending → Channels</div>
-
-        <!-- Squad selector -->
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-          <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">Squad</label>
-          <select id="settings-yt-squad" onchange="settingsLoadChannels(this.value)"
-            style="flex:1;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:var(--font-b);outline:none;cursor:pointer">
-            <option value="">— choose a squad —</option>
-          </select>
+        <!-- PROFILE panel -->
+        <div class="spanel" id="spanel-profile">
+          <div class="sdet-title">Profile</div>
+          <div class="settings-section">
+            <div class="settings-row" style="cursor:default">
+              <div class="si-icon" id="si-av" style="width:42px;height:42px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff">?</div>
+              <div class="si-lbl"><h4 id="si-name">Loading...</h4><p id="si-email" style="font-size:12px;color:var(--muted)"></p></div>
+            </div>
+          </div>
         </div>
 
-        <!-- Channel list -->
-        <div id="settings-yt-list" style="margin-bottom:10px"></div>
+        <!-- SQUADS panel -->
+        <div class="spanel" id="spanel-squads" style="display:none">
+          <div class="sdet-title">Squads</div>
+          <div class="settings-section">
+            <div class="settings-row" onclick="openGroupPanel('manage')" style="cursor:pointer">
+              <div class="si-icon">👥</div>
+              <div class="si-lbl"><h4>My Squads</h4><p>Manage members, admins, rename, delete</p></div>
+              <span class="si-arrow">›</span>
+            </div>
+            <div class="settings-row" onclick="openGroupPanel('google')" style="cursor:pointer">
+              <div class="si-icon">🌐</div>
+              <div class="si-lbl"><h4>New Google Squad</h4><p>Create a squad, invite by Gmail</p></div>
+              <span class="si-arrow">›</span>
+            </div>
+            <div class="settings-row" onclick="openGroupPanel('telegram')" style="cursor:pointer">
+              <div class="si-icon">💬</div>
+              <div class="si-lbl"><h4>Link Telegram Group</h4><p>Connect your Telegram group</p></div>
+              <span class="si-arrow">›</span>
+            </div>
+          </div>
+        </div>
 
-        <!-- Add channel form -->
-        <div id="settings-yt-form" style="display:none;gap:8px;align-items:center">
-          <input id="settings-yt-input" type="text" placeholder="YouTube URL, @handle, or channel ID"
-            style="flex:1;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--text);font-family:var(--font-b);outline:none"
-            onkeydown="if(event.key==='Enter')settingsAddChannel()"
-            onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--beige3)'"/>
-          <button onclick="settingsAddChannel()"
-            style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-b);white-space:nowrap">+ Add</button>
+        <!-- YOUTUBE CHANNELS panel -->
+        <div class="spanel" id="spanel-youtube" style="display:none">
+          <div class="sdet-title">📺 YouTube Channels</div>
+          <div class="settings-section" id="settings-yt-section">
+            <div style="padding:12px 14px;font-size:12px;color:var(--muted)">Add channels your squad follows — they appear in Trending → Channels</div>
+            <div style="padding:0 14px 12px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">Squad</label>
+                <select id="settings-yt-squad" onchange="settingsLoadChannels(this.value)"
+                  style="flex:1;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:var(--font-b);outline:none;cursor:pointer">
+                  <option value="">— choose a squad —</option>
+                </select>
+              </div>
+              <div id="settings-yt-list" style="margin-bottom:10px"></div>
+              <div id="settings-yt-form" style="display:none;gap:8px;align-items:center">
+                <input id="settings-yt-input" type="text" placeholder="YouTube URL or @handle"
+                  style="flex:1;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--text);font-family:var(--font-b);outline:none"
+                  onkeydown="if(event.key==='Enter')settingsAddChannel()"/>
+                <button onclick="settingsAddChannel()"
+                  style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-b);white-space:nowrap">+ Add</button>
+              </div>
+              <div id="settings-yt-err" style="display:none;font-size:12px;color:var(--red);margin-top:6px;padding:6px 10px;background:rgba(220,38,38,.07);border-radius:8px"></div>
+            </div>
+          </div>
         </div>
-        <div id="settings-yt-err" style="display:none;font-size:12px;color:var(--red);margin-top:6px;padding:6px 10px;background:rgba(220,38,38,.07);border-radius:8px"></div>
-      </div>
 
-      <!-- Notifications -->
-      <div class="settings-section">
-        <div class="settings-hdr">Notifications</div>
-        <div class="settings-row">
-          <div class="si-icon">🎬</div>
-          <div class="si-lbl"><h4>New picks</h4><p>Email when someone adds to your squad</p></div>
-          <label class="toggle-sw"><input type="checkbox" id="pref-pick-add" onchange="savePref('notify_pick_add',this.checked)"><span class="toggle-track"></span></label>
+        <!-- NOTIFICATIONS panel -->
+        <div class="spanel" id="spanel-notifications" style="display:none">
+          <div class="sdet-title">Notifications</div>
+          <div class="settings-section">
+            <div class="settings-row">
+              <div class="si-icon">🎬</div>
+              <div class="si-lbl"><h4>New picks</h4><p>Email when someone adds to your squad</p></div>
+              <label class="toggle-sw"><input type="checkbox" id="pref-pick-add" onchange="savePref('notify_pick_add',this.checked)"><span class="toggle-track"></span></label>
+            </div>
+            <div class="settings-row">
+              <div class="si-icon">✅</div>
+              <div class="si-lbl"><h4>Group ok</h4><p>Email when a pick reaches consensus</p></div>
+              <label class="toggle-sw"><input type="checkbox" id="pref-group-ok" onchange="savePref('notify_group_ok',this.checked)"><span class="toggle-track"></span></label>
+            </div>
+            <div class="settings-row">
+              <div class="si-icon">📅</div>
+              <div class="si-lbl"><h4>Weekly digest</h4><p>Sunday summary of your squad picks</p></div>
+              <label class="toggle-sw"><input type="checkbox" id="pref-digest" onchange="savePref('notify_digest',this.checked)"><span class="toggle-track"></span></label>
+            </div>
+          </div>
         </div>
-        <div class="settings-row">
-          <div class="si-icon">✅</div>
-          <div class="si-lbl"><h4>Group ok</h4><p>Email when a pick reaches consensus</p></div>
-          <label class="toggle-sw"><input type="checkbox" id="pref-group-ok" onchange="savePref('notify_group_ok',this.checked)"><span class="toggle-track"></span></label>
-        </div>
-        <div class="settings-row">
-          <div class="si-icon">📅</div>
-          <div class="si-lbl"><h4>Weekly digest</h4><p>Sunday summary of your squad picks</p></div>
-          <label class="toggle-sw"><input type="checkbox" id="pref-digest" onchange="savePref('notify_digest',this.checked)"><span class="toggle-track"></span></label>
-        </div>
-      </div>
 
-      <!-- Account -->
-      <div class="settings-section">
-        <div class="settings-hdr">Account</div>
-        <div class="settings-row" style="cursor:default">
-          <div class="si-icon">✨</div>
-          <div class="si-lbl"><h4>Plan</h4><p>Free tier</p></div>
-          <span style="font-size:11px;font-weight:700;background:#E9D5FF;color:#6B21A8;padding:3px 8px;border-radius:10px">Free</span>
-        </div>
-        <div class="settings-row" onclick="copyShareLink()" style="cursor:pointer">
-          <div class="si-icon">🔗</div>
-          <div class="si-lbl"><h4>Share SquadPicks</h4><p>Invite friends to the app</p></div>
-          <span class="si-arrow">›</span>
-        </div>
-        <div class="settings-row" onclick="window.open('https://t.me/squadpicks_bot','_blank')" style="cursor:pointer">
-          <div class="si-icon">🤖</div>
-          <div class="si-lbl"><h4>Telegram Bot</h4><p>Add bot to your Telegram groups</p></div>
-          <span class="si-arrow">›</span>
-        </div>
+        <!-- ACCOUNT panel -->
+        <div class="spanel" id="spanel-account" style="display:none">
+          <div class="sdet-title">Account</div>
+          <div class="settings-section">
+            <div class="settings-row" style="cursor:default">
+              <div class="si-icon">✨</div>
+              <div class="si-lbl"><h4>Plan</h4><p>Free tier</p></div>
+              <span style="font-size:11px;font-weight:700;background:#E9D5FF;color:#6B21A8;padding:3px 8px;border-radius:10px">Free</span>
+            </div>
+            <div class="settings-row" onclick="copyShareLink()" style="cursor:pointer">
+              <div class="si-icon">🔗</div>
+              <div class="si-lbl"><h4>Share SquadPicks</h4><p>Invite friends to the app</p></div>
+              <span class="si-arrow">›</span>
+            </div>
+            <div class="settings-row" onclick="window.open('https://t.me/squadpicks_bot','_blank')" style="cursor:pointer">
+              <div class="si-icon">🤖</div>
+              <div class="si-lbl"><h4>Telegram Bot</h4><p>Add bot to your Telegram groups</p></div>
+              <span class="si-arrow">›</span>
+            </div>
         <button class="settings-signout" onclick="doSignOut()">
           <div class="si-icon">🚪</div>
           <div class="settings-signout-lbl"><h4>Sign out</h4><p>Return to login page</p></div>
         </button>
-      </div>
-
-    </div>
+          </div><!-- /settings-section -->
+        </div><!-- /spanel-account -->
+      </div><!-- /settings-detail -->
+    </div><!-- /settings-outer -->
   </section>
 
 </div><!-- end main-wrap -->
@@ -800,25 +902,18 @@ const VOTE_LABELS = {
   // Load groups, then immediately activate the correct squad tab if we have one
   await loadGroups(false);
 
-  // If Telegram opened us with a specific group, make sure the dashboard shows it
+  // If Telegram opened us with a specific group, pre-select it in ALL state vars
+  // so loadDashboard() renders the correct tab as active from the start
   if (urlGroupId) {
     currentGroupId = urlGroupId;
-    // Update the group selector dropdown to match
-    const sel = document.getElementById('group-select');
-    if (sel) sel.value = String(urlGroupId);
-    // Sync the squad title in the header
-    const activeGroup = (allGroups || []).find(g => String(g.id) === String(urlGroupId));
-    if (activeGroup) {
-      const sqt = document.getElementById('squad-title');
-      const tns = document.getElementById('topnav-squad');
-      if (sqt) sqt.textContent = activeGroup.title;
-      if (tns) tns.textContent = activeGroup.title;
-    }
+    dashGroupId    = urlGroupId;  // ← this is what renderDashGroupTabs() uses for the active pill
+    localStorage.setItem('sp_last_group', urlGroupId);
     history.replaceState({}, '', `/dashboard?groupId=${urlGroupId}`);
   }
 
   loadDashboard();
   loadTrending();
+  if (urlGroupId) loadWeeklyDigest(urlGroupId);
 
   // Default landing = Dashboard
   goSection('dashboard', document.getElementById('dnav-dashboard'));
@@ -835,7 +930,12 @@ function goSection(name, btn) {
   closeDrawer();
   if (name === 'dashboard') loadDashboard();
   if (name === 'trending')  loadTrending();
-  if (name === 'settings')  loadSettings();
+  if (name === 'settings') {
+    loadSettings();
+    if (window.innerWidth > 640) {
+      openSettingsPanel('profile', document.querySelector('.smenu-item[data-panel="profile"]'));
+    }
+  }
 }
 
 // ── DRAWER ────────────────────────────────────────────────
@@ -1095,6 +1195,7 @@ function setDashGroup(id, btn) {
   document.querySelectorAll('#dash-group-tabs .fpill').forEach(b => b.classList.remove('on'));
   if (btn) btn.classList.add('on');
   loadDashboard();
+  loadWeeklyDigest(id); // load squad recap when tab changes
 }
 
 function setDashFilter(f, btn) {
@@ -2168,6 +2269,146 @@ async function openChannelManager() {
   } catch(e) { showToast('Connection error'); }
 }
 
+// ── SETTINGS: Master-detail panel switching ──────────────
+
+function openSettingsPanel(panelId, menuItem) {
+  // Update active menu item
+  document.querySelectorAll('.smenu-item').forEach(i => i.classList.remove('active'));
+  if (menuItem) menuItem.classList.add('active');
+
+  // Show correct panel
+  document.querySelectorAll('.spanel').forEach(p => p.style.display = 'none');
+  const panel = document.getElementById('spanel-' + panelId);
+  if (panel) panel.style.display = 'block';
+
+  // On mobile: show detail, hide menu
+  const detail = document.getElementById('settings-detail');
+  const menu   = document.getElementById('settings-menu');
+  if (window.innerWidth <= 640) {
+    if (detail) detail.classList.add('mobile-open');
+    if (menu)   menu.style.display = 'none';
+  }
+
+  // Panel-specific init
+  if (panelId === 'youtube')       settingsPopulateSquadDropdown();
+  if (panelId === 'notifications') loadPreferences();
+}
+
+function closeSettingsPanel() {
+  const detail = document.getElementById('settings-detail');
+  const menu   = document.getElementById('settings-menu');
+  if (detail) detail.classList.remove('mobile-open');
+  if (menu)   menu.style.display = 'block';
+}
+
+// ── STAR RATINGS ──────────────────────────────────────────
+
+function renderStars(pickId, myStars, avgStars, ratingCount, compact) {
+  const avg    = avgStars ? avgStars.toFixed(1) : null;
+  const filled = myStars || 0;
+  let stars = '';
+  for (let i = 1; i <= 5; i++) {
+    stars += '<span class="star ' + (i <= filled ? 'lit' : 'dim') + '" '
+      + 'onclick="ratePick('' + pickId + '',' + i + ',this.parentNode)" '
+      + 'title="Rate ' + i + ' star' + (i > 1 ? 's' : '') + '">★</span>';
+  }
+  const countStr = ratingCount ? ' <span style="font-size:10px;color:var(--muted)">(' + ratingCount + ')</span>' : '';
+  const avgStr   = avg && !compact ? ' <span style="font-size:11px;color:var(--amber);font-weight:600">' + avg + '★</span>' + countStr : '';
+  return '<div class="star-row" data-pick-id="' + pickId + '">' + stars + avgStr + '</div>';
+}
+
+async function ratePick(pickId, stars, container) {
+  try {
+    const r = await fetch('/api/ratings', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pickId, stars })
+    });
+    const d = await r.json();
+    if (!d.ok) { showToast('Could not save rating'); return; }
+    // Re-render stars in this container
+    const spans = container.querySelectorAll('.star');
+    spans.forEach((s, i) => {
+      s.className = 'star ' + (i < stars ? 'lit' : 'dim');
+    });
+    showToast(stars + ' ★ saved!');
+  } catch(e) { showToast('Network error'); }
+}
+
+// Fetch and attach ratings to a list of picks
+async function attachRatings(picks) {
+  if (!picks || !picks.length) return;
+  const ids = picks.map(p => p.id).join(',');
+  try {
+    const r = await fetch('/api/ratings?pickIds=' + encodeURIComponent(ids), { credentials: 'include' });
+    const d = await r.json();
+    if (!d.ok) return;
+    picks.forEach(p => {
+      const info = d.ratings[p.id] || {};
+      p._avgRating   = info.avg     || 0;
+      p._ratingCount = info.count   || 0;
+      p._myStars     = info.myStars || 0;
+    });
+  } catch(e) {}
+}
+
+// ── WEEKLY DIGEST ─────────────────────────────────────────
+
+async function loadWeeklyDigest(groupId) {
+  const wrap = document.getElementById('weekly-digest-wrap');
+  const cont = document.getElementById('weekly-digest-content');
+  if (!wrap || !cont || !groupId || groupId === 'all') {
+    if (wrap) wrap.style.display = 'none';
+    return;
+  }
+  try {
+    const r = await fetch('/api/weekly-digest?groupId=' + encodeURIComponent(groupId), { credentials: 'include' });
+    const d = await r.json();
+    if (!d.ok || (!d.seen.length && !d.wantGroupOk.length)) {
+      wrap.style.display = 'none';
+      return;
+    }
+    wrap.style.display = 'block';
+    const TC2 = { movie:'🎬', show:'📺', food:'🍽', place:'📍', event:'🎭', video:'▶️', link:'🔗' };
+
+    const seenHtml = d.seen.map(p => {
+      const emoji = TC2[p.type] || '🎯';
+      const img   = p.image_url
+        ? '<img src="' + esc(p.image_url) + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover" onerror="this.style.display='none'">'
+        : '<div class="digest-thumb-emoji">' + emoji + '</div>';
+      const seenBy = p.seenBy && p.seenBy.length
+        ? p.seenBy.slice(0,2).join(', ') + (p.seenBy.length > 2 ? ' +' + (p.seenBy.length-2) : '') + ' seen it'
+        : 'Seen recently';
+      const stars  = renderStars(p.id, p.myStars || 0, p.avgRating, p.ratingCount, true);
+      return '<div class="digest-card" style="min-width:240px;flex-shrink:0">'
+        + img
+        + '<div class="digest-info">'
+        + '<div class="digest-title">' + esc(p.title) + '</div>'
+        + '<div class="digest-sub">✅ ' + seenBy + '</div>'
+        + stars
+        + '</div></div>';
+    }).join('');
+
+    const upcomingHtml = d.wantGroupOk.map(p => {
+      const emoji = TC2[p.type] || '🎯';
+      const img   = p.image_url
+        ? '<img src="' + esc(p.image_url) + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover" onerror="this.style.display='none'">'
+        : '<div class="digest-thumb-emoji">' + emoji + '</div>';
+      return '<div class="digest-card" style="min-width:240px;flex-shrink:0;border-color:#DDD6FE">'
+        + img
+        + '<div class="digest-info">'
+        + '<div class="digest-title">' + esc(p.title) + '</div>'
+        + '<div class="digest-sub" style="color:var(--blue)">👍 Squad agrees — do it!</div>'
+        + '</div></div>';
+    }).join('');
+
+    cont.innerHTML = seenHtml + upcomingHtml ||
+      '<div style="font-size:13px;color:var(--muted);padding:4px 0">No squad activity in the last 2 weeks</div>';
+  } catch(e) {
+    if (wrap) wrap.style.display = 'none';
+  }
+}
+
 // ── SETTINGS: YouTube Channels manager ───────────────────
 
 function settingsPopulateSquadDropdown() {
@@ -2303,34 +2544,62 @@ async function loadCommunityTrending() {
   if (!el) return;
   el.innerHTML = '<div class="trend-loading"><div class="trend-spin"></div>Loading community picks...</div>';
   try {
-    const r = await fetch(BASE + '/api/trending/community');
+    const r = await fetch(BASE + '/api/trending/community', { credentials: 'include' });
     const d = await r.json();
     const picks = d.picks || [];
     if (!picks.length) {
-      el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem;text-align:center"><div style="font-size:28px;margin-bottom:8px">🌍</div>No community picks yet. As more squads use SquadPicks, group-ok picks from other squads will appear here.</div>';
+      el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem;text-align:center"><div style="font-size:28px;margin-bottom:8px">🌍</div>No community picks yet. As more squads use SquadPicks, group-ok picks will appear here.</div>';
       return;
     }
-    el.innerHTML = '<div class="places-grid">' + picks.map(p => {
-      var tc = TC[p.type] || TC.link;
+
+    // Fetch ratings for community picks
+    const ids = picks.map(p => p.id).join(',');
+    let ratingsMap = {};
+    try {
+      const rr = await fetch(BASE + '/api/ratings?pickIds=' + encodeURIComponent(ids), { credentials: 'include' });
+      const rd = await rr.json();
+      if (rd.ok) ratingsMap = rd.ratings || {};
+    } catch(re) {}
+
+    const topRated = picks
+      .filter(p => ratingsMap[p.id] && ratingsMap[p.id].avg >= 4)
+      .sort((a,b) => (ratingsMap[b.id]?.avg||0) - (ratingsMap[a.id]?.avg||0));
+    const rest = picks.filter(p => !topRated.includes(p));
+
+    function commCard(p) {
+      var tc  = TC[p.type] || TC.link;
       var tid = storeTrendItem({ ...p, tmdb_url: p.url });
+      var info = ratingsMap[p.id] || {};
       var imgHtml = p.image_url
-        ? '<img src="' + esc(p.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
-        : '<span style="font-size:36px">' + tc.emoji + '</span>';
-      return '<div class="tc-wide">'
-        + '<div class="tc-wide-img">' + imgHtml + '</div>'
-        + '<div class="tc-wide-body">'
-        + '<div class="tc-wide-title">' + esc(p.title) + '</div>'
-        + '<div class="tc-wide-meta">✅ Group ok · ' + esc(p.group_title || 'Another squad') + '</div>'
-        + '</div>'
-        + '<div class="tc-poster-actions">'
-        + '<button class="tc-pa-btn" onclick="addTrendPickDirect(\'' + tid + '\')" style="color:var(--blue)">+ Add</button>'
-        + '</div></div>';
-    }).join('') + '</div>';
+        ? '<img src="' + esc(p.image_url) + '" class="comm-rated-img" onerror="this.style.display='none'">'
+        : '<div class="comm-rated-img-ph">' + tc.emoji + '</div>';
+      var starsHtml = info.avg
+        ? '<span style="color:#F59E0B;font-size:12px;font-weight:700">\u2605 ' + info.avg.toFixed(1) + '</span>'
+          + ' <span style="font-size:11px;color:var(--muted)">(' + info.count + ')</span>'
+        : '<span style="font-size:11px;color:var(--muted)">No ratings yet</span>';
+      return '<div class="comm-rated-card">'
+        + imgHtml
+        + '<div class="comm-rated-body">'
+        + '<div class="comm-rated-title">' + esc(p.title) + '</div>'
+        + '<div class="comm-rated-meta">\u2705 ' + esc(p.group_title||'Another squad') + ' \u00b7 ' + tc.emoji + '</div>'
+        + '<div style="display:flex;align-items:center;gap:6px;margin-top:4px">' + starsHtml
+        + '<button onclick="addTrendPickDirect(\'' + tid + '\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-left:auto">+ Add</button>'
+        + '</div></div></div>';
+    }
+
+    var html = '';
+    if (topRated.length) {
+      html += '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">\u2b50 Top Rated by Other Squads</div>';
+      html += topRated.map(commCard).join('');
+      if (rest.length) html += '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">\ud83c\udf0d More from the Community</div>';
+    }
+    html += rest.map(commCard).join('');
+    el.innerHTML = html;
   } catch(e) {
     el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem">Could not load community picks</div>';
+    console.error('[community]', e);
   }
 }
-
 // ── ADMIN MANAGEMENT IN SQUAD DETAIL ─────────────────────
 
 async function toggleMemberAdmin(groupId, memberId, currentRole) {
