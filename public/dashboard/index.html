@@ -2311,17 +2311,17 @@ function renderStars(pickId, myStars, avgStars, ratingCount, compact) {
   let stars = '';
   for (let i = 1; i <= 5; i++) {
     stars += '<span class="star ' + (i <= filled ? 'lit' : 'dim') + '" '
-      + 'onclick="ratePick('' + pickId + '',' + i + ',this.parentNode)" '
-      + 'title="Rate ' + i + ' star' + (i > 1 ? 's' : '') + '">★</span>';
+      + 'onclick="ratePick(' + JSON.stringify(pickId) + ',' + i + ',this.parentNode)" '
+      + 'title="Rate ' + i + ' star' + (i > 1 ? 's' : '') + '">&#9733;</span>';
   }
   const countStr = ratingCount ? ' <span style="font-size:10px;color:var(--muted)">(' + ratingCount + ')</span>' : '';
-  const avgStr   = avg && !compact ? ' <span style="font-size:11px;color:var(--amber);font-weight:600">' + avg + '★</span>' + countStr : '';
+  const avgStr   = avg && !compact ? ' <span style="font-size:11px;color:var(--amber);font-weight:600">' + avg + '&#9733;</span>' + countStr : '';
   return '<div class="star-row" data-pick-id="' + pickId + '">' + stars + avgStr + '</div>';
 }
 
 async function ratePick(pickId, stars, container) {
   try {
-    const r = await fetch('/api/ratings', { credentials: 'include',
+    const r = await fetch('/api/ratings', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pickId, stars })

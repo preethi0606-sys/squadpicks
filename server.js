@@ -134,11 +134,14 @@ const getLinks = () => { if (!_links) _links = require('./links'); return _links
 function telegramAuth(req, res, next) {
   const initData = req.headers['x-telegram-init-data'] || '';
   if (!initData || initData === 'test') {
+    // x-user-id can be a UUID (Google users) or integer (Telegram users)
+    // Keep it as-is so vote lookups work correctly for both auth types
+    const rawId = req.headers['x-user-id'] || '';
     req.tgUser = {
-      id:         Number(req.headers['x-user-id'])  || 123456789,
-      first_name: req.headers['x-user-name']         || 'User',
-      username:   req.headers['x-username']           || 'user',
-      chatId:     req.headers['x-chat-id']            || null
+      id:         rawId || '123456789',
+      first_name: req.headers['x-user-name'] || 'User',
+      username:   req.headers['x-username']  || 'user',
+      chatId:     req.headers['x-chat-id']   || null
     };
     return next();
   }
