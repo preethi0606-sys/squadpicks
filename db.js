@@ -58,7 +58,7 @@ async function getUserGroups(userId) {
   if (groupErr) { console.error('getUserGroups groups error:', groupErr.message); return []; }
 
   // Only return real groups: web groups (any ID) + Telegram groups (negative IDs)
-  return (groups || []).filter(g => g.is_web_group || g.id < 0);
+  return (groups || []).filter(g => g.is_web_group || Number(g.id) < 0);
 }
 
 // ─── PICKS ─────────────────────────────────────────────────

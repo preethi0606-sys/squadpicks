@@ -949,6 +949,23 @@ app.get('/auth/telegram-miniapp', async (req, res) => {
 
     console.log('[TG MiniApp] Session saved, SID:', req.sessionID);
 
+    // --- Add user to the group they clicked from ---
+    // ensureGroup creates the group row but never adds the user as a member.
+    // Without a group_members row, getUserGroups() returns [] for this user
+    // and the Telegram group never appears in their dashboard.
+    if (groupId) {
+      try {
+        const numGroupId = Number(groupId);
+        if (numGroupId && !isNaN(numGroupId)) {
+          await db.ensureGroup(numGroupId, 'Telegram Group');
+          await db.addGroupMember({ groupId: numGroupId, userId: dbUser.id });
+          console.log('[TG MiniApp] Added user', dbUser.id, 'to group', numGroupId);
+        }
+      } catch(memberErr) {
+        console.warn('[TG MiniApp] Could not add to group_members:', memberErr.message);
+      }
+    }
+
     // --- Redirect to dashboard ---
     // Pass tgauth=1 so dashboard knows auth already happened server-side
     // Pass groupId so dashboard pre-selects the right squad
