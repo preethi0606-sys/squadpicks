@@ -812,7 +812,7 @@ const VOTE_LABELS = {
   if (!currentUser && tgInitData) {
     console.log('[Auth] Layer 1 failed, trying Layer 2 (POST initData)');
     try {
-      const r = await fetch('/api/auth/telegram-webapp', { credentials: 'include',
+      const r = await fetch('/api/auth/telegram-webapp', {
         method:      'POST',
         credentials: 'include',
         headers:     { 'Content-Type': 'application/json' },
@@ -838,6 +838,19 @@ const VOTE_LABELS = {
     window.location.replace(url);
     return;
   }
+
+  // Show debug info on screen for 4 seconds so we can see what's happening
+  // without needing browser devtools
+  (function() {
+    const dbg = document.createElement('div');
+    dbg.id = 'sp-debug';
+    dbg.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#1e1b4b;color:#c4b5fd;font-family:monospace;font-size:11px;padding:8px 12px;line-height:1.6';
+    const authStatus = currentUser ? '✅ Auth OK: ' + (currentUser.name || currentUser.id) : '❌ Not authenticated';
+    const sessionUrl = window.location.href;
+    dbg.textContent = authStatus + ' | ' + sessionUrl.slice(-60);
+    document.body.appendChild(dbg);
+    setTimeout(() => { const el = document.getElementById('sp-debug'); if (el) el.remove(); }, 6000);
+  })();
 
   // Not authenticated at all — redirect to login
   if (!currentUser) {
@@ -1141,42 +1154,55 @@ async function loadDashboard() {
   if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Loading dashboard...</div>';
 
   try {
-    // Fetch all user groups
+    // Step 1: fetch user's groups
     const gRes = await fetch(BASE + '/api/groups/mine', { credentials: 'include' });
     if (gRes.status === 401) { window.location.href = '/login'; return; }
+    if (!gRes.ok) {
+      if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Could not load squads (HTTP ' + gRes.status + '). Please refresh.</div>';
+      return;
+    }
     const gData = await gRes.json();
     dashAllGroups = gData.groups || [];
-    allGroups = dashAllGroups; // share reference for channels dropdown
-
-    // Render group selector tabs
+    allGroups = dashAllGroups;
     renderDashGroupTabs();
 
-    // Fetch picks — from selected group or all groups
+    // Step 2: if no groups yet, show friendly prompt
+    if (!dashAllGroups.length) {
+      if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px">No squads yet</div><div style="font-size:13px;color:var(--muted);margin-bottom:16px">Create a squad or link your Telegram group to get started</div><button onclick="openGroupPanel()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font-b)">+ Create a squad</button></div>';
+      if (statsEl) statsEl.innerHTML = '';
+      return;
+    }
+
+    // Step 3: fetch picks
+    const hdrs = { 'x-telegram-init-data':'test', 'x-user-id': String(currentUser?.id||'0'), 'x-user-name': currentUser?.name||'User' };
     if (dashGroupId === 'all') {
-      // Load picks from all groups in parallel, merge
       const allFetches = dashAllGroups.map(g =>
-        fetch(`${BASE}/api/picks?groupId=${encodeURIComponent(g.id)}`, { credentials: 'include',
-          headers: { 'x-telegram-init-data':'test','x-user-id':String(currentUser?.id||'0'),'x-user-name':currentUser?.name||'User' }
-        }).then(r => r.json()).then(d => (d.picks||[]).map(p => ({ ...p, _groupTitle: g.title, _groupId: g.id })))
+        fetch(`${BASE}/api/picks?groupId=${encodeURIComponent(g.id)}`, { credentials: 'include', headers: hdrs })
+          .then(r => r.ok ? r.json() : { picks: [] })
+          .then(d => (d.picks||[]).map(p => ({ ...p, _groupTitle: g.title, _groupId: g.id })))
           .catch(() => [])
       );
       const results = await Promise.all(allFetches);
       dashAllPicks = results.flat().sort((a, b) => new Date(b.created_at||0) - new Date(a.created_at||0));
-      results.flat().forEach(p => { myVotes[p.id] = p.my_vote || ''; });
+      dashAllPicks.forEach(p => { myVotes[p.id] = p.my_vote || ''; });
     } else {
-      const pRes = await fetch(`${BASE}/api/picks?groupId=${encodeURIComponent(dashGroupId)}`, { credentials: 'include',
-        headers: { 'x-telegram-init-data':'test','x-user-id':String(currentUser?.id||'0'),'x-user-name':currentUser?.name||'User' }
-      });
+      const pRes = await fetch(`${BASE}/api/picks?groupId=${encodeURIComponent(dashGroupId)}`, { credentials: 'include', headers: hdrs });
+      if (!pRes.ok) {
+        if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Could not load picks (HTTP ' + pRes.status + '). Please refresh.</div>';
+        return;
+      }
       const pData = await pRes.json();
-      dashAllPicks = (pData.picks||[]);
+      dashAllPicks = pData.picks || [];
       dashAllPicks.forEach(p => { myVotes[p.id] = p.my_vote || ''; });
     }
 
+    // Step 4: render
     renderDashStats();
     renderDashGrid();
+
   } catch(e) {
-    console.error('[loadDashboard]', e);
-    if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Could not load dashboard.</div>';
+    console.error('[loadDashboard] ERROR:', e.message, e.stack);
+    if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">Dashboard error</div><div style="font-size:12px;color:var(--muted);margin-bottom:12px">' + (e.message||'Unknown error') + '</div><button onclick="loadDashboard()" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">↺ Retry</button></div>';
   }
 }
 
