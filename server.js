@@ -106,6 +106,11 @@ app.get('/auth/google/callback', async (req, res) => {
 // ─── SESSION AUTH MIDDLEWARE ───────────────────────────────
 function requireWebAuth(req, res, next) {
   if (req.session && req.session.userId) return next();
+  // API calls must get JSON 401, not a redirect — fetch() follows redirects
+  // and the client gets HTML instead of JSON, crashing silently
+  if (req.path.startsWith('/api/') || req.xhr || req.headers.accept?.includes('application/json')) {
+    return res.status(401).json({ ok: false, error: 'Not authenticated' });
+  }
   res.redirect('/login');
 }
 

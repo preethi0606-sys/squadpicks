@@ -239,10 +239,11 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 );
 
 -- v4.0: Star ratings (1-5 stars, one per user per pick, after they've seen it)
+-- picks.id is SERIAL (INTEGER), users.id is UUID
 CREATE TABLE IF NOT EXISTS ratings (
   id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  pick_id    UUID REFERENCES picks(id) ON DELETE CASCADE,
-  user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
+  pick_id    INTEGER REFERENCES picks(id) ON DELETE CASCADE,
+  user_id    UUID    REFERENCES users(id) ON DELETE CASCADE,
   stars      INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 5),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

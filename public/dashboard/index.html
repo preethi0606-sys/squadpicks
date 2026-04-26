@@ -952,6 +952,7 @@ function closeDrawer() {
 async function loadGroups(autoSelectFirst) {
   try {
     const r    = await fetch(BASE + '/api/groups/mine', { credentials: 'include' });
+    if (r.status === 401) { window.location.href = '/login'; return; }
     const data = await r.json();
     const groups = (data.groups || []);
 
@@ -1142,6 +1143,7 @@ async function loadDashboard() {
   try {
     // Fetch all user groups
     const gRes = await fetch(BASE + '/api/groups/mine', { credentials: 'include' });
+    if (gRes.status === 401) { window.location.href = '/login'; return; }
     const gData = await gRes.json();
     dashAllGroups = gData.groups || [];
     allGroups = dashAllGroups; // share reference for channels dropdown
