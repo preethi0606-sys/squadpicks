@@ -676,67 +676,77 @@ const VOTE_LABELS = {
 
 // ── INIT ──────────────────────────────────────────────────
 (async function init() {
-  const params    = new URLSearchParams(location.search);
-  const tgAuthOk  = params.get('tgauth') === '1';  // set by app.html after successful Telegram auth
+  const params   = new URLSearchParams(location.search);
+  const tgAuthOk = params.get('tgauth') === '1'; // server set this after successful Telegram auth
 
-  // Detect if we're inside a Telegram Mini App (even after redirect)
-  const tg = window.Telegram && window.Telegram.WebApp;
-  const tgInitData = (tg && tg.initData && tg.initData.length > 0 ? tg.initData : null)
-                   || params.get('tgInitData') || null;
+  // Detect Telegram Mini App context
+  const tg         = window.Telegram && window.Telegram.WebApp;
+  const tgInitData = (tg && tg.initData && tg.initData.length > 0 ? tg.initData : null) || null;
+  const insideTg   = !!tgInitData;
 
-  // ── AUTH ────────────────────────────────────────────────────────────────────
-  // Primary path: session cookie was set by GET /auth/telegram-miniapp (server-side).
-  // The Telegram in-app WebView reliably saves cookies set on HTTP redirects.
-  // We just check if the session is already valid.
+  if (tg && insideTg) { tg.ready(); tg.expand(); }
+
+  // ── AUTH — 3-layer strategy ───────────────────────────────────────────────
+  //
+  // Layer 1: Session cookie (set by server-side /auth/telegram-miniapp redirect)
+  // Layer 2: POST initData directly (if cookie didn't stick — common in some WebViews)
+  // Layer 3: Redirect back through server auth (last resort)
+  //
+  // We always try layer 1 first. It works when the cookie was properly set.
+  // If it fails AND we're inside Telegram, we have tg.initData available and
+  // can authenticate directly without any redirect.
+
+  // Layer 1: check session cookie
   try {
-    const r   = await fetch(BASE + '/api/session', { credentials: 'include' });
-    const ses = await r.json();
-    if (ses.ok && ses.user) currentUser = ses.user;
-  } catch(e) { console.warn('[session check]', e.message); }
+    const r = await fetch('/api/session', { credentials: 'include' });
+    const s = await r.json();
+    if (s.ok && s.user) {
+      currentUser = s.user;
+      console.log('[Auth] Layer 1 (cookie) OK:', currentUser.name);
+    }
+  } catch(e) { console.warn('[Auth] Layer 1 failed:', e.message); }
 
-  // Fallback path: tgInitData is in the URL (old flow or direct navigation).
-  // Try authenticating via POST as a safety net.
+  // Layer 2: POST initData directly (cookie didn't work but we have initData)
   if (!currentUser && tgInitData) {
+    console.log('[Auth] Layer 1 failed, trying Layer 2 (POST initData)');
     try {
-      const tgRes = await fetch(BASE + '/api/auth/telegram-webapp', {
-        method: 'POST',
+      const r = await fetch('/api/auth/telegram-webapp', {
+        method:      'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tgInitData })
+        headers:     { 'Content-Type': 'application/json' },
+        body:        JSON.stringify({ initData: tgInitData })
       });
-      const tgData = await tgRes.json();
-      if (tgData.ok && tgData.user) {
-        currentUser = tgData.user;
+      const d = await r.json();
+      if (d.ok && d.user) {
+        currentUser = d.user;
+        console.log('[Auth] Layer 2 (POST) OK:', currentUser.name);
+      } else {
+        console.warn('[Auth] Layer 2 failed:', d.error);
       }
-    } catch(e) { console.warn('[Telegram auth fallback]', e.message); }
+    } catch(e) { console.warn('[Auth] Layer 2 exception:', e.message); }
   }
 
-  // Still not authed — show appropriate error
+  // Layer 3: redirect to server-side auth (only if cookie AND direct POST both failed)
+  if (!currentUser && insideTg && tgInitData) {
+    console.log('[Auth] Layer 2 failed, trying Layer 3 (server redirect)');
+    const sp = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param;
+    const gid = sp ? String(sp).replace(/^g(\d+)$/, '-$1') : (params.get('groupId') || '');
+    let url = '/auth/telegram-miniapp?initData=' + encodeURIComponent(tgInitData);
+    if (gid) url += '&groupId=' + encodeURIComponent(gid);
+    window.location.replace(url);
+    return;
+  }
+
+  // Not authenticated at all — redirect to login
   if (!currentUser) {
-    const isInsideTg = !!(tgInitData || (tg && tg.initData));
-    if (isInsideTg) {
-      // Inside Telegram but auth failed — likely a new user who was never in a web session.
-      // Redirect back through server-side auth using the current Telegram initData.
-      const currentInitData = (tg && tg.initData) || tgInitData;
-      const currentGroupId_ = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param)
-        ? (String(tg.initDataUnsafe.start_param).replace(/^g(\d+)$/, '-$1'))
-        : (new URLSearchParams(location.search).get('groupId') || '');
-      if (currentInitData) {
-        let retryUrl = '/auth/telegram-miniapp?initData=' + encodeURIComponent(currentInitData);
-        if (currentGroupId_) retryUrl += '&groupId=' + encodeURIComponent(currentGroupId_);
-        window.location.replace(retryUrl);
-        return;
-      }
-      // No initData available at all — show a helpful message
-      document.body.innerHTML = `
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center;background:#F5F3FF;font-family:'DM Sans',sans-serif">
-          <div style="font-size:48px;margin-bottom:16px">🔐</div>
-          <div style="font-size:20px;font-weight:700;color:#6B21A8;margin-bottom:8px">Sign in to SquadPicks</div>
-          <div style="font-size:14px;color:#7C5AB8;margin-bottom:24px;max-width:300px">
-            Tap the button below to sign in, then return to Telegram.
-          </div>
-          <a href="${BASE}/login" target="_blank" style="background:#7C3AED;color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-size:15px;font-weight:700;display:inline-block">Open SquadPicks →</a>
-        </div>`;
+    if (insideTg) {
+      // Show a friendly message inside Telegram WebView instead of a blank redirect
+      document.body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center;background:#F5F3FF;font-family:DM Sans,sans-serif">'
+        + '<div style="font-size:48px;margin-bottom:16px">🎬</div>'
+        + '<div style="font-size:20px;font-weight:700;color:#6B21A8;margin-bottom:8px">Welcome to SquadPicks</div>'
+        + '<div style="font-size:14px;color:#7C5AB8;margin-bottom:24px;max-width:280px">Tap below to connect your Telegram account and get started.</div>'
+        + '<a href="/login" style="background:#7C3AED;color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-size:15px;font-weight:700;display:inline-block">Connect Telegram</a>'
+        + '</div>';
       return;
     }
     window.location.href = '/login';

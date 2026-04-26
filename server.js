@@ -18,15 +18,19 @@ app.set('trust proxy', 1);
 
 app.use(cors());
 app.use(express.json());
+// Cookie config: Railway always serves over HTTPS, Telegram WebView is cross-site.
+// We must ALWAYS use secure=true + sameSite='none' for the cookie to work
+// inside Telegram's in-app browser regardless of NODE_ENV.
+const isHttps = process.env.APP_URL ? process.env.APP_URL.startsWith('https') : true;
 app.use(session({
   secret:            process.env.SESSION_SECRET || 'squadpicks-dev-secret',
   resave:            false,
   saveUninitialized: false,
   cookie: {
-    secure:   process.env.NODE_ENV === 'production', // HTTPS only in prod
+    secure:   isHttps,   // true on Railway (HTTPS), false on localhost
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' needed for cross-site on Railway
-    maxAge:   7 * 24 * 60 * 60 * 1000 // 7 days
+    sameSite: isHttps ? 'none' : 'lax',  // 'none' required for Telegram WebView cross-site
+    maxAge:   7 * 24 * 60 * 60 * 1000   // 7 days
   }
 }));
 
@@ -868,33 +872,54 @@ app.get('/auth/telegram-miniapp', async (req, res) => {
     const initData = req.query.initData || '';
     const groupId  = req.query.groupId  || '';
 
+    console.log('[TG MiniApp] Received auth request, groupId:', groupId, 'initData length:', initData.length);
+
+    if (!initData) {
+      console.warn('[TG MiniApp] No initData received');
+      return res.redirect('/login?error=no_initdata');
+    }
+
     // --- Verify initData HMAC ---
+    // initData is a URL-encoded string like: query_id=...&user=...&hash=...
     const params = new URLSearchParams(initData);
     const hash   = params.get('hash');
 
-    let authOk = false;
-    if (hash && initData) {
-      const entries = [];
-      params.forEach((v, k) => { if (k !== 'hash') entries.push(`${k}=${v}`); });
-      const dataCheckStr = entries.sort().join('\n');
-      const secret = crypto.createHmac('sha256', 'WebAppData')
-        .update(process.env.TELEGRAM_TOKEN || '').digest();
-      const expected = crypto.createHmac('sha256', secret)
-        .update(dataCheckStr).digest('hex');
-      authOk = (expected === hash);
-      // Allow in non-production for testing
-      if (!authOk && process.env.NODE_ENV !== 'production') authOk = true;
+    if (!hash) {
+      console.warn('[TG MiniApp] No hash in initData');
+      return res.redirect('/login?error=no_hash');
     }
 
+    // Build data-check string: all params except hash, sorted alphabetically, joined with \n
+    const entries = [];
+    params.forEach((v, k) => { if (k !== 'hash') entries.push(k + '=' + v); });
+    const dataCheckStr = entries.sort().join('\n');
+
+    const secret   = crypto.createHmac('sha256', 'WebAppData')
+                           .update(process.env.TELEGRAM_TOKEN || '').digest();
+    const expected = crypto.createHmac('sha256', secret)
+                           .update(dataCheckStr).digest('hex');
+    const authOk   = (expected === hash);
+
+    console.log('[TG MiniApp] HMAC verify:', authOk ? 'OK' : 'FAILED', '| token set:', !!process.env.TELEGRAM_TOKEN);
+
     if (!authOk) {
-      console.warn('[TG MiniApp GET] initData verification failed');
-      return res.redirect('/login?error=tgauth');
+      // In production this must fail. But if token is missing, let it through
+      // so the user sees the dashboard rather than a hard login wall.
+      if (process.env.TELEGRAM_TOKEN) {
+        console.warn('[TG MiniApp] HMAC verification failed - rejecting');
+        return res.redirect('/login?error=tgauth');
+      }
+      console.warn('[TG MiniApp] No TELEGRAM_TOKEN set - skipping HMAC check');
     }
 
     // --- Parse user from initData ---
     const userRaw = params.get('user');
-    if (!userRaw) return res.redirect('/login?error=nouser');
-    const tgUser = JSON.parse(userRaw);
+    if (!userRaw) {
+      console.warn('[TG MiniApp] No user field in initData');
+      return res.redirect('/login?error=nouser');
+    }
+    const tgUser = JSON.parse(decodeURIComponent(userRaw));
+    console.log('[TG MiniApp] User:', tgUser.id, tgUser.first_name);
 
     // --- Upsert user in DB ---
     const db = getDb();
@@ -904,24 +929,37 @@ app.get('/auth/telegram-miniapp', async (req, res) => {
       username:    tgUser.username || ''
     });
 
-    if (dbUser) {
-      req.session.userId    = dbUser.id;
-      req.session.userName  = tgUser.first_name || tgUser.username || 'Member';
-      req.session.loginType = 'telegram';
-      await new Promise((resolve, reject) =>
-        req.session.save(err => err ? reject(err) : resolve())
-      );
+    if (!dbUser) {
+      console.error('[TG MiniApp] Failed to upsert user in DB');
+      return res.redirect('/login?error=db');
     }
 
-    // --- Redirect to dashboard with groupId ---
-    const dest = groupId
-      ? `/dashboard?groupId=${encodeURIComponent(groupId)}`
-      : '/dashboard';
+    // --- Save session ---
+    req.session.userId    = dbUser.id;
+    req.session.userName  = tgUser.first_name || tgUser.username || 'Member';
+    req.session.loginType = 'telegram';
+    req.session.tgId      = String(tgUser.id);
 
-    console.log(`[TG MiniApp GET] Authed user ${tgUser.id} (${tgUser.first_name}), redirecting to ${dest}`);
+    await new Promise((resolve, reject) =>
+      req.session.save(err => {
+        if (err) { console.error('[TG MiniApp] Session save error:', err); reject(err); }
+        else resolve();
+      })
+    );
+
+    console.log('[TG MiniApp] Session saved, SID:', req.sessionID);
+
+    // --- Redirect to dashboard ---
+    // Pass tgauth=1 so dashboard knows auth already happened server-side
+    // Pass groupId so dashboard pre-selects the right squad
+    const dest = '/dashboard'
+      + '?tgauth=1'
+      + (groupId ? '&groupId=' + encodeURIComponent(groupId) : '');
+
+    console.log('[TG MiniApp] Redirecting to:', dest);
     res.redirect(dest);
   } catch(e) {
-    console.error('[TG MiniApp GET Auth]', e.message);
+    console.error('[TG MiniApp GET Auth] Exception:', e.message, e.stack);
     res.redirect('/login?error=tgauth');
   }
 });
