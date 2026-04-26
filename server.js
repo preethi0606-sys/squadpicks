@@ -678,23 +678,30 @@ function getSupabase() {
 
 app.get('/api/groups/:id/channels', requireWebAuth, async (req, res) => {
   try {
-    const sb = getSupabase();
-    const { data } = await sb.from('group_channels')
-      .select('*').eq('group_id', req.params.id).order('created_at', { ascending: true });
+    const sb  = getSupabase();
+    const gid = Number(req.params.id);
+    if (!gid) return res.json({ ok: true, channels: [] });
+    const { data, error } = await sb.from('group_channels')
+      .select('*').eq('group_id', gid).order('created_at', { ascending: true });
+    if (error) { console.error('[GET channels]', error.message); return res.status(500).json({ error: error.message }); }
     res.json({ ok: true, channels: data || [] });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/groups/:id/channels', requireWebAuth, async (req, res) => {
   try {
-    const sb = getSupabase();
+    const sb  = getSupabase();
+    const gid = Number(req.params.id);
+    if (!gid) return res.status(400).json({ error: 'invalid group id' });
     const { channelId, channelName, channelUrl } = req.body;
     if (!channelId) return res.status(400).json({ error: 'channelId required' });
-    await sb.from('group_channels').upsert({
-      group_id: req.params.id, channel_id: channelId,
-      channel_name: channelName || channelId, channel_url: channelUrl || '',
+    const { error } = await sb.from('group_channels').upsert({
+      group_id: gid, channel_id: channelId,
+      channel_name: channelName || channelId,
+      channel_url:  channelUrl  || '',
       added_by: req.session.userId
     }, { onConflict: 'group_id,channel_id' });
+    if (error) { console.error('[POST channels]', error.message); return res.status(500).json({ error: error.message }); }
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

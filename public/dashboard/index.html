@@ -329,6 +329,9 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
     <a class="drawer-item" id="dnav-trending" onclick="goSection('trending',this)">
       <div class="drawer-icon">🔥</div><span>Trending</span>
     </a>
+    <a class="drawer-item" id="dnav-digest" onclick="goSection('digest',this)">
+      <div class="drawer-icon">📅</div><span>Squad Recap</span>
+    </a>
     <a class="drawer-item" id="dnav-settings" onclick="goSection('settings',this)">
       <div class="drawer-icon">⚙️</div><span>Settings</span>
     </a>
@@ -366,17 +369,37 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
       <button class="fpill" onclick="setDashFilter('place',this)">📍</button>
       <button class="fpill" onclick="setDashFilter('event',this)">🎭</button>
     </div>
-    <!-- Weekly Digest strip -->
-    <div id="weekly-digest-wrap" style="padding:0 1.25rem;margin-bottom:.5rem;display:none">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">📅 Squad Recap</div>
-      <div id="weekly-digest-content" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px"></div>
-    </div>
+<!-- weekly digest moved to its own sec-digest section -->
     <div class="picks-grid" id="dash-grid">
       <div class="empty"><div class="empty-icon">⏳</div>Loading your dashboard...</div>
     </div>
   </section>
 
   <!-- ── PICKS SECTION REMOVED — Dashboard is primary view ── -->
+
+  <!-- ── SQUAD RECAP / WEEKLY DIGEST SECTION ── -->
+  <section class="page-section" id="sec-digest">
+    <div class="section-wrap">
+      <div class="section-title">📅 Squad Recap</div>
+
+      <!-- Squad selector -->
+      <div style="margin-bottom:1rem">
+        <select id="digest-group-select" onchange="loadWeeklyDigest(this.value)"
+          style="width:100%;background:var(--white);border:1.5px solid var(--border);border-radius:var(--rsm);padding:10px 14px;font-size:14px;color:var(--text);font-family:var(--font-b);outline:none;cursor:pointer">
+          <option value="">— choose a squad —</option>
+        </select>
+      </div>
+
+      <!-- Digest content -->
+      <div id="digest-main">
+        <div style="text-align:center;padding:3rem 1rem;color:var(--muted)">
+          <div style="font-size:36px;margin-bottom:12px">📅</div>
+          <div style="font-size:15px;font-weight:600;margin-bottom:6px">Select a squad to see the recap</div>
+          <div style="font-size:13px">See what your squad has watched, visited, or done — and rate it!</div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- ── TRENDING SECTION ── -->
   <section class="page-section" id="sec-trending">
@@ -926,7 +949,6 @@ const VOTE_LABELS = {
 
   loadDashboard();
   loadTrending();
-  if (urlGroupId) loadWeeklyDigest(urlGroupId);
 
   // Default landing = Dashboard
   goSection('dashboard', document.getElementById('dnav-dashboard'));
@@ -943,6 +965,7 @@ function goSection(name, btn) {
   closeDrawer();
   if (name === 'dashboard') loadDashboard();
   if (name === 'trending')  loadTrending();
+  if (name === 'digest')    openDigestSection();
   if (name === 'settings') {
     loadSettings();
     if (window.innerWidth > 640) {
@@ -1223,7 +1246,6 @@ function setDashGroup(id, btn) {
   document.querySelectorAll('#dash-group-tabs .fpill').forEach(b => b.classList.remove('on'));
   if (btn) btn.classList.add('on');
   loadDashboard();
-  loadWeeklyDigest(id); // load squad recap when tab changes
 }
 
 function setDashFilter(f, btn) {
@@ -2382,59 +2404,126 @@ async function attachRatings(picks) {
 
 // ── WEEKLY DIGEST ─────────────────────────────────────────
 
-async function loadWeeklyDigest(groupId) {
-  const wrap = document.getElementById('weekly-digest-wrap');
-  const cont = document.getElementById('weekly-digest-content');
-  if (!wrap || !cont || !groupId || groupId === 'all') {
-    if (wrap) wrap.style.display = 'none';
-    return;
+// ── SQUAD RECAP (WEEKLY DIGEST) PAGE ─────────────────────
+
+function openDigestSection() {
+  // Populate the squad dropdown when the page opens
+  const sel = document.getElementById('digest-group-select');
+  if (!sel) return;
+  const groups = allGroups || dashAllGroups || [];
+  sel.innerHTML = '<option value="">— choose a squad —</option>'
+    + groups.map(g => '<option value="' + g.id + '"' + (String(g.id)===String(currentGroupId)?' selected':'') + '>' + esc(g.title) + '</option>').join('');
+  // Auto-load current group if set
+  const gid = sel.value || currentGroupId;
+  if (gid) {
+    sel.value = String(gid);
+    loadWeeklyDigest(gid);
   }
+}
+
+async function loadWeeklyDigest(groupId) {
+  const main = document.getElementById('digest-main');
+  if (!main || !groupId) return;
+  main.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted)"><div class="trend-spin"></div></div>';
   try {
     const r = await fetch('/api/weekly-digest?groupId=' + encodeURIComponent(groupId), { credentials: 'include' });
     const d = await r.json();
     if (!d.ok || (!d.seen.length && !d.wantGroupOk.length)) {
-      wrap.style.display = 'none';
+      main.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:var(--muted)"><div style="font-size:36px;margin-bottom:12px">🎯</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">No activity yet</div><div style="font-size:13px">Once your squad starts voting and marking things as seen, they'll appear here.</div></div>';
       return;
     }
-    wrap.style.display = 'block';
     const TC2 = { movie:'🎬', show:'📺', food:'🍽', place:'📍', event:'🎭', video:'▶️', link:'🔗' };
 
-    const seenHtml = d.seen.map(p => {
-      const emoji = TC2[p.type] || '🎯';
-      const img   = p.image_url
-        ? '<img src="' + esc(p.image_url) + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover" onerror="this.style.display=\'none\'">'
-        : '<div class="digest-thumb-emoji">' + emoji + '</div>';
-      const seenBy = p.seenBy && p.seenBy.length
-        ? p.seenBy.slice(0,2).join(', ') + (p.seenBy.length > 2 ? ' +' + (p.seenBy.length-2) : '') + ' seen it'
-        : 'Seen recently';
-      const stars  = renderStars(p.id, p.myStars || 0, p.avgRating, p.ratingCount, true);
-      return '<div class="digest-card" style="min-width:240px;flex-shrink:0">'
-        + img
-        + '<div class="digest-info">'
-        + '<div class="digest-title">' + esc(p.title) + '</div>'
-        + '<div class="digest-sub">✅ ' + seenBy + '</div>'
-        + stars
-        + '</div></div>';
-    }).join('');
+    // Fetch ratings for seen picks so users can rate them
+    let ratingsMap = {};
+    if (d.seen.length) {
+      try {
+        const rr = await fetch('/api/ratings?pickIds=' + d.seen.map(p=>p.id).join(','), { credentials:'include' });
+        const rd = await rr.json();
+        if (rd.ok) ratingsMap = rd.ratings || {};
+      } catch(e) {}
+    }
 
-    const upcomingHtml = d.wantGroupOk.map(p => {
+    function digestCard(p, isSeen) {
       const emoji = TC2[p.type] || '🎯';
-      const img   = p.image_url
-        ? '<img src="' + esc(p.image_url) + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover" onerror="this.style.display=\'none\'">'
-        : '<div class="digest-thumb-emoji">' + emoji + '</div>';
-      return '<div class="digest-card" style="min-width:240px;flex-shrink:0;border-color:#DDD6FE">'
-        + img
-        + '<div class="digest-info">'
-        + '<div class="digest-title">' + esc(p.title) + '</div>'
-        + '<div class="digest-sub" style="color:var(--blue)">👍 Squad agrees — do it!</div>'
-        + '</div></div>';
-    }).join('');
+      const thumb = p.image_url
+        ? '<img src="' + esc(p.image_url) + '" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0" onerror="this.style.display=\'none\'">'
+        : '<div style="width:56px;height:56px;border-radius:10px;background:var(--beige2);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">' + emoji + '</div>';
 
-    cont.innerHTML = seenHtml + upcomingHtml ||
-      '<div style="font-size:13px;color:var(--muted);padding:4px 0">No squad activity in the last 2 weeks</div>';
+      let bottomRow = '';
+      if (isSeen) {
+        // Show who saw it + star rating
+        const info    = ratingsMap[p.id] || {};
+        const myStars = info.myStars || 0;
+        const avg     = info.avg;
+        const count   = info.count || 0;
+        const seenBy  = (p.seenBy||[]).slice(0,2).join(', ') + ((p.seenBy||[]).length > 2 ? ' +' + ((p.seenBy||[]).length-2) : '');
+
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+          starsHtml += '<span style="cursor:pointer;font-size:16px;color:' + (i<=myStars?'#F59E0B':'#DDD6FE') + '" '
+            + 'onclick="rateDigestPick(' + p.id + ',' + i + ',this)">&#9733;</span>';
+        }
+        const avgHtml = avg ? ' <span style="font-size:11px;color:#F59E0B;font-weight:700">' + avg.toFixed(1) + '&#9733;</span>'
+          + '<span style="font-size:10px;color:var(--muted)"> (' + count + ')</span>' : '';
+
+        bottomRow = '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">✅ ' + (seenBy || 'Someone') + ' seen it</div>'
+          + '<div style="display:flex;align-items:center;gap:2px">' + starsHtml + avgHtml + '</div>';
+      } else {
+        bottomRow = '<div style="font-size:12px;color:var(--blue);font-weight:600;margin-top:4px">👍 Squad agrees — let's do it!</div>';
+      }
+
+      return '<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)">'
+        + thumb
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.title) + '</div>'
+        + '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">' + emoji + ' ' + (p.type||'pick') + '</div>'
+        + bottomRow
+        + '</div></div>';
+    }
+
+    let html = '';
+
+    if (d.seen.length) {
+      html += '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">✅ Already Seen — Rate it!</div>';
+      html += d.seen.map(p => digestCard(p, true)).join('');
+    }
+
+    if (d.wantGroupOk.length) {
+      html += '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:' + (d.seen.length?'14':'0') + 'px 0 8px">🗓 Up Next — Squad Approved</div>';
+      html += d.wantGroupOk.map(p => digestCard(p, false)).join('');
+    }
+
+    main.innerHTML = html || '<div style="font-size:13px;color:var(--muted);padding:8px 0">No activity in the last 2 weeks</div>';
+
   } catch(e) {
-    if (wrap) wrap.style.display = 'none';
+    console.error('[loadWeeklyDigest]', e.message);
+    if (main) main.innerHTML = '<div style="color:var(--red);font-size:13px;padding:1rem">Could not load recap: ' + e.message + '</div>';
   }
+}
+
+// Called when user clicks a star in the weekly digest
+async function rateDigestPick(pickId, stars, starEl) {
+  try {
+    const r = await fetch('/api/ratings', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pickId, stars })
+    });
+    const d = await r.json();
+    if (!d.ok) { showToast('Could not save rating'); return; }
+    // Update stars visually
+    const row   = starEl.parentNode;
+    const spans = row.querySelectorAll('span[onclick]');
+    spans.forEach((s, i) => {
+      s.style.color = i < stars ? '#F59E0B' : '#DDD6FE';
+    });
+    showToast(stars + ' ★ saved!');
+    // Refresh digest to show updated avg
+    if (typeof currentGroupId !== 'undefined' && currentGroupId) {
+      setTimeout(() => loadWeeklyDigest(currentGroupId), 800);
+    }
+  } catch(e) { showToast('Network error'); }
 }
 
 // ── SETTINGS: YouTube Channels manager ───────────────────

@@ -443,44 +443,81 @@ async function getPickRatings(pickIds) {
 }
 
 async function getWeeklyDigest(groupId) {
-  // Picks voted on (seen) in the last 14 days
-  const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: votes } = await supabase
-    .from('votes')
-    .select('pick_id, status, first_name, user_id')
-    .eq('status', 'seen')
-    .gte('created_at', since);
+  const numGroupId = Number(groupId);
+  if (!numGroupId) return { seen: [], wantGroupOk: [] };
 
-  const seenPickIds = [...new Set((votes||[]).map(v => v.pick_id))];
-  if (!seenPickIds.length) return { seen: [], wantGroupOk: [] };
-
-  // Get picks for this group that were seen
-  const { data: seenPicks } = await supabase
-    .from('picks')
-    .select('id, title, type, image_url, url, group_ok')
-    .eq('group_id', Number(groupId))
-    .in('id', seenPickIds);
-
-  // Group ok picks we haven't done yet (want to do this week)
-  const { data: upcoming } = await supabase
+  // Step 1: Get ALL picks for this group
+  const { data: allPicks } = await supabase
     .from('picks')
     .select('id, title, type, image_url, url')
-    .eq('group_id', Number(groupId))
-    .eq('group_ok', true)
-    .not('id', 'in', `(${seenPickIds.length ? seenPickIds.join(',') : '00000000-0000-0000-0000-000000000000'})`);
+    .eq('group_id', numGroupId)
+    .order('created_at', { ascending: false });
 
-  // Attach voter names to seen picks
-  const voterMap = {};
-  (votes||[]).forEach(v => {
-    if (!voterMap[v.pick_id]) voterMap[v.pick_id] = [];
-    voterMap[v.pick_id].push(v.first_name || 'Member');
+  if (!allPicks || !allPicks.length) return { seen: [], wantGroupOk: [] };
+  const allPickIds = allPicks.map(p => p.id);
+
+  // Step 2: Get all votes for this group's picks in the last 14 days
+  const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: recentVotes } = await supabase
+    .from('votes')
+    .select('pick_id, status, first_name, user_id')
+    .in('pick_id', allPickIds)
+    .gte('created_at', since);
+
+  // Step 3: Get ALL votes for this group (to compute group_ok)
+  const { data: allVotes } = await supabase
+    .from('votes')
+    .select('pick_id, status, user_id')
+    .in('pick_id', allPickIds);
+
+  // Step 4: Get active member count for group_ok threshold
+  const { data: members } = await supabase
+    .from('group_members')
+    .select('user_id')
+    .eq('group_id', numGroupId)
+    .eq('status', 'active');
+  const memberCount = Math.max((members || []).length, 1);
+  const threshold   = Math.ceil(memberCount * 0.5);
+
+  // Step 5: Compute group_ok per pick from votes
+  const votesByPick = {};
+  (allVotes || []).forEach(v => {
+    if (!votesByPick[v.pick_id]) votesByPick[v.pick_id] = [];
+    votesByPick[v.pick_id].push(v);
   });
 
-  const seenWithVoters = (seenPicks||[]).map(p => ({
-    ...p, seenBy: voterMap[p.id] || []
-  }));
+  const groupOkIds = new Set();
+  allPicks.forEach(p => {
+    const pv = votesByPick[p.id] || [];
+    const hasSkip = pv.some(v => v.status === 'skip');
+    const pos = pv.filter(v => v.status === 'want' || v.status === 'seen').length;
+    if (!hasSkip && pos >= threshold && pv.length > 0) groupOkIds.add(p.id);
+  });
 
-  return { seen: seenWithVoters, wantGroupOk: (upcoming||[]).slice(0, 6) };
+  // Step 6: Which picks were seen recently?
+  const seenPickIds = new Set(
+    (recentVotes || []).filter(v => v.status === 'seen').map(v => v.pick_id)
+  );
+
+  // Step 7: Build voter name map from recent votes
+  const voterMap = {};
+  (recentVotes || []).filter(v => v.status === 'seen').forEach(v => {
+    if (!voterMap[v.pick_id]) voterMap[v.pick_id] = [];
+    const name = v.first_name || 'Member';
+    if (!voterMap[v.pick_id].includes(name)) voterMap[v.pick_id].push(name);
+  });
+
+  // Seen picks (recently voted 'seen' by someone in this group)
+  const seenPicks = allPicks
+    .filter(p => seenPickIds.has(p.id))
+    .map(p => ({ ...p, seenBy: voterMap[p.id] || [] }));
+
+  // Group-ok picks not yet seen (upcoming / to-do)
+  const upcoming = allPicks
+    .filter(p => groupOkIds.has(p.id) && !seenPickIds.has(p.id))
+    .slice(0, 6);
+
+  return { seen: seenPicks, wantGroupOk: upcoming };
 }
 
 module.exports = {

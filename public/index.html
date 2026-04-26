@@ -2,2663 +2,320 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>SquadPicks — Full App</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Blog — SquadPicks</title>
+<link rel="stylesheet" href="/styles.css"/>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{
-  --navy:#6B21A8;--navy2:#581C87;
-  --blue:#7C3AED;--blue2:#8B5CF6;
-  --beige:#F5F3FF;--beige2:#EDE9FE;--beige3:#DDD6FE;
-  --text:#1E1333;--text2:#3B1F6B;--text3:#7C5AB8;
-  --white:#FFFFFF;--surface:#FFFFFF;--card:#FFFFFF;
-  --border:#DDD6FE;--muted:#7C5AB8;--hint:#A78BCA;
-  --green:#059669;--green-bg:rgba(5,150,105,.1);--green-dk:#047857;
-  --amber:#D97706;--amber-bg:rgba(217,119,6,.1);
-  --red:#DC2626;--red-bg:rgba(220,38,38,.08);
-  --font-d:'Fraunces',Georgia,serif;
-  --font-b:'DM Sans',system-ui,sans-serif;
-  --r:16px;--rsm:10px;
-  --nav-h:62px;--sidebar-w:240px;
+body { padding-top: 62px; }
+.blog-hero {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 4rem 2rem;
+  text-align: center;
 }
-body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-height:100vh;overflow-x:hidden}
-
-/* ── TOP NAV ── */
-.topnav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);background:var(--navy);display:flex;align-items:center;padding:0 1rem;z-index:100;gap:10px}
-.topnav-logo{font-family:var(--font-d);font-size:21px;font-weight:700;color:var(--beige);text-decoration:none;white-space:nowrap}
-.topnav-logo span{color:var(--blue2)}
-.topnav-squad{font-size:11px;color:#C4B5FD;margin-left:4px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.topnav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-.topnav-avatar{width:32px;height:32px;border-radius:50%;background:var(--blue2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;cursor:pointer;border:2px solid rgba(255,255,255,.2)}
-.ham-btn{background:transparent;border:none;cursor:pointer;display:flex;flex-direction:column;gap:5px;padding:6px;flex-shrink:0}
-.ham-line{width:22px;height:2px;background:#fff;border-radius:2px}
-
-/* ── DRAWER ── */
-.drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110}
-.drawer-overlay.open{display:block}
-.drawer{position:fixed;top:0;left:-260px;bottom:0;width:260px;background:var(--navy);z-index:115;transition:left .25s ease;display:flex;flex-direction:column;box-shadow:4px 0 24px rgba(0,0,0,.35)}
-.drawer.open{left:0}
-.drawer-header{padding:52px 20px 20px;border-bottom:1px solid rgba(255,255,255,.1)}
-.drawer-logo{font-family:var(--font-d);font-size:20px;font-weight:700;color:var(--beige)}
-.drawer-logo span{color:var(--blue2)}
-.drawer-user{font-size:12px;color:#C4B5FD;margin-top:4px}
-.drawer-nav{flex:1;padding:8px 0;overflow-y:auto}
-.drawer-item{display:flex;align-items:center;gap:12px;padding:13px 20px;cursor:pointer;border:none;background:transparent;width:100%;text-align:left;font-family:var(--font-b);font-size:14px;font-weight:500;color:#A8C8F0;transition:all .15s;text-decoration:none}
-.drawer-item:hover{background:rgba(255,255,255,.06)}
-.drawer-item.on{background:rgba(124,58,237,.2);color:#fff}
-.drawer-icon{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.drawer-item.on .drawer-icon{background:var(--blue)}
-.drawer-footer{padding:14px 20px 28px;border-top:1px solid rgba(255,255,255,.1)}
-.drawer-signout{display:flex;align-items:center;gap:10px;font-size:13px;color:#f87171;cursor:pointer;background:none;border:none;font-family:var(--font-b);padding:8px 0;width:100%}
-
-/* ── LAYOUT ── */
-.main-wrap{padding-top:var(--nav-h)}
-.page-section{display:none;min-height:calc(100vh - var(--nav-h))}
-.page-section.on{display:block}
-
-/* ── PICKS PAGE ── */
-.picks-page{display:flex;flex-direction:column}
-.picks-header{background:var(--white);border-bottom:1px solid var(--border);padding:1rem 1.25rem}
-.picks-header-top{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
-.squad-title{font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.group-select{background:var(--beige);border:1.5px solid var(--beige3);border-radius:var(--rsm);padding:7px 12px;color:var(--text);font-family:var(--font-b);font-size:13px;cursor:pointer;outline:none;max-width:180px}
-.group-select optgroup{font-weight:700;color:var(--navy)}
-.stats-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:.75rem}
-.stat{background:var(--beige);border:1px solid var(--beige3);border-radius:var(--rsm);padding:.5rem .875rem}
-.stat-num{font-size:18px;font-weight:700;color:var(--text)}
-.stat-lbl{font-size:10px;color:var(--muted);margin-top:1px}
-.filter-bar{display:flex;gap:6px;padding:.75rem 1.25rem;overflow-x:auto;scrollbar-width:none;background:var(--beige2);border-bottom:1px solid var(--beige3);position:sticky;top:var(--nav-h);z-index:30}
-.filter-bar::-webkit-scrollbar{display:none}
-.fpill{flex-shrink:0;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--beige3);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;font-family:var(--font-b)}
-.fpill.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-.add-btn{margin-left:auto;flex-shrink:0;background:var(--blue);color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-b)}
-
-/* ── PICKS GRID ── */
-.picks-grid{padding:1rem 1.25rem 5rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
-@media(max-width:640px){.picks-grid{grid-template-columns:1fr}}
-
-/* ── PICK CARD ── */
-.pick-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 2px 8px rgba(124,58,237,.06);transition:border-color .15s}
-.pick-card:hover{border-color:var(--blue2)}
-.card-thumb{width:100%;height:170px;position:relative;overflow:hidden;background:var(--navy2,#3B0764);display:flex;align-items:center;justify-content:center;font-size:52px}
-.card-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.card-thumb-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(30,19,51,.85))}
-.card-thumb-info{position:absolute;bottom:10px;left:12px;right:12px}
-.card-type-badge{display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;margin-bottom:4px;letter-spacing:.04em}
-.card-thumb-title{font-family:var(--font-d);font-size:16px;font-weight:700;color:#fff;line-height:1.15}
-.card-thumb-emoji{font-size:52px;z-index:1;position:relative}
-.card-body{padding:10px 12px 0}
-.card-desc{font-size:12px;color:var(--text2);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card-by{font-size:11px;color:var(--muted);margin-bottom:8px}
-.card-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--blue);border:1px solid var(--beige3);border-radius:20px;padding:3px 9px;text-decoration:none;margin-bottom:8px;transition:background .15s}
-.card-link:hover{background:var(--beige2)}
-.card-ok{font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;background:rgba(5,150,105,.1);color:#059669;border:1px solid rgba(5,150,105,.2);display:inline-block;margin-bottom:8px}
-.voters-row{display:flex;gap:4px;flex-wrap:wrap;align-items:center;padding:0 0 8px}
-.vc{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600}
-.vc-seen{background:rgba(5,150,105,.12);color:#059669;border:1px solid rgba(5,150,105,.2)}
-.vc-want{background:rgba(217,119,6,.1);color:#D97706;border:1px solid rgba(217,119,6,.2)}
-.vc-skip{background:rgba(220,38,38,.08);color:#DC2626;border:1px solid rgba(220,38,38,.15)}
-.vote-count{margin-left:auto;font-size:10px;color:var(--hint)}
-.vote-btns{display:flex;border-top:1px solid var(--border)}
-.vbtn{flex:1;padding:10px 4px;text-align:center;font-size:12px;font-weight:600;color:var(--muted);background:transparent;border:none;cursor:pointer;transition:all .15s;font-family:var(--font-b)}
-.vbtn:not(:last-child){border-right:1px solid var(--border)}
-.vbtn:hover{background:var(--beige)}
-.vbtn.on-seen{color:#059669;background:rgba(5,150,105,.08)}
-.vbtn.on-want{color:#D97706;background:rgba(217,119,6,.08)}
-.vbtn.on-skip{color:#DC2626;background:rgba(220,38,38,.05)}
-
-/* ── TRENDING SECTION ── */
-.section-wrap{padding:1rem 1.25rem 5rem}
-.section-title{font-family:var(--font-d);font-size:20px;font-weight:700;color:var(--text);margin-bottom:1rem}
-.trend-cat-bar{display:flex;gap:8px;margin-bottom:1rem;overflow-x:auto;scrollbar-width:none}
-.trend-cat-bar::-webkit-scrollbar{display:none}
-.tcb-btn{flex-shrink:0;padding:7px 18px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid var(--beige3);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;font-family:var(--font-b)}
-.tcb-btn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-.trend-cat-section{display:none}.trend-cat-section.on{display:block}
-.trend-sec-hdr{font-size:13px;font-weight:700;color:var(--text2);margin:1rem 0 .5rem;display:flex;align-items:center;gap:8px}
-.tsh-tag{font-size:9px;font-weight:800;padding:2px 7px;border-radius:10px;color:#fff;letter-spacing:.04em}
-.tsh-live{font-size:9px;font-weight:700;color:#059669}
-.trend-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;
-  /* Show a thin scrollbar so users know it's scrollable */
-  scrollbar-width:thin;scrollbar-color:var(--beige3) transparent}
-.trend-row::-webkit-scrollbar{height:4px}
-.trend-row::-webkit-scrollbar-track{background:transparent}
-.trend-row::-webkit-scrollbar-thumb{background:var(--beige3);border-radius:2px}
-.trend-row::-webkit-scrollbar-thumb:hover{background:var(--blue2)}
-/* Wrap .trend-row in a container with a right-fade hint */
-.trend-scroll-wrap{position:relative;overflow:hidden}
-.trend-scroll-wrap::after{content:'';position:absolute;top:0;right:0;bottom:12px;width:40px;
-  background:linear-gradient(to left,var(--beige),transparent);pointer-events:none;z-index:2}
-/* Responsive grid for places — wraps on mobile */
-.places-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;padding-bottom:4px}
-/* Event category sections */
-.event-cat-section{margin-bottom:1.5rem}
-.event-cat-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:.5rem;display:flex;align-items:center;gap:6px}
-.event-cat-icon{font-size:16px}
-
-/* Poster cards — increased from 120×175 to 150×220 */
-.tc-poster{flex-shrink:0;width:150px;border-radius:var(--rsm);overflow:hidden;background:var(--navy2,#3B0764);border:1px solid var(--beige3);box-shadow:0 2px 8px rgba(0,0,0,.12)}
-.tc-poster-img{width:150px;height:220px;display:flex;align-items:center;justify-content:center;font-size:52px;position:relative;overflow:hidden;background:#1a0a2e}
-.tc-poster-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.tc-score{position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.72);color:#FFD700;font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px}
-.tc-stream-badge{position:absolute;top:6px;left:6px;font-size:8px;font-weight:900;padding:3px 7px;border-radius:5px;color:white;letter-spacing:.04em;box-shadow:0 1px 4px rgba(0,0,0,.4)}
-.tc-rank-badge{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.72);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px}
-.tc-poster-body{padding:8px 9px;background:var(--white)}
-.tc-poster-title{font-size:12px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px}
-.tc-poster-meta{font-size:10px;color:var(--muted);margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tc-poster-actions{display:flex;border-top:1px solid var(--border);background:var(--beige)}
-.tc-pa-btn{flex:1;padding:8px 3px;text-align:center;font-size:11px;font-weight:700;border:none;background:transparent;cursor:pointer;font-family:var(--font-b);display:flex;align-items:center;justify-content:center;gap:2px;transition:background .12s}
-.tc-pa-btn:not(:last-child){border-right:1px solid var(--border)}
-.tc-pa-btn:hover{background:var(--beige2)}
-
-/* Wide cards for places & events */
-.tc-wide{border-radius:var(--rsm);overflow:hidden;background:var(--white);border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.tc-wide-img{width:100%;height:130px;display:flex;align-items:center;justify-content:center;font-size:40px;background:#1a1a3e;position:relative;overflow:hidden}
-.tc-wide-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.tc-wide-body{padding:10px 12px}
-.tc-wide-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tc-wide-meta{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.trend-loading{padding:2rem;text-align:center;color:var(--muted);font-size:13px}
-.trend-spin{display:inline-block;width:18px;height:18px;border:2px solid var(--beige3);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;vertical-align:middle}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* ── PLAN SECTION ── */
-.plan-section{display:none}.plan-section.on{display:block}
-.plan-filter-row{display:flex;gap:6px;padding:.75rem 1.25rem;overflow-x:auto;scrollbar-width:none;background:var(--beige2);border-bottom:1px solid var(--beige3)}
-.plan-filter-row::-webkit-scrollbar{display:none}
-.plan-cards{padding:1rem 1.25rem 5rem;display:flex;flex-direction:column;gap:10px}
-.plan-group-title{font-family:var(--font-d);font-size:15px;font-weight:700;color:var(--text);margin:10px 0 6px;display:flex;align-items:center;gap:8px}
-.plan-count{font-family:var(--font-b);font-size:11px;font-weight:600;background:var(--navy);color:var(--beige2);padding:2px 8px;border-radius:10px}
-.pcard{background:var(--white);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;display:flex;box-shadow:0 1px 4px rgba(124,58,237,.06)}
-.pcard-thumb{width:72px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:28px;position:relative;overflow:hidden}
-.pcard-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.pcard-thumb-emoji{font-size:28px;z-index:1;position:relative}
-.pcard-body{flex:1;padding:10px 12px;min-width:0}
-.pcard-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pcard-title a{color:var(--text);text-decoration:none}
-.pcard-title a:hover{color:var(--blue)}
-.pcard-meta{font-size:10px;color:var(--muted);margin-bottom:5px}
-.pcard-badges{display:flex;gap:4px;flex-wrap:wrap}
-.pb{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px}
-.pb-ok{background:rgba(5,150,105,.1);color:#059669;border:1px solid rgba(5,150,105,.2)}
-.pb-skip{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.15)}
-.pb-wait{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(217,119,6,.2)}
-.pcard-voters{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap}
-.pvc{font-size:9px;padding:2px 5px;border-radius:6px;font-weight:600}
-.pvc-ok{background:rgba(124,58,237,.12);color:var(--blue);border:1px solid rgba(124,58,237,.2)}
-.pvc-want{background:var(--beige2);color:var(--text2);border:1px solid var(--beige3)}
-.pvc-skip{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.15)}
-
-/* ── SETTINGS SECTION ── */
-.toggle-sw{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0}
-.toggle-sw input{opacity:0;width:0;height:0}
-.toggle-track{position:absolute;inset:0;background:#DDD6FE;border-radius:12px;cursor:pointer;transition:background .2s}
-.toggle-track::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
-.toggle-sw input:checked + .toggle-track{background:var(--blue)}
-.toggle-sw input:checked + .toggle-track::after{transform:translateX(20px)}
-/* Settings master-detail layout */
-.settings-outer{display:flex;height:calc(100vh - 56px);overflow:hidden}
-.settings-menu{width:260px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--white)}
-.settings-detail{flex:1;overflow-y:auto;padding:1.5rem;background:var(--beige)}
-@media(max-width:640px){
-  .settings-outer{display:block;height:auto}
-  .settings-menu{width:100%;border-right:none;border-bottom:1px solid var(--border)}
-  .settings-detail{display:none;padding:1rem}
-  .settings-detail.mobile-open{display:block}
+.blog-hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 900; color: var(--text);
+  margin-bottom: .75rem; letter-spacing: -1px;
 }
-.smenu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;
-  border-bottom:1px solid var(--border);transition:background .12s;user-select:none}
-.smenu-item:hover{background:var(--beige)}
-.smenu-item.active{background:var(--beige2);border-left:3px solid var(--blue)}
-.smenu-item.active .smenu-label{color:var(--blue);font-weight:700}
-.smenu-icon{font-size:20px;width:32px;text-align:center;flex-shrink:0}
-.smenu-label{flex:1;font-size:14px;font-weight:500;color:var(--text)}
-.smenu-arrow{color:var(--muted);font-size:16px}
-.smenu-back{display:none;align-items:center;gap:8px;padding:12px 16px;cursor:pointer;
-  background:var(--beige2);border-bottom:1px solid var(--border);font-size:13px;
-  font-weight:600;color:var(--blue)}
-@media(max-width:640px){.smenu-back{display:flex}}
-/* Detail panel cards */
-.sdet-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:1rem;
-  font-family:var(--font-d)}
-.settings-section{background:var(--white);border-radius:var(--r);overflow:hidden;
-  margin-bottom:14px;border:1px solid var(--border)}
-.settings-hdr{padding:10px 14px;border-bottom:1px solid var(--border);font-size:11px;
-  font-weight:700;color:var(--text2);letter-spacing:.05em;text-transform:uppercase}
-.settings-row{padding:13px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
-.settings-row:last-child{border-bottom:none}
-.si-icon{font-size:18px;width:36px;text-align:center;flex-shrink:0}
-.si-lbl{flex:1}
-.si-lbl h4{font-size:14px;font-weight:600;color:var(--text);margin-bottom:1px}
-.si-lbl p{font-size:12px;color:var(--muted)}
-.si-arrow{color:var(--muted);font-size:16px}
-.settings-signout{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;
-  width:100%;background:none;border:none;font-family:var(--font-b);text-align:left}
-.settings-signout-lbl h4{font-size:14px;font-weight:600;color:#DC2626}
-.settings-signout-lbl p{font-size:12px;color:#f87171}
-/* Star rating widget */
-.star-row{display:flex;gap:3px;align-items:center}
-.star{font-size:18px;cursor:pointer;transition:transform .1s;line-height:1}
-.star:hover{transform:scale(1.2)}
-.star.lit{color:#F59E0B}
-.star.dim{color:#DDD6FE}
-/* Weekly digest */
-.digest-section{margin-bottom:1.5rem}
-.digest-section-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;
-  letter-spacing:.06em;margin-bottom:.75rem}
-.digest-card{display:flex;gap:12px;background:var(--white);border-radius:12px;
-  padding:12px;margin-bottom:10px;border:1px solid var(--border);align-items:center}
-.digest-thumb{width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--beige2)}
-.digest-thumb-emoji{width:52px;height:52px;border-radius:10px;flex-shrink:0;background:var(--beige2);
-  display:flex;align-items:center;justify-content:center;font-size:22px}
-.digest-info{flex:1;min-width:0}
-.digest-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.digest-sub{font-size:11px;color:var(--muted);margin-bottom:5px}
-.digest-stars{display:flex;gap:2px;align-items:center}
-/* Community top-rated */
-.comm-rated-card{background:var(--white);border-radius:12px;border:1px solid var(--border);
-  overflow:hidden;margin-bottom:10px;display:flex;gap:0}
-.comm-rated-img{width:80px;height:80px;object-fit:cover;flex-shrink:0}
-.comm-rated-img-ph{width:80px;height:80px;flex-shrink:0;background:var(--beige2);
-  display:flex;align-items:center;justify-content:center;font-size:28px}
-.comm-rated-body{flex:1;padding:10px 12px;min-width:0}
-.comm-rated-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.comm-rated-meta{font-size:11px;color:var(--muted);margin-bottom:5px}
-.comm-rated-stars{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--amber)}
+.blog-hero p { font-size: 17px; color: var(--muted); max-width: 480px; margin: 0 auto; }
 
-/* ── MODALS ── */
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center;padding:1.25rem}
-.overlay.open{display:flex}
-.modal{background:var(--white);border-radius:var(--r);padding:1.75rem;width:100%;max-width:460px;border:1px solid var(--border);max-height:90vh;overflow-y:auto}
-.modal h3{font-family:var(--font-d);font-size:20px;font-weight:700;color:var(--text);margin-bottom:1.25rem}
-.field{margin-bottom:1rem}
-.field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
-.field input{width:100%;background:var(--beige);border:1.5px solid var(--beige3);border-radius:var(--rsm);padding:10px 14px;color:var(--text);font-size:14px;font-family:var(--font-b);outline:none}
-.field input:focus{border-color:var(--blue2)}
-.modal-footer{display:flex;gap:10px;margin-top:1.25rem}
-.modal-cancel{flex:1;padding:11px;border-radius:var(--rsm);background:var(--beige);border:1.5px solid var(--beige3);color:var(--muted);font-family:var(--font-b);font-size:14px;cursor:pointer}
-.modal-save{flex:2;padding:11px;border-radius:var(--rsm);background:var(--blue);border:none;color:#fff;font-family:var(--font-b);font-size:14px;font-weight:700;cursor:pointer}
-.modal-save:disabled{background:var(--beige3);color:var(--muted);cursor:not-allowed}
-.gp-tab{padding:6px 13px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--beige3);background:transparent;color:var(--muted);cursor:pointer;font-family:var(--font-b);transition:all .15s}
-.gp-tab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-.gp-pane{display:none}.gp-pane.on{display:block}
-.cat-btn{padding:7px 13px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--beige3);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--font-b);transition:all .15s;white-space:nowrap}
-.cat-btn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-.gp-pane{display:none}.gp-pane.on{display:block}
+.blog-grid {
+  max-width: 1080px; margin: 0 auto;
+  padding: 3rem 2rem 5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+.blog-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden;
+  text-decoration: none; color: inherit;
+  display: block; transition: border-color .15s;
+}
+.blog-card:hover { border-color: rgba(0,168,132,.35); }
+.blog-card.featured {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.blog-banner {
+  aspect-ratio: 16/9;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 60px;
+}
+.blog-banner.featured-banner { aspect-ratio: auto; min-height: 220px; }
+.blog-body { padding: 1.5rem; }
+.blog-tag {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px;
+  background: var(--green-bg); color: var(--green);
+  border: 1px solid var(--green-dk);
+  margin-bottom: .75rem;
+}
+.blog-title {
+  font-family: var(--font-display);
+  font-size: 20px; font-weight: 700;
+  color: var(--text); line-height: 1.25;
+  margin-bottom: .5rem;
+}
+.blog-card.featured .blog-title { font-size: 26px; }
+.blog-excerpt { font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 1rem; }
+.blog-meta { display: flex; align-items: center; gap: .75rem; font-size: 12px; color: var(--hint); }
+.blog-av { width: 26px; height: 26px; border-radius: 50%; background: var(--green-bg); border: 1px solid var(--green-dk); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--green); }
 
-/* ── EMPTY / TOAST ── */
-.empty{text-align:center;padding:3.5rem 1rem;color:var(--muted);grid-column:1/-1}
-.empty-icon{font-size:40px;margin-bottom:1rem}
-.toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:500;opacity:0;transition:opacity .2s;pointer-events:none;z-index:300}
-.toast.show{opacity:1}
-@media(max-width:480px){.picks-grid{padding:.75rem .75rem 5rem}.section-wrap{padding:.75rem .75rem 5rem}.settings-wrap{padding:.75rem .75rem 5rem}.plan-cards{padding:.75rem .75rem 5rem}}
+/* SINGLE POST */
+.post-page { display: none; }
+.post-page.active { display: block; }
+.post-hero { background: var(--surface); border-bottom: 1px solid var(--border); padding: 4rem 2rem; }
+.post-container { max-width: 700px; margin: 0 auto; }
+.post-back { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; text-decoration: none; margin-bottom: 1.5rem; transition: color .15s; }
+.post-back:hover { color: var(--green); }
+.post-title { font-family: var(--font-display); font-size: clamp(28px,4vw,44px); font-weight: 900; color: var(--text); line-height: 1.1; margin-bottom: 1rem; }
+.post-body { padding: 3rem 2rem 5rem; }
+.post-body .post-container { font-size: 16px; color: var(--muted); line-height: 1.8; }
+.post-body .post-container h2 { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--text); margin: 2rem 0 .75rem; }
+.post-body .post-container h3 { font-size: 18px; font-weight: 600; color: var(--text); margin: 1.5rem 0 .5rem; }
+.post-body .post-container p { margin-bottom: 1.25rem; }
+.post-body .post-container ul { margin: 0 0 1.25rem 1.5rem; }
+.post-body .post-container li { margin-bottom: .5rem; }
+.post-body .post-container strong { color: var(--text); font-weight: 600; }
+.callout { background: var(--green-bg); border: 1px solid var(--green-dk); border-radius: var(--rsm); padding: 1rem 1.25rem; margin: 1.5rem 0; color: var(--green); font-size: 14px; }
 </style>
 </head>
 <body>
 
-<!-- TOP NAV -->
-<header class="topnav">
-  <button class="ham-btn" onclick="toggleDrawer()" aria-label="Menu">
-    <div class="ham-line"></div><div class="ham-line"></div><div class="ham-line"></div>
-  </button>
-  <a href="/" class="topnav-logo">Squad<span>Picks</span></a>
-  <span class="topnav-squad" id="topnav-squad"></span>
-  <div class="topnav-right">
-    <div class="topnav-avatar" id="topnav-av">?</div>
-  </div>
-</header>
-
-<!-- DRAWER OVERLAY -->
-<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
-
-<!-- DRAWER -->
-<nav class="drawer" id="drawer">
-  <div class="drawer-header">
-    <div class="drawer-logo">Squad<span>Picks</span></div>
-    <div class="drawer-user" id="drawer-user">Loading...</div>
-  </div>
-  <div class="drawer-nav">
-    <a class="drawer-item" id="dnav-dashboard" onclick="goSection('dashboard',this)">
-      <div class="drawer-icon">🏠</div><span>Dashboard</span>
-    </a>
-    <a class="drawer-item" id="dnav-trending" onclick="goSection('trending',this)">
-      <div class="drawer-icon">🔥</div><span>Trending</span>
-    </a>
-    <a class="drawer-item" id="dnav-settings" onclick="goSection('settings',this)">
-      <div class="drawer-icon">⚙️</div><span>Settings</span>
-    </a>
-    <div style="height:1px;background:rgba(255,255,255,.1);margin:8px 16px"></div>
-    <a class="drawer-item" onclick="openGroupPanel()">
-      <div class="drawer-icon">👥</div><span>My Squads</span>
-    </a>
-  </div>
-  <div class="drawer-footer">
-    <button class="drawer-signout" onclick="doSignOut()">
-      🚪 <span style="font-size:13px;color:#f87171;font-weight:600">Sign out</span>
-    </button>
+<nav class="nav">
+  <a href="/" class="nav-logo">Squad<span>Picks</span></a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/blog" class="active">Blog</a>
+    <a href="/login" class="nav-cta">Get started</a>
   </div>
 </nav>
 
-<!-- MAIN -->
-<div class="main-wrap">
+<!-- BLOG LIST -->
+<div id="blog-list">
+  <div class="blog-hero">
+    <div class="section-tag">Updates & stories</div>
+    <h1>The SquadPicks Blog</h1>
+    <p>Product updates, how we built it, and stories from squads using SquadPicks.</p>
+  </div>
 
-  <!-- ── DASHBOARD SECTION (default landing) ── -->
-  <section class="page-section on" id="sec-dashboard">
-    <!-- Group selector bar -->
-    <div style="background:var(--white);border-bottom:1px solid var(--border);padding:.75rem 1.25rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
-      <span style="font-size:13px;font-weight:700;color:var(--text2)">Viewing:</span>
-      <div id="dash-group-tabs" style="display:flex;gap:6px;flex-wrap:wrap;flex:1"></div>
-    </div>
-    <!-- Stats row -->
-    <div id="dash-stats" style="display:flex;gap:8px;padding:.75rem 1.25rem;flex-wrap:wrap;background:var(--beige2);border-bottom:1px solid var(--beige3)"></div>
-    <!-- Filter bar -->
-    <div class="filter-bar" style="position:sticky;top:var(--nav-h);z-index:30">
-      <button class="fpill on" onclick="setDashFilter('all',this)">All</button>
-      <button class="fpill" onclick="setDashFilter('want',this)">★ Want to</button>
-      <button class="fpill" onclick="setDashFilter('group',this)">✓ Group ok</button>
-      <button class="fpill" onclick="setDashFilter('movie',this)">🎬</button>
-      <button class="fpill" onclick="setDashFilter('food',this)">🍽</button>
-      <button class="fpill" onclick="setDashFilter('place',this)">📍</button>
-      <button class="fpill" onclick="setDashFilter('event',this)">🎭</button>
-    </div>
-    <!-- Weekly Digest strip -->
-    <div id="weekly-digest-wrap" style="padding:0 1.25rem;margin-bottom:.5rem;display:none">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">📅 Squad Recap</div>
-      <div id="weekly-digest-content" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px"></div>
-    </div>
-    <div class="picks-grid" id="dash-grid">
-      <div class="empty"><div class="empty-icon">⏳</div>Loading your dashboard...</div>
-    </div>
-  </section>
-
-  <!-- ── PICKS SECTION REMOVED — Dashboard is primary view ── -->
-
-  <!-- ── TRENDING SECTION ── -->
-  <section class="page-section" id="sec-trending">
-    <div class="section-wrap">
-      <div class="section-title">Trending</div>
-      <div class="trend-cat-bar">
-        <button class="tcb-btn on" onclick="setTrendCat('movies',this)">🎬 Movies</button>
-        <button class="tcb-btn" onclick="setTrendCat('events',this)">🎭 Events</button>
-        <button class="tcb-btn" onclick="setTrendCat('places',this)">📍 Places</button>
-        <button class="tcb-btn" onclick="setTrendCat('channels',this)">📺 Channels</button>
-        <button class="tcb-btn" onclick="setTrendCat('community',this)">🌍 Community</button>
+  <div class="blog-grid">
+    <!-- FEATURED -->
+    <a class="blog-card featured" href="/blog?post=why-we-built-this" onclick="openPost('why-we-built-this',event)">
+      <div class="blog-banner featured-banner" style="background:var(--green-bg)">
+        <span style="font-size:80px">🍿</span>
       </div>
-
-      <!-- Movies -->
-      <div class="trend-cat-section on" id="tcat-movies">
-        <div class="trend-sec-hdr">Netflix Top 10 <span class="tsh-tag" style="background:#E50914">N</span><span class="tsh-live" id="nf-live" style="display:none"> ● LIVE</span></div>
-        <div id="tr-netflix"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
-        <div class="trend-sec-hdr" style="margin-top:1.25rem">Prime Video <span class="tsh-tag" style="background:#00A8E0">P</span><span class="tsh-live" id="pv-live" style="display:none"> ● LIVE</span></div>
-        <div id="tr-prime"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
-        <div class="trend-sec-hdr" style="margin-top:1.25rem">🔥 Trending on TMDB <span class="tsh-tag" style="background:#01b4e4">TMDB</span><span class="tsh-live" id="tmdb-live" style="display:none"> ● LIVE</span></div>
-        <div id="tr-tmdb"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
-      </div>
-
-      <!-- Events — split by category via JS -->
-      <div class="trend-cat-section" id="tcat-events">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem;flex-wrap:wrap">
-          <div class="trend-sec-hdr" style="margin:0">🎭 Events Near You <span class="tsh-tag" style="background:#F05537">Ticketmaster</span></div>
-          <span id="events-location-label" style="font-size:11px;color:var(--muted)">Detecting location...</span>
-        </div>
-        <div id="tr-events"><div class="trend-loading"><div class="trend-spin"></div>Finding events near you...</div></div>
-      </div>
-
-      <!-- Places — responsive grid -->
-      <div class="trend-cat-section" id="tcat-places">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem;flex-wrap:wrap">
-          <div class="trend-sec-hdr" style="margin:0">📍 Top Places to Visit <span class="tsh-tag" style="background:#1DA462">TripAdvisor</span></div>
-        </div>
-        <div id="tr-places"><div class="trend-loading"><div class="trend-spin"></div>Loading...</div></div>
-      </div>
-
-      <!-- YouTube Channels -->
-      <div class="trend-cat-section" id="tcat-channels">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem;flex-wrap:wrap">
-          <div class="trend-sec-hdr" style="margin:0">📺 Squad YouTube Channels</div>
-          <select id="channel-group-sel" onchange="loadChannelVideos(this.value)" style="background:var(--beige);border:1.5px solid var(--beige3);border-radius:8px;padding:4px 10px;font-size:12px;color:var(--text);font-family:var(--font-b);outline:none;cursor:pointer">
-            <option value="">Select a squad...</option>
-          </select>
-        </div>
-        <div id="tr-channels"><div style="color:var(--muted);font-size:13px;padding:.5rem 0">Select a squad to see their YouTube channels</div></div>
-      </div>
-
-      <!-- Community Trending -->
-      <div class="trend-cat-section" id="tcat-community">
-        <div style="margin-bottom:.75rem">
-          <div class="trend-sec-hdr" style="margin:0 0 4px">🌍 Trending in the Community</div>
-          <div style="font-size:11px;color:var(--muted)">Group-ok picks from squads you're not in</div>
-        </div>
-        <div id="tr-community"><div class="trend-loading"><div class="trend-spin"></div>Loading community picks...</div></div>
-      </div>
-
-    </div>
-  </section>
-
-  <!-- ── SETTINGS SECTION ── -->
-  <section class="page-section" id="sec-settings">
-    <div class="settings-outer">
-
-      <!-- LEFT: Menu -->
-      <div class="settings-menu" id="settings-menu">
-        <div class="smenu-item active" data-panel="profile" onclick="openSettingsPanel('profile',this)">
-          <div class="smenu-icon">👤</div>
-          <div class="smenu-label">Profile</div>
-          <span class="smenu-arrow">›</span>
-        </div>
-        <div class="smenu-item" data-panel="squads" onclick="openSettingsPanel('squads',this)">
-          <div class="smenu-icon">👥</div>
-          <div class="smenu-label">Squads</div>
-          <span class="smenu-arrow">›</span>
-        </div>
-        <div class="smenu-item" data-panel="youtube" onclick="openSettingsPanel('youtube',this)">
-          <div class="smenu-icon">📺</div>
-          <div class="smenu-label">YouTube Channels</div>
-          <span class="smenu-arrow">›</span>
-        </div>
-        <div class="smenu-item" data-panel="notifications" onclick="openSettingsPanel('notifications',this)">
-          <div class="smenu-icon">🔔</div>
-          <div class="smenu-label">Notifications</div>
-          <span class="smenu-arrow">›</span>
-        </div>
-        <div class="smenu-item" data-panel="account" onclick="openSettingsPanel('account',this)">
-          <div class="smenu-icon">⚙️</div>
-          <div class="smenu-label">Account</div>
-          <span class="smenu-arrow">›</span>
+      <div class="blog-body">
+        <div class="blog-tag">ORIGIN STORY</div>
+        <div class="blog-title">Why we built SquadPicks — the WhatsApp problem nobody solved</div>
+        <div class="blog-excerpt">Every family group chat has the same problem. Someone shares a restaurant link. 200 messages later it's buried. We built the bot we always wanted.</div>
+        <div class="blog-meta">
+          <div class="blog-av">SP</div>
+          <span>SquadPicks Team</span>
+          <span>·</span>
+          <span>April 2025</span>
+          <span>·</span>
+          <span>5 min read</span>
         </div>
       </div>
+    </a>
 
-      <!-- RIGHT: Detail panel -->
-      <div class="settings-detail" id="settings-detail">
-        <!-- Back button (mobile only) -->
-        <div class="smenu-back" onclick="closeSettingsPanel()">‹ Settings</div>
-
-        <!-- PROFILE panel -->
-        <div class="spanel" id="spanel-profile">
-          <div class="sdet-title">Profile</div>
-          <div class="settings-section">
-            <div class="settings-row" style="cursor:default">
-              <div class="si-icon" id="si-av" style="width:42px;height:42px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff">?</div>
-              <div class="si-lbl"><h4 id="si-name">Loading...</h4><p id="si-email" style="font-size:12px;color:var(--muted)"></p></div>
-            </div>
-          </div>
+    <a class="blog-card" href="/blog?post=filmicraft" onclick="openPost('filmicraft',event)">
+      <div class="blog-banner" style="background:#1A0808"><span>📺</span></div>
+      <div class="blog-body">
+        <div class="blog-tag">FEATURE</div>
+        <div class="blog-title">How we integrated Filmi Craft into SquadPicks</div>
+        <div class="blog-excerpt">Your squad now gets automatic review cards every Friday from Tamil cinema's most trusted reviewer.</div>
+        <div class="blog-meta">
+          <div class="blog-av">SP</div>
+          <span>SquadPicks Team</span>
+          <span>·</span>
+          <span>April 2025</span>
         </div>
-
-        <!-- SQUADS panel -->
-        <div class="spanel" id="spanel-squads" style="display:none">
-          <div class="sdet-title">Squads</div>
-          <div class="settings-section">
-            <div class="settings-row" onclick="openGroupPanel('manage')" style="cursor:pointer">
-              <div class="si-icon">👥</div>
-              <div class="si-lbl"><h4>My Squads</h4><p>Manage members, admins, rename, delete</p></div>
-              <span class="si-arrow">›</span>
-            </div>
-            <div class="settings-row" onclick="openGroupPanel('google')" style="cursor:pointer">
-              <div class="si-icon">🌐</div>
-              <div class="si-lbl"><h4>New Google Squad</h4><p>Create a squad, invite by Gmail</p></div>
-              <span class="si-arrow">›</span>
-            </div>
-            <div class="settings-row" onclick="openGroupPanel('telegram')" style="cursor:pointer">
-              <div class="si-icon">💬</div>
-              <div class="si-lbl"><h4>Link Telegram Group</h4><p>Connect your Telegram group</p></div>
-              <span class="si-arrow">›</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- YOUTUBE CHANNELS panel -->
-        <div class="spanel" id="spanel-youtube" style="display:none">
-          <div class="sdet-title">📺 YouTube Channels</div>
-          <div class="settings-section" id="settings-yt-section">
-            <div style="padding:12px 14px;font-size:12px;color:var(--muted)">Add channels your squad follows — they appear in Trending → Channels</div>
-            <div style="padding:0 14px 12px">
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-                <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">Squad</label>
-                <select id="settings-yt-squad" onchange="settingsLoadChannels(this.value)"
-                  style="flex:1;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:var(--font-b);outline:none;cursor:pointer">
-                  <option value="">— choose a squad —</option>
-                </select>
-              </div>
-              <div id="settings-yt-list" style="margin-bottom:10px"></div>
-              <div id="settings-yt-form" style="display:none;gap:8px;align-items:center">
-                <input id="settings-yt-input" type="text" placeholder="YouTube URL or @handle"
-                  style="flex:1;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--text);font-family:var(--font-b);outline:none"
-                  onkeydown="if(event.key==='Enter')settingsAddChannel()"/>
-                <button onclick="settingsAddChannel()"
-                  style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-b);white-space:nowrap">+ Add</button>
-              </div>
-              <div id="settings-yt-err" style="display:none;font-size:12px;color:var(--red);margin-top:6px;padding:6px 10px;background:rgba(220,38,38,.07);border-radius:8px"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- NOTIFICATIONS panel -->
-        <div class="spanel" id="spanel-notifications" style="display:none">
-          <div class="sdet-title">Notifications</div>
-          <div class="settings-section">
-            <div class="settings-row">
-              <div class="si-icon">🎬</div>
-              <div class="si-lbl"><h4>New picks</h4><p>Email when someone adds to your squad</p></div>
-              <label class="toggle-sw"><input type="checkbox" id="pref-pick-add" onchange="savePref('notify_pick_add',this.checked)"><span class="toggle-track"></span></label>
-            </div>
-            <div class="settings-row">
-              <div class="si-icon">✅</div>
-              <div class="si-lbl"><h4>Group ok</h4><p>Email when a pick reaches consensus</p></div>
-              <label class="toggle-sw"><input type="checkbox" id="pref-group-ok" onchange="savePref('notify_group_ok',this.checked)"><span class="toggle-track"></span></label>
-            </div>
-            <div class="settings-row">
-              <div class="si-icon">📅</div>
-              <div class="si-lbl"><h4>Weekly digest</h4><p>Sunday summary of your squad picks</p></div>
-              <label class="toggle-sw"><input type="checkbox" id="pref-digest" onchange="savePref('notify_digest',this.checked)"><span class="toggle-track"></span></label>
-            </div>
-          </div>
-        </div>
-
-        <!-- ACCOUNT panel -->
-        <div class="spanel" id="spanel-account" style="display:none">
-          <div class="sdet-title">Account</div>
-          <div class="settings-section">
-            <div class="settings-row" style="cursor:default">
-              <div class="si-icon">✨</div>
-              <div class="si-lbl"><h4>Plan</h4><p>Free tier</p></div>
-              <span style="font-size:11px;font-weight:700;background:#E9D5FF;color:#6B21A8;padding:3px 8px;border-radius:10px">Free</span>
-            </div>
-            <div class="settings-row" onclick="copyShareLink()" style="cursor:pointer">
-              <div class="si-icon">🔗</div>
-              <div class="si-lbl"><h4>Share SquadPicks</h4><p>Invite friends to the app</p></div>
-              <span class="si-arrow">›</span>
-            </div>
-            <div class="settings-row" onclick="window.open('https://t.me/squadpicks_bot','_blank')" style="cursor:pointer">
-              <div class="si-icon">🤖</div>
-              <div class="si-lbl"><h4>Telegram Bot</h4><p>Add bot to your Telegram groups</p></div>
-              <span class="si-arrow">›</span>
-            </div>
-        <button class="settings-signout" onclick="doSignOut()">
-          <div class="si-icon">🚪</div>
-          <div class="settings-signout-lbl"><h4>Sign out</h4><p>Return to login page</p></div>
-        </button>
-          </div><!-- /settings-section -->
-        </div><!-- /spanel-account -->
-      </div><!-- /settings-detail -->
-    </div><!-- /settings-outer -->
-  </section>
-
-</div><!-- end main-wrap -->
-
-<!-- ADD PICK MODAL -->
-<div class="overlay" id="add-modal" onclick="if(event.target===this)closeAdd()">
-  <div class="modal">
-    <h3>Add a pick</h3>
-    <!-- Squad selector — always visible so user knows exactly where it's going -->
-    <div class="field" style="margin-bottom:12px">
-      <label>Squad</label>
-      <select id="add-group-select" style="width:100%;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--text);font-family:var(--font-b);outline:none;cursor:pointer;appearance:auto">
-        <option value="">Select a squad...</option>
-      </select>
-    </div>
-    <!-- Step 1: Category -->
-    <div style="margin-bottom:1rem">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Category</div>
-      <div style="display:flex;gap:7px;flex-wrap:wrap" id="add-category-row">
-        <button class="cat-btn on" data-type="movie"  onclick="setAddCat(this)">🎬 Movie</button>
-        <button class="cat-btn"    data-type="show"   onclick="setAddCat(this)">📺 Show</button>
-        <button class="cat-btn"    data-type="food"   onclick="setAddCat(this)">🍽 Restaurant</button>
-        <button class="cat-btn"    data-type="place"  onclick="setAddCat(this)">📍 Place</button>
-        <button class="cat-btn"    data-type="event"  onclick="setAddCat(this)">🎭 Event</button>
-        <button class="cat-btn"    data-type="link"   onclick="setAddCat(this)">🔗 Other</button>
       </div>
-    </div>
-    <!-- Step 2: Link (optional) -->
-    <div class="field">
-      <label>Link <span style="font-size:11px;font-weight:400;color:var(--hint)">(optional — paste URL for auto title &amp; image)</span></label>
-      <input id="add-url" placeholder="https://www.themoviedb.org/... or any URL"/>
-    </div>
-    <!-- Step 3: Manual title -->
-    <div class="field" id="add-title-field">
-      <label>Title <span style="font-size:11px;font-weight:400;color:var(--hint)" id="add-title-hint">(auto-filled from link, or type manually)</span></label>
-      <input id="add-title" placeholder="e.g. Interstellar, Miku Restaurant..."/>
-    </div>
-    <!-- Fetched preview -->
-    <div id="add-preview" style="display:none;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:10px 12px;margin-bottom:12px;align-items:center;gap:10px">
-      <img id="add-preview-img" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0" src="" alt=""/>
-      <div>
-        <div id="add-preview-title" style="font-size:13px;font-weight:700;color:var(--text)"></div>
-        <div id="add-preview-desc"  style="font-size:11px;color:var(--muted);margin-top:1px"></div>
+    </a>
+
+    <a class="blog-card" href="/blog?post=telegram-mini-app" onclick="openPost('telegram-mini-app',event)">
+      <div class="blog-banner" style="background:#0A1E30"><span>🚀</span></div>
+      <div class="blog-body">
+        <div class="blog-tag">PRODUCT UPDATE</div>
+        <div class="blog-title">SquadPicks is now a Telegram Mini App</div>
+        <div class="blog-excerpt">We shipped a full-screen app that opens inside Telegram — rich UI, real-time voting, no app download needed.</div>
+        <div class="blog-meta">
+          <div class="blog-av">SP</div>
+          <span>SquadPicks Team</span>
+          <span>·</span>
+          <span>April 2025</span>
+        </div>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="modal-cancel" onclick="closeAdd()">Cancel</button>
-      <button class="modal-save" id="add-save" onclick="saveAdd()">Add to Squad</button>
-    </div>
+    </a>
+
+    <a class="blog-card" href="/blog?post=how-families-use-it" onclick="openPost('how-families-use-it',event)">
+      <div class="blog-banner" style="background:#1A1200"><span>👨‍👩‍👧‍👦</span></div>
+      <div class="blog-body">
+        <div class="blog-tag">STORY</div>
+        <div class="blog-title">How one family uses SquadPicks every week</div>
+        <div class="blog-excerpt">From chaotic WhatsApp threads to a clean weekly rhythm. A real story from the first family group to adopt SquadPicks.</div>
+        <div class="blog-meta">
+          <div class="blog-av">SP</div>
+          <span>SquadPicks Team</span>
+          <span>·</span>
+          <span>March 2025</span>
+        </div>
+      </div>
+    </a>
   </div>
 </div>
 
-<!-- MY SQUADS MODAL -->
-<div class="overlay" id="group-panel" onclick="if(event.target===this)closeGroupPanel()">
-  <div class="modal" style="max-width:540px;max-height:90vh;overflow-y:auto">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
-      <h3 style="margin:0" id="squad-panel-title">My Squads</h3>
-      <button onclick="closeGroupPanel()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px">✕</button>
-    </div>
-
-    <!-- Tab bar -->
-    <div style="display:flex;gap:6px;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:10px;flex-wrap:wrap">
-      <button class="gp-tab on" onclick="gpTab('manage',this)">📋 My Squads</button>
-      <button class="gp-tab" onclick="gpTab('google',this)">🌐 New Google Squad</button>
-      <button class="gp-tab" onclick="gpTab('telegram',this)">💬 Link Telegram</button>
-    </div>
-
-    <!-- ── MANAGE SQUADS ── -->
-    <div id="gp-manage" class="gp-pane on">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Tap a squad to manage members, rename, or delete it.</p>
-      <div id="squad-list">
-        <div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px">Loading...</div>
+<!-- SINGLE POST VIEW -->
+<div id="post-view" class="post-page">
+  <div class="post-hero">
+    <div class="post-container">
+      <a href="/blog" class="post-back" onclick="closePost(event)">← Back to blog</a>
+      <div id="post-tag" class="section-tag"></div>
+      <div id="post-title" class="post-title"></div>
+      <div class="blog-meta" style="margin-top:1rem">
+        <div class="blog-av">SP</div>
+        <span>SquadPicks Team</span>
+        <span>·</span>
+        <span id="post-date"></span>
       </div>
     </div>
-
-    <!-- ── MANAGE ONE SQUAD (detail view) ── -->
-    <div id="gp-squad-detail" class="gp-pane" style="display:none">
-      <button onclick="gpTab('manage', document.querySelector('.gp-tab'))" style="background:none;border:none;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:1rem">← Back to My Squads</button>
-
-      <!-- Squad name + rename -->
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.25rem">
-        <div id="detail-icon" style="font-size:22px;flex-shrink:0">👥</div>
-        <div style="flex:1;min-width:0">
-          <input id="detail-name" style="font-size:16px;font-weight:700;color:var(--text);background:transparent;border:none;outline:none;width:100%;padding:2px 0;border-bottom:1.5px dashed var(--beige3)" placeholder="Squad name"/>
-          <div id="detail-type-label" style="font-size:11px;color:var(--muted);margin-top:2px"></div>
-        </div>
-        <button id="detail-rename-btn" onclick="renameCurrentSquad()" style="background:var(--beige);border:1.5px solid var(--beige3);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;font-family:var(--font-b);flex-shrink:0">Rename</button>
-      </div>
-
-      <!-- Invite member -->
-      <div id="detail-invite-section" style="margin-bottom:1.25rem">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Invite member</div>
-        <div style="display:flex;gap:8px">
-          <input id="detail-invite-email" type="email" placeholder="friend@gmail.com" style="flex:1;background:var(--beige);border:1.5px solid var(--beige3);border-radius:var(--rsm);padding:8px 12px;color:var(--text);font-size:13px;font-family:var(--font-b);outline:none"/>
-          <button onclick="inviteToCurrentSquad()" style="background:var(--blue);color:#fff;border:none;border-radius:var(--rsm);padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-b);flex-shrink:0">Invite</button>
-        </div>
-        <div id="detail-invite-msg" style="display:none;margin-top:6px"></div>
-      </div>
-
-      <!-- Members list -->
-      <div>
-        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Members</div>
-        <div id="detail-members" style="display:flex;flex-direction:column;gap:6px">
-          <div style="font-size:13px;color:var(--muted)">Loading...</div>
-        </div>
-      </div>
-
-      <!-- Delete squad (web squads only) -->
-      <div id="detail-delete-section" style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
-        <button onclick="deleteCurrentSquad()" style="background:var(--red-bg);border:1px solid rgba(220,38,38,.2);border-radius:var(--rsm);padding:9px 16px;font-size:13px;font-weight:600;color:var(--red);cursor:pointer;font-family:var(--font-b);width:100%">🗑 Delete this squad</button>
-        <p style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center">This cannot be undone. All picks in this squad will be deleted.</p>
-      </div>
-      <div id="detail-msg" style="display:none;margin-top:10px"></div>
-    </div>
-
-    <!-- ── NEW GOOGLE SQUAD ── -->
-    <div id="gp-google" class="gp-pane" style="display:none">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Create a squad without Telegram. Invite members by Gmail address.</p>
-      <div class="field"><label>Squad name</label><input id="gp-name" placeholder="e.g. Family Movie Night, Weekend Crew"/></div>
-      <button class="modal-save" style="width:100%" onclick="createSquad()">Create Google squad</button>
-      <div id="gp-create-msg" style="display:none;margin-top:10px"></div>
-    </div>
-
-    <!-- ── LINK TELEGRAM ── -->
-    <div id="gp-telegram" class="gp-pane" style="display:none">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Link one or more Telegram groups where the SquadPicks bot is added. Each becomes a separate squad.</p>
-      <div class="field">
-        <label>Telegram Group ID</label>
-        <input id="gp-tg-id" placeholder="-1001234567890" type="number"/>
-        <p style="font-size:11px;color:var(--muted);margin-top:4px">Add <strong>@userinfobot</strong> to your group to find the ID. It starts with <strong>-100</strong></p>
-      </div>
-      <div class="field"><label>Group name <span style="font-weight:400;color:var(--hint)">(optional)</span></label><input id="gp-tg-name" placeholder="e.g. Family Chat"/></div>
-      <button class="modal-save" style="width:100%" onclick="linkTelegram()">Link Telegram group</button>
-      <div id="gp-tg-msg" style="display:none;margin-top:10px"></div>
-
-      <!-- Already-linked Telegram groups -->
-      <div id="linked-tg-list" style="margin-top:1.25rem;display:none">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Already linked</div>
-        <div id="linked-tg-items" style="display:flex;flex-direction:column;gap:6px"></div>
-      </div>
-    </div>
-
+  </div>
+  <div class="post-body">
+    <div class="post-container" id="post-content"></div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
-
-<!-- GLOBAL FAB — Add pick, always visible -->
-<button id="global-fab" onclick="openAdd()" title="Add a pick" style="
-  position:fixed; bottom:24px; right:24px; z-index:250;
-  width:56px; height:56px; border-radius:50%;
-  background:var(--blue); color:#fff; border:none; cursor:pointer;
-  font-size:26px; font-weight:700; line-height:1;
-  box-shadow:0 6px 24px rgba(124,58,237,.45);
-  display:flex; align-items:center; justify-content:center;
-  transition:transform .15s, box-shadow .15s;
-" onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 8px 32px rgba(124,58,237,.6)'"
-   onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 6px 24px rgba(124,58,237,.45)'">
-  +
-</button>
+<footer class="footer">
+  <div class="footer-logo">Squad<span>Picks</span></div>
+  <p>Your squad. Any plan. One bot.</p>
+  <div class="footer-links">
+    <a href="/">Home</a>
+    <a href="/#features">Features</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/blog">Blog</a>
+    <a href="/login">Login</a>
+  </div>
+</footer>
 
 <script>
-// ── STATE ──────────────────────────────────────────────────
-const BASE = window.location.origin;
-let currentUser  = null;
-let currentGroupId = null;
-let allPicks     = [];
-let allGroups    = [];   // all user's squads — shared between dashboard, channels dropdown
-let myVotes      = {};
-let planFilter   = 'all';
-let picksFilter  = 'all';
-
-const TC = {
-  movie: {emoji:'🎬', grad:'#2d1b5e', tb:'rgba(139,92,246,.9)', tt:'#fff', lbl:'Movie'},
-  show:  {emoji:'📺', grad:'#0d1f3d', tb:'rgba(96,165,250,.9)', tt:'#fff', lbl:'Show'},
-  food:  {emoji:'🍽', grad:'#2d1f00', tb:'rgba(251,191,36,.9)', tt:'#000', lbl:'Restaurant'},
-  place: {emoji:'📍', grad:'#0d2218', tb:'rgba(52,211,153,.9)', tt:'#000', lbl:'Place'},
-  event: {emoji:'🎭', grad:'#2d0d2d', tb:'rgba(244,114,182,.9)', tt:'#fff', lbl:'Event'},
-  link:  {emoji:'🔗', grad:'#1a1a2e', tb:'rgba(134,148,160,.9)', tt:'#fff', lbl:'Link'},
+const POSTS = {
+  'why-we-built-this': {
+    tag: 'ORIGIN STORY', date: 'April 2025',
+    title: 'Why we built SquadPicks — the WhatsApp problem nobody solved',
+    content: `
+      <p>It started with a family WhatsApp group. Someone shared a Google Maps link to a new restaurant. Fifteen messages later the conversation had moved on. Two weeks after that, someone asked "what was that restaurant someone mentioned?" Nobody could find it.</p>
+      <p>This happens in every family group chat. Every friend group. Every squad that tries to coordinate anything together. Links get buried. Recommendations get lost. And every movie night starts with the same twenty-minute loop of "I dunno, what do you want to watch?"</p>
+      <h2>The existing solutions didn't fit</h2>
+      <p>There are apps for this — EatUps, CineMatch, Decido. But every single one requires everyone to download a new app and create an account. That's the friction that kills them. Getting a family of five to all install the same app and sign up on the same night is a project in itself.</p>
+      <p>What we wanted was something that worked <strong>inside the chat we already use</strong>. No new app. No new account. No convincing anyone of anything.</p>
+      <h2>The insight</h2>
+      <p>The insight was simple: most families and friend groups already have Telegram. And Telegram has a Bot API that lets you build powerful bots that live inside group chats. You just add @SquadPicksBot to your existing group and it starts working immediately.</p>
+      <div class="callout">💡 The key difference: SquadPicks lives where your conversations already happen. It doesn't ask you to move somewhere new.</div>
+      <h2>What we built</h2>
+      <p>The bot does one thing extremely well: it turns any link into a group decision. Paste an IMDB link, a Google Maps location, a Yelp restaurant, an Eventbrite event — the bot reads it, posts a clean card, and lets everyone vote with a single tap.</p>
+      <p>Seen/Been · Want to · Not for me. When nobody says skip, the bot flags "Group ok" — your squad can do this together. No more coordination overhead.</p>
+      <h2>What's next</h2>
+      <p>We're building the Filmi Craft integration, a weekly digest, a web dashboard, and eventually an iOS app. But the core will always be the same: your squad, any plan, one bot.</p>
+    `
+  },
+  'filmicraft': {
+    tag: 'FEATURE', date: 'April 2025',
+    title: 'How we integrated Filmi Craft into SquadPicks',
+    content: `
+      <p>Filmi Craft is one of the most trusted Tamil and world cinema review channels on YouTube with 352K subscribers. If you're into Tamil films, you've watched their reviews. They cover everything from blockbusters to hidden gems, with honest ratings and sharp analysis.</p>
+      <h2>The problem with YouTube reviews</h2>
+      <p>Even if you follow Filmi Craft, you still have to manually share the video in your family group. Then someone has to remember to add it to the "watch list". Then someone else asks "have we decided on this?" The manual coordination tax is real.</p>
+      <h2>How the integration works</h2>
+      <p>Every Friday the SquadPicks bot checks the Filmi Craft YouTube channel for new videos using the YouTube Data API. When a new review is detected, the bot:</p>
+      <ul>
+        <li>Extracts the movie name from the video title</li>
+        <li>Parses the rating (e.g. 4.1/5) from the title automatically</li>
+        <li>Posts a card in every active SquadPicks group with the score and a watch review button</li>
+      </ul>
+      <div class="callout">📺 Your squad gets the review automatically every Friday — no manual sharing, no missed recommendations.</div>
+      <h2>Friday timing</h2>
+      <p>We chose Friday intentionally. Most families plan their weekend activities on Friday evening. The Filmi Craft digest arriving on Friday morning means the squad can vote on what to watch before the weekend starts.</p>
+      <h2>Adding more reviewers</h2>
+      <p>The Squad+ plan allows up to 5 reviewer channels. If you follow other YouTube reviewers — in Malayalam, Hindi, Telugu or English — you can add them too. The Community plan supports unlimited channels.</p>
+    `
+  },
+  'telegram-mini-app': {
+    tag: 'PRODUCT UPDATE', date: 'April 2025',
+    title: 'SquadPicks is now a Telegram Mini App',
+    content: `
+      <p>Today we're shipping the SquadPicks Telegram Mini App — a full-screen web app that opens inside Telegram when you tap the 🚀 Open SquadPicks button on any pick card.</p>
+      <h2>What's in the Mini App</h2>
+      <p>The Mini App gives you a richer interface than the bot's text cards. You get:</p>
+      <ul>
+        <li>A scrollable feed of all your squad's picks with filter chips</li>
+        <li>Tap to vote with instant visual feedback</li>
+        <li>A Summary tab showing group consensus at a glance</li>
+        <li>A Filmi Craft tab with all recent reviews and ratings</li>
+        <li>Add any link directly from the app's input bar</li>
+      </ul>
+      <h2>How to open it</h2>
+      <p>When the bot posts a pick card in your group, you'll see a 🚀 Open SquadPicks button at the bottom of the card. Tap it and the Mini App opens as a full-screen panel inside Telegram — no browser, no new app, just a rich UI that feels completely native.</p>
+      <div class="callout">🚀 Access via t.me/squadpicks_bot/Squadpicks or tap any pick card in your group.</div>
+      <h2>Why Telegram Mini Apps?</h2>
+      <p>Telegram Mini Apps let us ship a rich mobile UI without asking anyone to install a new app. The bot already lives in your chat — the Mini App is just a richer way to interact with it. Both work together: votes cast in the app update the bot's cards in real time, and vice versa.</p>
+    `
+  },
+  'how-families-use-it': {
+    tag: 'STORY', date: 'March 2025',
+    title: 'How one family uses SquadPicks every week',
+    content: `
+      <p>Meet the Krishnamurthys — a family of five spread across Surrey, Brampton and downtown Toronto. They have a WhatsApp group that's been active for years. Before SquadPicks, coordinating what to do together on weekends was a weekend-long negotiation.</p>
+      <h2>The before</h2>
+      <p>"Someone would share a restaurant link on Tuesday. By Friday nobody could find it. We'd spend an hour scrolling up trying to find it," says Priya, the eldest daughter. "And with movies — everyone had seen different things and we'd end up watching something three people had already seen."</p>
+      <h2>The switch</h2>
+      <p>Priya added @SquadPicksBot to the family's Telegram group on a Thursday evening. She pasted a Zomato link to a new Tamil restaurant. The bot responded with a card. Her parents voted within minutes. Her brother added a movie he'd been wanting to watch. Her aunt asked "what's this?" — and was immediately hooked.</p>
+      <div class="callout">👨‍👩‍👧‍👦 "The wow moment was when the bot said 'Group ok' for the restaurant. We'd all voted and nobody said no. We just went." — Priya K.</div>
+      <h2>The weekly rhythm now</h2>
+      <p>Every Friday morning the family gets the SquadPicks weekly digest — new picks from the week plus the latest Filmi Craft review. They vote during Friday lunch. By Friday evening they know what the weekend plan is.</p>
+      <p>"We've done more things together in the last two months than in the six months before. The bot just removes all the friction," says Priya.</p>
+    `
+  }
 };
 
-const VOTE_LABELS = {
-  movie:{seen:'Watched',want:'Want to watch',skip:'Not for me'},
-  show: {seen:'Watched',want:'Want to watch',skip:'Not for me'},
-  food: {seen:'Tried it',want:'Want to try',skip:'Skip it'},
-  place:{seen:'Been there',want:'Want to go',skip:'Not for me'},
-  event:{seen:'Attended',want:'Want to go',skip:'Not going'},
-  link: {seen:'Seen',want:'Interested',skip:'Not for me'},
-};
-
-// ── INIT ──────────────────────────────────────────────────
-(async function init() {
-  const params   = new URLSearchParams(location.search);
-  const tgAuthOk = params.get('tgauth') === '1'; // server set this after successful Telegram auth
-
-  // Detect Telegram Mini App context
-  const tg         = window.Telegram && window.Telegram.WebApp;
-  const tgInitData = (tg && tg.initData && tg.initData.length > 0 ? tg.initData : null) || null;
-  const insideTg   = !!tgInitData;
-
-  if (tg && insideTg) { tg.ready(); tg.expand(); }
-
-  // ── AUTH — 3-layer strategy ───────────────────────────────────────────────
-  //
-  // Layer 1: Session cookie (set by server-side /auth/telegram-miniapp redirect)
-  // Layer 2: POST initData directly (if cookie didn't stick — common in some WebViews)
-  // Layer 3: Redirect back through server auth (last resort)
-  //
-  // We always try layer 1 first. It works when the cookie was properly set.
-  // If it fails AND we're inside Telegram, we have tg.initData available and
-  // can authenticate directly without any redirect.
-
-  // Layer 1: check session cookie
-  try {
-    const r = await fetch('/api/session', { credentials: 'include' });
-    const s = await r.json();
-    if (s.ok && s.user) {
-      currentUser = s.user;
-      console.log('[Auth] Layer 1 (cookie) OK:', currentUser.name);
-    }
-  } catch(e) { console.warn('[Auth] Layer 1 failed:', e.message); }
-
-  // Layer 2: POST initData directly (cookie didn't work but we have initData)
-  if (!currentUser && tgInitData) {
-    console.log('[Auth] Layer 1 failed, trying Layer 2 (POST initData)');
-    try {
-      const r = await fetch('/api/auth/telegram-webapp', {
-        method:      'POST',
-        credentials: 'include',
-        headers:     { 'Content-Type': 'application/json' },
-        body:        JSON.stringify({ initData: tgInitData })
-      });
-      const d = await r.json();
-      if (d.ok && d.user) {
-        currentUser = d.user;
-        console.log('[Auth] Layer 2 (POST) OK:', currentUser.name);
-      } else {
-        console.warn('[Auth] Layer 2 failed:', d.error);
-      }
-    } catch(e) { console.warn('[Auth] Layer 2 exception:', e.message); }
-  }
-
-  // Layer 3: redirect to server-side auth (only if cookie AND direct POST both failed)
-  if (!currentUser && insideTg && tgInitData) {
-    console.log('[Auth] Layer 2 failed, trying Layer 3 (server redirect)');
-    const sp = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param;
-    const gid = sp ? String(sp).replace(/^g(\d+)$/, '-$1') : (params.get('groupId') || '');
-    let url = '/auth/telegram-miniapp?initData=' + encodeURIComponent(tgInitData);
-    if (gid) url += '&groupId=' + encodeURIComponent(gid);
-    window.location.replace(url);
-    return;
-  }
-
-  // Show debug info on screen for 4 seconds so we can see what's happening
-  // without needing browser devtools
-  (function() {
-    const dbg = document.createElement('div');
-    dbg.id = 'sp-debug';
-    dbg.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#1e1b4b;color:#c4b5fd;font-family:monospace;font-size:11px;padding:8px 12px;line-height:1.6';
-    const authStatus = currentUser ? '✅ Auth OK: ' + (currentUser.name || currentUser.id) : '❌ Not authenticated';
-    const sessionUrl = window.location.href;
-    dbg.textContent = authStatus + ' | ' + sessionUrl.slice(-60);
-    document.body.appendChild(dbg);
-    setTimeout(() => { const el = document.getElementById('sp-debug'); if (el) el.remove(); }, 6000);
-  })();
-
-  // Not authenticated at all — redirect to login
-  if (!currentUser) {
-    if (insideTg) {
-      // Show a friendly message inside Telegram WebView instead of a blank redirect
-      document.body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center;background:#F5F3FF;font-family:DM Sans,sans-serif">'
-        + '<div style="font-size:48px;margin-bottom:16px">🎬</div>'
-        + '<div style="font-size:20px;font-weight:700;color:#6B21A8;margin-bottom:8px">Welcome to SquadPicks</div>'
-        + '<div style="font-size:14px;color:#7C5AB8;margin-bottom:24px;max-width:280px">Tap below to connect your Telegram account and get started.</div>'
-        + '<a href="/login" style="background:#7C3AED;color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-size:15px;font-weight:700;display:inline-block">Connect Telegram</a>'
-        + '</div>';
-      return;
-    }
-    window.location.href = '/login';
-    return;
-  }
-
-  // Populate UI identity
-  const name       = currentUser.name || 'Member';
-  const initLetter = name.charAt(0).toUpperCase();
-  document.getElementById('topnav-av').textContent = initLetter;
-  const isTelegram = tgInitData || tgAuthOk;
-  document.getElementById('drawer-user').textContent = name + (isTelegram ? ' · Telegram' : ' · Google');
-  const idCard = document.getElementById('identity-card');
-  if (idCard) {
-    idCard.style.display = 'block';
-    document.getElementById('si-av').textContent   = initLetter;
-    document.getElementById('si-name').textContent = name;
-    document.getElementById('si-type').textContent = currentUser.email || (isTelegram ? 'Telegram account' : 'Google account');
-  }
-
-  // ── GroupId resolution ────────────────────────────────────────────────────
-  // Priority: URL ?groupId= param → Telegram start_param → localStorage
-  // g-prefix encoding: bot sends g1001234567890 for -1001234567890 because
-  // Telegram startapp params can't contain "-". Decode it back here.
-  function decodeGId(raw) {
-    if (!raw) return null;
-    const s = String(raw).trim();
-    return /^g\d+$/.test(s) ? '-' + s.slice(1) : s;
-  }
-
-  let urlGroupId = decodeGId(params.get('groupId'));
-
-  // Fallback: Telegram start_param (when opened directly inside Telegram without going via app.html)
-  if (!urlGroupId && tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
-    urlGroupId = decodeGId(tg.initDataUnsafe.start_param);
-  }
-
-  const savedGroup = localStorage.getItem('sp_last_group');
-  currentGroupId = urlGroupId || savedGroup || null;
-
-  // Persist the decoded groupId so next visit remembers the squad
-  if (urlGroupId) localStorage.setItem('sp_last_group', urlGroupId);
-
-  // Clean tgInitData from URL bar so the raw token isn't visible
-  if (params.has('tgInitData')) {
-    const clean = new URLSearchParams(location.search);
-    clean.delete('tgInitData');
-    history.replaceState({}, '', location.pathname + (clean.toString() ? '?' + clean.toString() : ''));
-  }
-
-  // Load groups, then immediately activate the correct squad tab if we have one
-  await loadGroups(false);
-
-  // If Telegram opened us with a specific group, pre-select it in ALL state vars
-  // so loadDashboard() renders the correct tab as active from the start
-  if (urlGroupId) {
-    currentGroupId = urlGroupId;
-    dashGroupId    = urlGroupId;  // ← this is what renderDashGroupTabs() uses for the active pill
-    localStorage.setItem('sp_last_group', urlGroupId);
-    history.replaceState({}, '', `/dashboard?groupId=${urlGroupId}`);
-  }
-
-  loadDashboard();
-  loadTrending();
-  if (urlGroupId) loadWeeklyDigest(urlGroupId);
-
-  // Default landing = Dashboard
-  goSection('dashboard', document.getElementById('dnav-dashboard'));
-})();
-
-// ── SECTION NAV ───────────────────────────────────────────
-function goSection(name, btn) {
-  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('on'));
-  document.querySelectorAll('.drawer-item').forEach(b => b.classList.remove('on'));
-  const sec = document.getElementById('sec-' + name);
-  if (sec) sec.classList.add('on');
-  const dnav = document.getElementById('dnav-' + name);
-  if (dnav) dnav.classList.add('on');
-  closeDrawer();
-  if (name === 'dashboard') loadDashboard();
-  if (name === 'trending')  loadTrending();
-  if (name === 'settings') {
-    loadSettings();
-    if (window.innerWidth > 640) {
-      openSettingsPanel('profile', document.querySelector('.smenu-item[data-panel="profile"]'));
-    }
-  }
+function openPost(id, e) {
+  if (e) e.preventDefault();
+  const post = POSTS[id];
+  if (!post) return;
+  document.getElementById('blog-list').style.display = 'none';
+  document.getElementById('post-view').classList.add('active');
+  document.getElementById('post-tag').textContent = post.tag;
+  document.getElementById('post-title').textContent = post.title;
+  document.getElementById('post-date').textContent = post.date;
+  document.getElementById('post-content').innerHTML = post.content;
+  history.pushState({ post: id }, '', `/blog?post=${id}`);
+  window.scrollTo(0, 0);
 }
 
-// ── DRAWER ────────────────────────────────────────────────
-function toggleDrawer() {
-  document.getElementById('drawer').classList.toggle('open');
-  document.getElementById('drawer-overlay').classList.toggle('open');
-}
-function closeDrawer() {
-  document.getElementById('drawer').classList.remove('open');
-  document.getElementById('drawer-overlay').classList.remove('open');
+function closePost(e) {
+  if (e) e.preventDefault();
+  document.getElementById('blog-list').style.display = 'block';
+  document.getElementById('post-view').classList.remove('active');
+  history.pushState({}, '', '/blog');
+  window.scrollTo(0, 0);
 }
 
-// ── GROUPS ────────────────────────────────────────────────
-async function loadGroups(autoSelectFirst) {
-  try {
-    const r    = await fetch(BASE + '/api/groups/mine', { credentials: 'include' });
-    if (r.status === 401) { window.location.href = '/login'; return; }
-    const data = await r.json();
-    const groups = (data.groups || []);
+// Handle direct URL with ?post=
+const params = new URLSearchParams(window.location.search);
+const postId = params.get('post');
+if (postId && POSTS[postId]) openPost(postId);
 
-    const sel = document.getElementById('group-select');
-    if (groups.length) {
-      // Separate into Google-created and Telegram-linked
-      const webGroups = groups.filter(g =>  g.is_web_group);
-      const tgGroups  = groups.filter(g => !g.is_web_group);
-      let html = '<option value="" disabled>— Select a squad —</option>';
-      if (webGroups.length) {
-        html += `<optgroup label="🌐 Google Squads">`;
-        webGroups.forEach(g => {
-          html += `<option value="${g.id}" ${String(g.id)===String(currentGroupId)?'selected':''}>🌐 ${esc(g.title)}</option>`;
-        });
-        html += '</optgroup>';
-      }
-      if (tgGroups.length) {
-        html += `<optgroup label="💬 Telegram Groups">`;
-        tgGroups.forEach(g => {
-          html += `<option value="${g.id}" ${String(g.id)===String(currentGroupId)?'selected':''}>💬 ${esc(g.title)}</option>`;
-        });
-        html += '</optgroup>';
-      }
-      sel.innerHTML = html;
-
-      if (currentGroupId && groups.find(g => String(g.id) === String(currentGroupId))) {
-        const active = groups.find(g => String(g.id) === String(currentGroupId));
-        document.getElementById('squad-title').textContent  = active.title;
-        document.getElementById('topnav-squad').textContent = active.title;
-        sel.value = String(currentGroupId);
-        // Dashboard will load via goSection
-      } else if (groups.length === 1 || autoSelectFirst) {
-        currentGroupId = String(groups[0].id);
-        const active = groups[0];
-        document.getElementById('squad-title').textContent  = active.title;
-        document.getElementById('topnav-squad').textContent = active.title;
-        sel.value = currentGroupId;
-        history.replaceState({}, '', `/dashboard?groupId=${currentGroupId}`);
-        // Dashboard loads on init
-      } else {
-        document.getElementById('squad-title').textContent  = 'Select a squad';
-        document.getElementById('topnav-squad').textContent = '';
-        showGroupPrompt(groups);
-      }
-    } else {
-      sel.innerHTML = '<option value="">No squads yet</option>';
-      document.getElementById('squad-title').textContent  = 'No squads yet';
-      const dg = document.getElementById('dash-grid');
-      if (dg) dg.innerHTML = `
-        <div class="empty">
-          <div class="empty-icon">👥</div>
-          <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px">No squads yet</div>
-          <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Create a squad or link your Telegram group to get started</div>
-          <button onclick="openGroupPanel()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font-b)">+ Create a squad</button>
-        </div>`;
-    }
-  } catch(e) { console.error('[loadGroups]', e); }
-}
-
-// Show a prominent group-picker when user has multiple groups but none selected
-function showGroupPrompt(groups) {
-  const grid = document.getElementById('dash-grid');
-  const webGroups = groups.filter(g =>  g.is_web_group);
-  const tgGroups  = groups.filter(g => !g.is_web_group);
-
-  let html = `
-    <div class="empty" style="padding:2.5rem 1rem">
-      <div class="empty-icon">👥</div>
-      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">Choose your squad</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">Select which squad's picks to view</div>
-      <div style="display:flex;flex-direction:column;gap:10px;max-width:360px;margin:0 auto;text-align:left">`;
-
-  if (webGroups.length) {
-    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">🌐 Google Squads</div>`;
-    webGroups.forEach(g => {
-      html += `<button onclick="switchGroup('${g.id}')" style="display:flex;align-items:center;gap:12px;background:var(--white);border:1.5px solid var(--beige3);border-radius:12px;padding:12px 16px;cursor:pointer;font-family:var(--font-b);width:100%;transition:border-color .15s" onmouseover="this.style.borderColor='#7C3AED'" onmouseout="this.style.borderColor='var(--beige3)'">
-        <span style="font-size:22px">🌐</span>
-        <span style="font-size:14px;font-weight:600;color:var(--text)">${esc(g.title)}</span>
-        <span style="margin-left:auto;color:var(--muted);font-size:18px">›</span>
-      </button>`;
-    });
-  }
-  if (tgGroups.length) {
-    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:${webGroups.length?'12px':0} 0 2px">💬 Telegram Groups</div>`;
-    tgGroups.forEach(g => {
-      html += `<button onclick="switchGroup('${g.id}')" style="display:flex;align-items:center;gap:12px;background:var(--white);border:1.5px solid var(--beige3);border-radius:12px;padding:12px 16px;cursor:pointer;font-family:var(--font-b);width:100%;transition:border-color .15s" onmouseover="this.style.borderColor='#7C3AED'" onmouseout="this.style.borderColor='var(--beige3)'">
-        <span style="font-size:22px">💬</span>
-        <span style="font-size:14px;font-weight:600;color:var(--text)">${esc(g.title)}</span>
-        <span style="margin-left:auto;color:var(--muted);font-size:18px">›</span>
-      </button>`;
-    });
-  }
-  html += `</div>
-      <div style="margin-top:1.5rem">
-        <button onclick="openGroupPanel()" style="background:transparent;border:1.5px solid var(--beige3);border-radius:10px;padding:8px 18px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--font-b)">+ Add new squad</button>
-      </div>
-    </div>`;
-  grid.innerHTML = html;
-}
-
-function switchGroup(id) {
-  currentGroupId = id ? String(id) : null;
-  if (currentGroupId) localStorage.setItem('sp_last_group', currentGroupId);
-  else localStorage.removeItem('sp_last_group');
-  const sel = document.getElementById('group-select');
-  if (sel) sel.value = currentGroupId || '';
-  const opt = sel ? Array.from(sel.options).find(o => o.value === currentGroupId) : null;
-  const title = opt ? (opt.text || '').replace(/^[🌐💬]\s*/u, '').trim() : '';
-  document.getElementById('squad-title').textContent  = title || 'Your Squad';
-  document.getElementById('topnav-squad').textContent = title || '';
-  history.pushState({}, '', currentGroupId ? `/dashboard?groupId=${currentGroupId}` : '/dashboard');
-  loadDashboard();
-}
-
-async function createSquad() {
-  const name = document.getElementById('gp-name').value.trim();
-  const msg  = document.getElementById('gp-create-msg');
-  if (!name) { showMsg(msg, 'Please enter a squad name', 'error'); return; }
-  const btn  = document.querySelector('#gp-create .modal-save');
-  if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
-  try {
-    const r = await fetch(BASE+'/api/groups/create', { credentials: 'include',
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({name})
-    });
-    const d = await r.json();
-    if (d.ok && d.group) {
-      showMsg(msg, `Squad "${name}" created! 🎉`, 'ok');
-      document.getElementById('gp-name').value = '';
-      // Switch to the new group immediately
-      currentGroupId = String(d.group.id);
-      history.pushState({}, '', `/dashboard?groupId=${currentGroupId}`);
-      closeGroupPanel();
-      await loadGroups(false);   // reload dropdown, already has currentGroupId set
-      loadInviteGroups();
-      showToast(`Squad "${name}" created! Now showing its picks.`);
-    } else {
-      showMsg(msg, d.error || 'Failed to create', 'error');
-    }
-  } catch(e) { showMsg(msg, 'Error creating squad', 'error'); }
-  finally { if (btn) { btn.disabled = false; btn.textContent = 'Create squad'; } }
-}
-
-async function linkTelegram() {
-  const tgId   = document.getElementById('gp-tg-id').value.trim();
-  const tgName = document.getElementById('gp-tg-name').value.trim() || 'Telegram Group';
-  const msg    = document.getElementById('gp-tg-msg');
-  if (!tgId) { showMsg(msg, 'Please enter the Telegram Group ID', 'error'); return; }
-  const btn = document.querySelector('#gp-telegram .modal-save');
-  if (btn) { btn.disabled = true; btn.textContent = 'Linking...'; }
-  try {
-    const r = await fetch(BASE+'/api/groups/link-telegram', { credentials: 'include',
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({telegramGroupId: tgId, name: tgName})
-    });
-    const d = await r.json();
-    if (d.ok && d.group) {
-      showMsg(msg, `Group "${tgName}" linked! ✅`, 'ok');
-      document.getElementById('gp-tg-id').value   = '';
-      document.getElementById('gp-tg-name').value = '';
-      // Switch to the newly linked group immediately
-      currentGroupId = String(d.group.id);
-      history.pushState({}, '', `/dashboard?groupId=${currentGroupId}`);
-      closeGroupPanel();
-      await loadGroups(false);
-      showToast(`"${tgName}" linked! Now showing its picks.`);
-    } else {
-      showMsg(msg, d.error || 'Failed to link group', 'error');
-    }
-  } catch(e) { showMsg(msg, 'Error linking group', 'error'); }
-  finally { if (btn) { btn.disabled = false; btn.textContent = 'Link group'; } }
-}
-
-// ── DASHBOARD ─────────────────────────────────────────────
-// Aggregated view: shows picks from selected group OR all groups
-// "My Space" (currentGroupId = null) shows picks the user personally added
-
-let dashFilter    = 'all';
-let dashGroupId   = 'all';   // 'all' | specific group id
-let dashAllGroups = [];      // cached group list
-let dashAllPicks  = [];      // cached picks for dashboard
-
-async function loadDashboard() {
-  const grid = document.getElementById('dash-grid');
-  const statsEl = document.getElementById('dash-stats');
-  if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Loading dashboard...</div>';
-
-  try {
-    // Step 1: fetch user's groups
-    const gRes = await fetch(BASE + '/api/groups/mine', { credentials: 'include' });
-    if (gRes.status === 401) { window.location.href = '/login'; return; }
-    if (!gRes.ok) {
-      if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Could not load squads (HTTP ' + gRes.status + '). Please refresh.</div>';
-      return;
-    }
-    const gData = await gRes.json();
-    dashAllGroups = gData.groups || [];
-    allGroups = dashAllGroups;
-    renderDashGroupTabs();
-
-    // Step 2: if no groups yet, show friendly prompt
-    if (!dashAllGroups.length) {
-      if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px">No squads yet</div><div style="font-size:13px;color:var(--muted);margin-bottom:16px">Create a squad or link your Telegram group to get started</div><button onclick="openGroupPanel()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font-b)">+ Create a squad</button></div>';
-      if (statsEl) statsEl.innerHTML = '';
-      return;
-    }
-
-    // Step 3: fetch picks
-    const hdrs = { 'x-telegram-init-data':'test', 'x-user-id': String(currentUser?.id||'0'), 'x-user-name': currentUser?.name||'User' };
-    if (dashGroupId === 'all') {
-      const allFetches = dashAllGroups.map(g =>
-        fetch(`${BASE}/api/picks?groupId=${encodeURIComponent(g.id)}`, { credentials: 'include', headers: hdrs })
-          .then(r => r.ok ? r.json() : { picks: [] })
-          .then(d => (d.picks||[]).map(p => ({ ...p, _groupTitle: g.title, _groupId: g.id })))
-          .catch(() => [])
-      );
-      const results = await Promise.all(allFetches);
-      dashAllPicks = results.flat().sort((a, b) => new Date(b.created_at||0) - new Date(a.created_at||0));
-      dashAllPicks.forEach(p => { myVotes[p.id] = p.my_vote || ''; });
-    } else {
-      const pRes = await fetch(`${BASE}/api/picks?groupId=${encodeURIComponent(dashGroupId)}`, { credentials: 'include', headers: hdrs });
-      if (!pRes.ok) {
-        if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Could not load picks (HTTP ' + pRes.status + '). Please refresh.</div>';
-        return;
-      }
-      const pData = await pRes.json();
-      dashAllPicks = pData.picks || [];
-      dashAllPicks.forEach(p => { myVotes[p.id] = p.my_vote || ''; });
-    }
-
-    // Step 4: render
-    renderDashStats();
-    renderDashGrid();
-
-  } catch(e) {
-    console.error('[loadDashboard] ERROR:', e.message, e.stack);
-    if (grid) grid.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">Dashboard error</div><div style="font-size:12px;color:var(--muted);margin-bottom:12px">' + (e.message||'Unknown error') + '</div><button onclick="loadDashboard()" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">↺ Retry</button></div>';
-  }
-}
-
-function renderDashGroupTabs() {
-  const el = document.getElementById('dash-group-tabs');
-  if (!el) return;
-  let html = `<button class="fpill ${dashGroupId==='all'?'on':''}" onclick="setDashGroup('all',this)">All squads</button>`;
-  dashAllGroups.forEach(g => {
-    const icon = g.is_web_group ? '🌐' : '💬';
-    const sel  = dashGroupId === String(g.id);
-    html += `<button class="fpill ${sel?'on':''}" onclick="setDashGroup('${g.id}',this)">${icon} ${esc(g.title)}</button>`;
-  });
-  el.innerHTML = html;
-}
-
-function setDashGroup(id, btn) {
-  dashGroupId = id;
-  document.querySelectorAll('#dash-group-tabs .fpill').forEach(b => b.classList.remove('on'));
-  if (btn) btn.classList.add('on');
-  loadDashboard();
-  loadWeeklyDigest(id); // load squad recap when tab changes
-}
-
-function setDashFilter(f, btn) {
-  dashFilter = f;
-  document.querySelectorAll('#sec-dashboard .filter-bar .fpill').forEach(b => b.classList.remove('on'));
-  if (btn) btn.classList.add('on');
-  renderDashGrid();
-}
-
-function renderDashStats() {
-  const el = document.getElementById('dash-stats');
-  if (!el) return;
-  const ok = dashAllPicks.filter(p => p.group_ok).length;
-  const nd = dashAllPicks.filter(p => !myVotes[p.id]).length;
-  el.innerHTML = `
-    <div class="stat"><div class="stat-num">${dashAllPicks.length}</div><div class="stat-lbl">Total picks</div></div>
-    <div class="stat"><div class="stat-num" style="color:var(--green)">${ok}</div><div class="stat-lbl">Group ok</div></div>
-    <div class="stat"><div class="stat-num" style="color:var(--amber)">${nd}</div><div class="stat-lbl">Need your vote</div></div>
-    <div class="stat"><div class="stat-num">${dashAllGroups.length}</div><div class="stat-lbl">Squads</div></div>`;
-}
-
-function renderDashGrid() {
-  const grid = document.getElementById('dash-grid');
-  if (!grid) return;
-
-  let list = dashAllPicks.filter(p => {
-    if (dashFilter==='want')  return myVotes[p.id]==='want';
-    if (dashFilter==='group') return p.group_ok;
-    if (dashFilter==='movie') return p.type==='movie';
-    if (dashFilter==='food')  return p.type==='food';
-    if (dashFilter==='place') return p.type==='place';
-    if (dashFilter==='event') return p.type==='event';
-    return true;
-  });
-
-  // Deduplicate by title (case-insensitive) — keep the most recent version
-  if (dashGroupId === 'all') {
-    const seen = new Set();
-    list = list.filter(p => {
-      const key = (p.title || '').toLowerCase().trim();
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }
-
-  if (!list.length) {
-    grid.innerHTML = '<div class="empty"><div class="empty-icon">🍿</div>No picks here yet! Use the + button to add one.</div>';
-    return;
-  }
-
-  grid.innerHTML = list.map(p => {
-    const tc     = TC[p.type] || TC.link;
-    const labels = VOTE_LABELS[p.type] || VOTE_LABELS.link;
-    const seen   = (p.votes||[]).filter(v=>v.status==='seen');
-    const want   = (p.votes||[]).filter(v=>v.status==='want');
-    const skip   = (p.votes||[]).filter(v=>v.status==='skip');
-    const mv     = myVotes[p.id] || '';
-    const chips  = [
-      ...seen.map(v=>`<span class="vc vc-seen">✓ ${sn(v.first_name||'?')}</span>`),
-      ...want.map(v=>`<span class="vc vc-want">★ ${sn(v.first_name||'?')}</span>`),
-      ...skip.map(v=>`<span class="vc vc-skip">✕ ${sn(v.first_name||'?')}</span>`),
-    ].join('') || '<span style="font-size:11px;color:var(--hint);font-style:italic">No votes yet</span>';
-
-    const thumbContent = p.image_url
-      ? `<img src="${esc(p.image_url)}" alt="" onerror="this.style.display='none'">`
-      : `<span class="card-thumb-emoji">${tc.emoji}</span>`;
-    const linkBtn   = p.url ? `<a href="${esc(p.url)}" target="_blank" class="card-link">🔗 Open link ↗</a>` : '';
-    const okBadge   = p.group_ok ? `<div class="card-ok">✓ Group ok</div>` : '';
-    const groupTag  = p._groupTitle ? `<span style="font-size:9px;font-weight:700;background:var(--beige2);color:var(--text2);padding:2px 6px;border-radius:8px">${esc(p._groupTitle)}</span>` : '';
-
-    return `<div class="pick-card" id="dpc-${p.id}">
-      <div class="card-thumb" style="background:${tc.grad}">
-        ${thumbContent}
-        <div class="card-thumb-overlay"></div>
-        <div class="card-thumb-info">
-          <div class="card-type-badge" style="background:${tc.tb};color:${tc.tt}">${tc.lbl}</div>
-          <div class="card-thumb-title">${esc(p.title)}</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="card-desc" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">${groupTag} ${esc(p.added_by_name||'')}</div>
-        ${linkBtn}${okBadge}
-        <div class="voters-row">${chips}<span class="vote-count">${seen.length+want.length+skip.length} voted</span></div>
-      </div>
-      <div class="vote-btns">
-        <button class="vbtn ${mv==='seen'?'on-seen':''}" onclick="castDashVote(${p.id},'seen')">✓ ${esc(labels.seen)}</button>
-        <button class="vbtn ${mv==='want'?'on-want':''}" onclick="castDashVote(${p.id},'want')">★ ${esc(labels.want)}</button>
-        <button class="vbtn ${mv==='skip'?'on-skip':''}" onclick="castDashVote(${p.id},'skip')">✕ ${esc(labels.skip)}</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function castDashVote(pickId, status) {
-  try {
-    const r = await fetch(BASE+'/api/vote', { credentials: 'include',
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-telegram-init-data':'test',
-               'x-user-id':String(currentUser?.id||'0'),'x-user-name':currentUser?.name||'User'},
-      body: JSON.stringify({pickId, status})
-    });
-    const data = await r.json();
-    const idx  = dashAllPicks.findIndex(p=>p.id===pickId);
-    if (idx>=0) { dashAllPicks[idx].votes=data.votes; dashAllPicks[idx].my_vote=data.my_vote; dashAllPicks[idx].group_ok=data.group_ok; }
-    // Also update allPicks for the picks tab
-    const pidx = allPicks.findIndex(p=>p.id===pickId);
-    if (pidx>=0) { allPicks[pidx].votes=data.votes; allPicks[pidx].my_vote=data.my_vote; allPicks[pidx].group_ok=data.group_ok; }
-    myVotes[pickId] = data.my_vote||'';
-    renderDashStats(); renderDashGrid();
-    showToast(data.my_vote ? 'Vote saved ✓' : 'Vote removed');
-    if (data.group_ok) setTimeout(()=>showToast('✅ Group ok!'),600);
-  } catch(e) { showToast('Vote failed — please retry'); }
-}
-
-// ── PICKS PAGE REMOVED — Dashboard is the primary view ──────
-// These stubs prevent any stale onclick references from crashing
-function loadPicks() { loadDashboard(); }
-function renderPicks() {}
-function renderStats() {}
-function setFilter() {}
-function castVote(pickId, status) { castDashVote(pickId, status); }
-// ── ADD PICK ──────────────────────────────────────────────
-let addPickType = 'movie';
-let addFetchTimer = null;
-
-function setAddCat(btn) {
-  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  addPickType = btn.dataset.type;
-}
-
-function openAdd(preselectedGroupId) {
-  // Populate squad dropdown from allGroups
-  const sel = document.getElementById('add-group-select');
-  if (sel && allGroups.length) {
-    const targetId = preselectedGroupId || currentGroupId || '';
-    sel.innerHTML = '<option value="">Select a squad...</option>' +
-      allGroups.map(g => {
-        const icon = g.is_web_group ? '🌐' : '💬';
-        const sel_ = String(g.id) === String(targetId) ? ' selected' : '';
-        return `<option value="${g.id}"${sel_}>${icon} ${esc(g.title)}</option>`;
-      }).join('');
-  } else if (sel) {
-    sel.innerHTML = '<option value="">No squads yet — create one first</option>';
-  }
-  document.getElementById('add-modal').classList.add('open');
-  document.getElementById('add-url').focus();
-}
-
-function closeAdd() {
-  document.getElementById('add-modal').classList.remove('open');
-  document.getElementById('add-url').value = '';
-  document.getElementById('add-title').value = '';
-  document.getElementById('add-preview').style.display = 'none';
-}
-
-// Auto-fetch metadata when URL is pasted
-document.getElementById('add-url').addEventListener('input', function() {
-  clearTimeout(addFetchTimer);
-  const url = this.value.trim();
-  if (!url.startsWith('http')) { document.getElementById('add-preview').style.display = 'none'; return; }
-  addFetchTimer = setTimeout(() => fetchAddPreview(url), 700);
+window.addEventListener('popstate', () => {
+  const p = new URLSearchParams(window.location.search).get('post');
+  if (p && POSTS[p]) openPost(p);
+  else closePost();
 });
-
-async function fetchAddPreview(url) {
-  try {
-    // Use the picks endpoint just to get metadata — we pass a fake group and check the response
-    const r = await fetch(BASE + '/api/meta?url=' + encodeURIComponent(url), { credentials: 'include' });
-    if (!r.ok) return;
-    const d = await r.json();
-    if (d.title) {
-      document.getElementById('add-title').value = d.title;
-      document.getElementById('add-title-hint').textContent = '(auto-filled from link)';
-      const prev = document.getElementById('add-preview');
-      document.getElementById('add-preview-title').textContent = d.title;
-      document.getElementById('add-preview-desc').textContent  = d.description || '';
-      const img = document.getElementById('add-preview-img');
-      if (d.imageUrl) { img.src = d.imageUrl; img.style.display = 'block'; }
-      else { img.style.display = 'none'; }
-      prev.style.display = 'flex';
-      // Auto-detect category from URL
-      const autoType = detectTypeFromUrl(url);
-      if (autoType) {
-        addPickType = autoType;
-        document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('on', b.dataset.type === autoType));
-      }
-    }
-  } catch(e) {}
-}
-
-function detectTypeFromUrl(url) {
-  const u = url.toLowerCase();
-  if (/imdb\.com|letterboxd\.com/.test(u))           return 'movie';
-  if (/netflix\.com|primevideo\.com|hotstar\.com/.test(u)) return 'show';
-  if (/yelp\.com|zomato\.com|swiggy\.com|doordash\.com|ubereats\.com/.test(u)) return 'food';
-  if (/maps\.google|goo\.gl\/maps|tripadvisor\.com/.test(u)) return 'place';
-  if (/eventbrite\.com|meetup\.com|ticketmaster\.com/.test(u)) return 'event';
-  return null;
-}
-
-async function saveAdd() {
-  const url   = document.getElementById('add-url').value.trim();
-  const title = document.getElementById('add-title').value.trim();
-  // Read group from the dropdown — not from currentGroupId
-  const groupSel  = document.getElementById('add-group-select');
-  const targetGroupId = groupSel ? groupSel.value : currentGroupId;
-  if (!url && !title) { showToast('Enter a link or title'); return; }
-  if (!targetGroupId) { showToast('Select a squad first'); groupSel && groupSel.focus(); return; }
-  const btn = document.getElementById('add-save');
-  btn.disabled = true; btn.textContent = 'Adding...';
-  try {
-    const r = await fetch(BASE + '/api/picks', { credentials: 'include',
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'x-telegram-init-data':'test',
-                 'x-user-id': String(currentUser?.id||'0'), 'x-user-name': currentUser?.name||'User',
-                 'x-chat-id': targetGroupId },
-      body: JSON.stringify({
-        url: url || title,
-        groupId: targetGroupId,
-        // Send group title so ensureGroup uses the real name, not 'SquadPicks Group'
-        groupTitle: groupSel ? (groupSel.options[groupSel.selectedIndex]?.text || '').replace(/^[🌐💬]\s*/u,'').trim() : '',
-        manualType: addPickType,
-        manualTitle: title || undefined
-      })
-    });
-    const data = await r.json();
-    if (r.status === 409 || data.duplicate) {
-      showToast('⚠️ ' + (data.error || 'Already in this squad!'));
-      return;
-    }
-    if (data.pick) {
-      const newPick = { ...data.pick, votes: [{user_id: String(currentUser?.id||'0'), status:'want', first_name: currentUser?.name||'You'}], my_vote:'want', group_ok:false };
-      if (!allPicks.find(p => p.id === newPick.id)) allPicks.unshift(newPick);
-      myVotes[data.pick.id] = 'want';
-      // Update the active group to where the pick was added
-      if (targetGroupId !== currentGroupId) {
-        currentGroupId = targetGroupId;
-        localStorage.setItem('sp_last_group', targetGroupId);
-        // Update topnav title from allGroups (not from the DOM dropdown which has emoji prefixes)
-        const activeGroup = allGroups.find(g => String(g.id) === String(targetGroupId));
-        if (activeGroup) {
-          const el1 = document.getElementById('squad-title');
-          const el2 = document.getElementById('topnav-squad');
-          if (el1) el1.textContent = activeGroup.title;
-          if (el2) el2.textContent = activeGroup.title;
-        }
-      }
-    }
-    closeAdd();
-    loadDashboard();
-    showToast('Pick added! 🎉');
-  } catch(e) { showToast('Could not add pick'); }
-  finally { btn.disabled = false; btn.textContent = 'Add to Squad'; }
-}
-
-// ── GROUP PANEL ───────────────────────────────────────────
-let managingGroupId    = null;
-let managingGroupIsWeb = false;
-let managingGroupOwnerId = null;
-
-function openGroupPanel(tab) {
-  closeDrawer();
-  document.getElementById('group-panel').classList.add('open');
-  gpTab(tab || 'manage', document.querySelector('#group-panel .gp-tab'));
-  if (!tab || tab === 'manage') loadSquadList();
-}
-function closeGroupPanel() { document.getElementById('group-panel').classList.remove('open'); }
-
-function gpTab(tab, btn) {
-  document.querySelectorAll('.gp-tab').forEach(b => b.classList.remove('on'));
-  if (btn) btn.classList.add('on');
-  document.querySelectorAll('.gp-pane').forEach(p => { p.classList.remove('on'); p.style.display = 'none'; });
-  const pane = document.getElementById('gp-' + tab);
-  if (pane) { pane.classList.add('on'); pane.style.display = 'block'; }
-  if (tab === 'manage')   loadSquadList();
-  if (tab === 'telegram') loadLinkedTelegramGroups();
-}
-
-// ── SQUAD LIST (manage tab) ───────────────────────────────
-async function loadSquadList() {
-  const el = document.getElementById('squad-list');
-  el.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px">Loading...</div>';
-  try {
-    const r = await fetch(BASE + '/api/groups/mine', { credentials: 'include' });
-    const d = await r.json();
-    const groups = d.groups || [];
-    if (!groups.length) {
-      el.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px">
-        No squads yet.<br><button onclick="gpTab('google',document.querySelectorAll('.gp-tab')[1])" style="margin-top:8px;color:var(--blue);background:none;border:none;cursor:pointer;font-weight:600;font-size:13px">+ Create your first squad</button>
-      </div>`;
-      return;
-    }
-    const webGroups = groups.filter(g =>  g.is_web_group);
-    const tgGroups  = groups.filter(g => !g.is_web_group);
-    let html = '';
-
-    if (webGroups.length) {
-      html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">🌐 Google Squads</div>`;
-      webGroups.forEach(g => {
-        html += `<div style="display:flex;align-items:center;gap:10px;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:11px 14px;margin-bottom:7px">
-          <span style="font-size:18px">🌐</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.title)}</div>
-            <div style="font-size:11px;color:var(--muted)">Google Squad</div>
-          </div>
-          <button onclick="openSquadDetail('${g.id}','${esc(g.title)}',true,'${g.owner_id||''}')" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-b)">Manage</button>
-        </div>`;
-      });
-    }
-    if (tgGroups.length) {
-      if (webGroups.length) html += `<div style="height:8px"></div>`;
-      html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">💬 Telegram Groups</div>`;
-      tgGroups.forEach(g => {
-        html += `<div style="display:flex;align-items:center;gap:10px;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:11px 14px;margin-bottom:7px">
-          <span style="font-size:18px">💬</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.title)}</div>
-            <div style="font-size:11px;color:var(--muted)">Telegram Group</div>
-          </div>
-          <button onclick="openSquadDetail('${g.id}','${esc(g.title)}',false)" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-b)">View</button>
-        </div>`;
-      });
-    }
-    el.innerHTML = html;
-  } catch(e) { el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:.5rem">Failed to load squads</div>'; }
-}
-
-// ── SQUAD DETAIL VIEW ─────────────────────────────────────
-async function openSquadDetail(groupId, title, isWebGroup, ownerId) {
-  managingGroupId      = groupId;
-  managingGroupIsWeb   = isWebGroup;
-  managingGroupOwnerId = ownerId || null;
-
-  document.getElementById('gp-manage').classList.remove('on');
-  document.getElementById('gp-manage').style.display = 'none';
-  const detail = document.getElementById('gp-squad-detail');
-  detail.classList.add('on'); detail.style.display = 'block';
-
-  document.getElementById('detail-name').value = title;
-  document.getElementById('detail-icon').textContent = isWebGroup ? '🌐' : '💬';
-  document.getElementById('detail-type-label').textContent = isWebGroup ? 'Google Squad' : 'Telegram Group';
-
-  // Rename and delete only available for web groups (owner-managed)
-  document.getElementById('detail-rename-btn').style.display = isWebGroup ? 'block' : 'none';
-  document.getElementById('detail-delete-section').style.display = isWebGroup ? 'block' : 'none';
-  document.getElementById('detail-invite-section').style.display = isWebGroup ? 'block' : 'none';
-
-  // Load members
-  await loadSquadMembers(groupId);
-}
-
-async function loadSquadMembers(groupId) {
-  const el = document.getElementById('detail-members');
-  el.innerHTML = '<div style="font-size:13px;color:var(--muted)">Loading members...</div>';
-  try {
-    const r = await fetch(BASE + `/api/groups/${groupId}/members`, { credentials: 'include' });
-    const d = await r.json();
-    const members = d.members || [];
-    if (!members.length) { el.innerHTML = '<div style="font-size:13px;color:var(--muted)">No members yet</div>'; return; }
-    const isOwner = currentUser && members.some(m => m.email === currentUser.email && (m.role === 'owner' || m.memberId === managingGroupOwnerId));
-    el.innerHTML = members.map(m => {
-      const roleTag = m.role === 'owner' ? '<span style="font-size:10px;font-weight:700;background:#E9D5FF;color:#6B21A8;padding:2px 7px;border-radius:8px">Owner</span>'
-                    : m.role === 'admin' ? '<span style="font-size:10px;font-weight:700;background:#FEF3C7;color:#D97706;padding:2px 7px;border-radius:8px">Admin</span>'
-                    : '';
-      const pendingTag = m.status === 'invited' ? '<span style="font-size:10px;color:#D97706;font-weight:600">Pending</span>' : '';
-      const adminBtn = (managingGroupIsWeb && isOwner && m.role !== 'owner')
-        ? `<button onclick="toggleMemberAdmin('${managingGroupId}','${m.memberId}','${m.role||'member'}')" style="background:none;border:1px solid var(--beige3);border-radius:6px;padding:3px 8px;font-size:10px;color:var(--text2);cursor:pointer;font-family:var(--font-b)">${m.role==='admin'?'Revoke admin':'Make admin'}</button>`
-        : '';
-      const removeBtn = (managingGroupIsWeb && (isOwner || currentUser?.email === m.email) && m.role !== 'owner')
-        ? `<button onclick="removeMemberFromSquad('${m.memberId}')" style="background:none;border:1px solid rgba(220,38,38,.2);border-radius:6px;padding:3px 8px;font-size:10px;color:var(--red);cursor:pointer;font-family:var(--font-b)">Remove</button>`
-        : '';
-      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <div style="width:32px;height:32px;border-radius:50%;background:var(--beige2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--navy);flex-shrink:0">${(m.name||'?').charAt(0).toUpperCase()}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px">${esc(m.name||'Member')} ${roleTag}</div>
-          <div style="font-size:11px;color:var(--muted)">${esc(m.email||'')} ${pendingTag}</div>
-        </div>
-        <div style="display:flex;gap:4px">${adminBtn}${removeBtn}</div>
-      </div>`;
-    }).join('');
-  } catch(e) { el.innerHTML = '<div style="font-size:13px;color:var(--red)">Failed to load members</div>'; }
-}
-
-async function renameCurrentSquad() {
-  const name = document.getElementById('detail-name').value.trim();
-  const msg  = document.getElementById('detail-msg');
-  if (!name) { showMsg(msg, 'Enter a name', 'error'); return; }
-  try {
-    const r = await fetch(BASE + `/api/groups/${managingGroupId}/rename`, { credentials: 'include',
-      method: 'PATCH', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ name })
-    });
-    const d = await r.json();
-    if (d.ok) {
-      showMsg(msg, 'Renamed! ✅', 'ok');
-      await loadGroups(false);
-    } else { showMsg(msg, d.error || 'Failed to rename', 'error'); }
-  } catch(e) { showMsg(msg, 'Error renaming squad', 'error'); }
-}
-
-async function deleteCurrentSquad() {
-  const msg = document.getElementById('detail-msg');
-  if (!confirm('Delete this squad? All its picks will also be deleted. This cannot be undone.')) return;
-  try {
-    const r = await fetch(BASE + `/api/groups/${managingGroupId}`, { credentials: 'include', method: 'DELETE' });
-    const d = await r.json();
-    if (d.ok) {
-      closeGroupPanel();
-      // If we were viewing this group, clear it
-      if (String(currentGroupId) === String(managingGroupId)) {
-        currentGroupId = null;
-        history.replaceState({}, '', '/dashboard');
-      }
-      await loadGroups(false);
-      showToast('Squad deleted');
-    } else { showMsg(msg, d.error || 'Failed to delete', 'error'); }
-  } catch(e) { showMsg(msg, 'Error deleting squad', 'error'); }
-}
-
-async function removeMemberFromSquad(memberId) {
-  if (!confirm('Remove this member from the squad?')) return;
-  try {
-    const r = await fetch(BASE + `/api/groups/${managingGroupId}/members/${memberId}`, { credentials: 'include', method: 'DELETE' });
-    const d = await r.json();
-    if (d.ok) { await loadSquadMembers(managingGroupId); showToast('Member removed'); }
-    else showToast(d.error || 'Could not remove member');
-  } catch(e) { showToast('Error removing member'); }
-}
-
-async function inviteToCurrentSquad() {
-  const email = document.getElementById('detail-invite-email').value.trim();
-  const msg   = document.getElementById('detail-invite-msg');
-  if (!email || !/\S+@\S+\.\S+/.test(email)) { showMsg(msg, 'Enter a valid email', 'error'); return; }
-  try {
-    const r = await fetch(BASE + '/api/groups/invite', { credentials: 'include',
-      method: 'POST', headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ groupId: managingGroupId, email })
-    });
-    const d = await r.json();
-    if (d.ok) {
-      showMsg(msg, `${email} invited ✅`, 'ok');
-      document.getElementById('detail-invite-email').value = '';
-      await loadSquadMembers(managingGroupId);
-    } else { showMsg(msg, d.error || 'Could not invite', 'error'); }
-  } catch(e) { showMsg(msg, 'Error sending invite', 'error'); }
-}
-
-// ── ALREADY-LINKED TELEGRAM GROUPS ───────────────────────
-async function loadLinkedTelegramGroups() {
-  try {
-    const r = await fetch(BASE + '/api/groups/mine', { credentials: 'include' });
-    const d = await r.json();
-    const tgGroups = (d.groups || []).filter(g => !g.is_web_group);
-    const listEl = document.getElementById('linked-tg-list');
-    const itemsEl = document.getElementById('linked-tg-items');
-    if (!tgGroups.length) { listEl.style.display = 'none'; return; }
-    listEl.style.display = 'block';
-    itemsEl.innerHTML = tgGroups.map(g => `
-      <div style="display:flex;align-items:center;gap:10px;background:var(--beige);border:1.5px solid var(--beige3);border-radius:10px;padding:9px 12px">
-        <span>💬</span>
-        <div style="flex:1;font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.title)}</div>
-        <div style="font-size:10px;color:var(--muted);white-space:nowrap">${g.id}</div>
-      </div>`).join('');
-  } catch(e) {}
-}
-
-async function createSquad() {
-  const name = document.getElementById('gp-name').value.trim();
-  const msg  = document.getElementById('gp-create-msg');
-  if (!name) { showMsg(msg, 'Please enter a squad name', 'error'); return; }
-  const btn = document.querySelector('#gp-google .modal-save');
-  if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
-  try {
-    const r = await fetch(BASE + '/api/groups/create', { credentials: 'include',
-      method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ name })
-    });
-    const d = await r.json();
-    if (d.ok && d.group) {
-      showMsg(msg, `Squad "${name}" created! 🎉`, 'ok');
-      document.getElementById('gp-name').value = '';
-      currentGroupId = String(d.group.id);
-      history.pushState({}, '', `/dashboard?groupId=${currentGroupId}`);
-      closeGroupPanel();
-      await loadGroups(false);
-      showToast(`"${name}" created! Now showing its picks.`);
-    } else { showMsg(msg, d.error || 'Failed to create', 'error'); }
-  } catch(e) { showMsg(msg, 'Error creating squad', 'error'); }
-  finally { if (btn) { btn.disabled = false; btn.textContent = 'Create Google squad'; } }
-}
-
-async function linkTelegram() {
-  const tgId   = document.getElementById('gp-tg-id').value.trim();
-  const tgName = document.getElementById('gp-tg-name').value.trim() || 'Telegram Group';
-  const msg    = document.getElementById('gp-tg-msg');
-  if (!tgId) { showMsg(msg, 'Please enter the Telegram Group ID', 'error'); return; }
-  const btn = document.querySelector('#gp-telegram .modal-save');
-  if (btn) { btn.disabled = true; btn.textContent = 'Linking...'; }
-  try {
-    const r = await fetch(BASE + '/api/groups/link-telegram', { credentials: 'include',
-      method: 'POST', headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ telegramGroupId: tgId, name: tgName })
-    });
-    const d = await r.json();
-    if (d.ok && d.group) {
-      showMsg(msg, `"${tgName}" linked! ✅`, 'ok');
-      document.getElementById('gp-tg-id').value = '';
-      document.getElementById('gp-tg-name').value = '';
-      currentGroupId = String(d.group.id);
-      history.pushState({}, '', `/dashboard?groupId=${currentGroupId}`);
-      await loadGroups(false);
-      await loadLinkedTelegramGroups();
-      showToast(`"${tgName}" linked!`);
-    } else { showMsg(msg, d.error || 'Failed to link group', 'error'); }
-  } catch(e) { showMsg(msg, 'Error linking group', 'error'); }
-  finally { if (btn) { btn.disabled = false; btn.textContent = 'Link Telegram group'; } }
-}
-
-async function inviteMember() {
-  // Legacy — now handled by inviteToCurrentSquad
-  const groupId = currentGroupId;
-  const email   = document.getElementById('gp-inv-email')?.value?.trim();
-  const msg     = document.getElementById('gp-inv-msg');
-  if (!groupId || !email) return;
-  try {
-    const r = await fetch(BASE + '/api/groups/invite', { credentials: 'include',
-      method: 'POST', headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ groupId, email })
-    });
-    const d = await r.json();
-    if (d.ok) showMsg(msg, `${email} invited ✅`, 'ok');
-    else showMsg(msg, d.error || 'Could not invite', 'error');
-  } catch(e) { showMsg(msg, 'Error', 'error'); }
-}
-
-async function loadInviteGroups() {} // no-op — replaced by squad detail view
-
-function showMsg(el, text, type) {
-  el.textContent = text; el.style.display = 'block';
-  el.style.cssText = `display:block;font-size:13px;padding:8px 12px;border-radius:8px;margin-top:8px;
-    color:${type==='ok'?'#166534':'#DC2626'};background:${type==='ok'?'#F0FDF4':'#FEF2F2'};
-    border:1px solid ${type==='ok'?'#BBF7D0':'#FECACA'}`;
-  setTimeout(() => { el.style.display = 'none'; }, 4000);
-}
-
-
-// ── TRENDING ──────────────────────────────────────────────
-
-// Global item store — avoids JSON.stringify in onclick (breaks on quotes/special chars)
-window._trendItems = {};
-var _trendItemCounter = 0;
-function storeTrendItem(item) {
-  var id = 'ti_' + (++_trendItemCounter);
-  window._trendItems[id] = item;
-  return id;
-}
-
-var STREAM_FB = {
-  netflix: [
-    {title:'Adolescence',           genre:'British Drama',    badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Adolescence'},
-    {title:'Stranger Things S5',    genre:'Sci-fi Horror',    badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Stranger+Things'},
-    {title:'Squid Game S3',         genre:'Korean Thriller',  badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Squid+Game'},
-    {title:'Wednesday S2',          genre:'Dark Comedy',      badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Wednesday'},
-    {title:'Bridgerton S4',         genre:'Period Drama',     badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Bridgerton'},
-    {title:'Beef',                  genre:'Dark Comedy',      badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Beef'},
-    {title:'The Night Agent',       genre:'Action Thriller',  badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=The+Night+Agent'},
-    {title:'Lupin',                 genre:'Crime Drama',      badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Lupin'},
-    {title:'Emily in Paris',        genre:'Romantic Comedy',  badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Emily+in+Paris'},
-    {title:'Black Mirror S7',       genre:'Sci-fi Anthology', badge:'N', badge_color:'#E50914', url:'https://www.netflix.com/search?q=Black+Mirror'},
-  ],
-  prime: [
-    {title:'Panchayat S4',          genre:'Hindi Comedy',     badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Panchayat'},
-    {title:'The Boys S5',           genre:'Superhero Dark',   badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=The+Boys'},
-    {title:'Fallout S2',            genre:'Post-Apocalyptic', badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Fallout'},
-    {title:'Reacher S3',            genre:'Action Thriller',  badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Reacher'},
-    {title:'The Marvelous Mrs. Maisel',genre:'Comedy Drama',  badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Mrs+Maisel'},
-    {title:'Dahaad',                genre:'Indian Crime',     badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Dahaad'},
-    {title:'Citadel: Honey Bunny',  genre:'Hindi Action',     badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Citadel+Honey+Bunny'},
-    {title:'The Rings of Power S3', genre:'Fantasy Epic',     badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Rings+of+Power'},
-    {title:'Breathe Into the Shadows',genre:'Hindi Thriller', badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Breathe+Into+the+Shadows'},
-    {title:'Jack Ryan S4',          genre:'Action Thriller',  badge:'P', badge_color:'#00A8E0', url:'https://www.primevideo.com/search/?phrase=Jack+Ryan'},
-  ]
-};
-var TMDB_FB = [
-  {title:'Dune: Part Two', year:'2024', rating:'8.4', tmdb_url:'https://www.themoviedb.org/movie/693134'},
-  {title:'Oppenheimer',    year:'2023', rating:'8.3', tmdb_url:'https://www.themoviedb.org/movie/872585'},
-  {title:'Inside Out 2',   year:'2024', rating:'7.7', tmdb_url:'https://www.themoviedb.org/movie/1022789'},
-];
-var PLACES_STATIC = {
-  canada: [
-    {title:'Banff National Park',       description:'Alberta · Rocky Mountains',         url:'https://maps.google.com/?q=Banff+National+Park',      image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Banff_NP_Canada.jpg/640px-Banff_NP_Canada.jpg'},
-    {title:'CN Tower',                  description:'Toronto · Iconic observation tower', url:'https://maps.google.com/?q=CN+Tower+Toronto',          image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Toronto_-_ON_-_CN_Tower_%2841417699282%29.jpg/480px-Toronto_-_ON_-_CN_Tower_%2841417699282%29.jpg'},
-    {title:'Niagara Falls',             description:'Ontario · Natural wonder',           url:'https://maps.google.com/?q=Niagara+Falls+Canada',      image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Niagara_Falls%2C_from_the_Canadian_side.jpg/640px-Niagara_Falls%2C_from_the_Canadian_side.jpg'},
-    {title:'Stanley Park',              description:'Vancouver · Seawall & old-growth',   url:'https://maps.google.com/?q=Stanley+Park+Vancouver',   image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Stanley_Park_Coal_Harbour.jpg/640px-Stanley_Park_Coal_Harbour.jpg'},
-    {title:'Old Quebec City',           description:'UNESCO World Heritage Site',         url:'https://maps.google.com/?q=Old+Quebec+City',          image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Vieux-Quebec-Basse-Ville.jpg/640px-Vieux-Quebec-Basse-Ville.jpg'},
-    {title:'Whistler Village',          description:'BC · Skiing & mountain culture',     url:'https://maps.google.com/?q=Whistler+Village+BC',      image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Whistler_Village_from_Whistler_Mountain.jpg/640px-Whistler_Village_from_Whistler_Mountain.jpg'},
-    {title:'Capilano Bridge',           description:'North Vancouver · Rainforest walk',  url:'https://maps.google.com/?q=Capilano+Suspension+Bridge', image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Capilano_Suspension_Bridge.jpg/640px-Capilano_Suspension_Bridge.jpg'},
-    {title:'Parliament Hill',           description:'Ottawa · National landmark',         url:'https://maps.google.com/?q=Parliament+Hill+Ottawa',   image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Parliament_Hill%2C_Ottawa%2C_Canada.jpg/640px-Parliament_Hill%2C_Ottawa%2C_Canada.jpg'},
-    {title:'Rideau Canal',              description:'Ottawa · UNESCO Heritage waterway',  url:'https://maps.google.com/?q=Rideau+Canal+Ottawa',      image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Rideau_Canal_Ottawa.jpg/640px-Rideau_Canal_Ottawa.jpg'},
-    {title:"Peggy's Cove",              description:'Nova Scotia · Iconic lighthouse',    url:'https://maps.google.com/?q=Peggys+Cove+Nova+Scotia',  image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Peggy%27s_Point_Lighthouse.jpg/640px-Peggy%27s_Point_Lighthouse.jpg'},
-  ],
-  us: [
-    {title:'Grand Canyon',              description:'Arizona · Natural wonder',           url:'https://maps.google.com/?q=Grand+Canyon',             image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/USA_09649_Grand_Canyon_Luca_Galuzzi_2007.jpg/640px-USA_09649_Grand_Canyon_Luca_Galuzzi_2007.jpg'},
-    {title:'Yellowstone National Park', description:'Wyoming · Geysers & wildlife',       url:'https://maps.google.com/?q=Yellowstone+National+Park', image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Yellowstone_np_grand_prismatic_spring.jpg/640px-Yellowstone_np_grand_prismatic_spring.jpg'},
-    {title:'Golden Gate Bridge',        description:'San Francisco · Iconic bridge',      url:'https://maps.google.com/?q=Golden+Gate+Bridge',       image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/GoldenGateBridge-001.jpg/640px-GoldenGateBridge-001.jpg'},
-    {title:'Times Square',              description:'New York City · The crossroads',     url:'https://maps.google.com/?q=Times+Square+NYC',         image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/New_york_times_square-terabass.jpg/480px-New_york_times_square-terabass.jpg'},
-    {title:'Zion National Park',        description:'Utah · Canyons & hiking',            url:'https://maps.google.com/?q=Zion+National+Park',       image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Zion_angels_landing_view.jpg/640px-Zion_angels_landing_view.jpg'},
-    {title:'Yosemite Valley',           description:'California · Waterfalls & granite',  url:'https://maps.google.com/?q=Yosemite+Valley',          image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Yosemite_Valley_from_Tunnel_View.jpg/640px-Yosemite_Valley_from_Tunnel_View.jpg'},
-    {title:'Statue of Liberty',         description:'New York · National monument',       url:'https://maps.google.com/?q=Statue+of+Liberty',        image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Statue_of_Liberty_7.jpg/480px-Statue_of_Liberty_7.jpg'},
-    {title:'Antelope Canyon',           description:'Arizona · Stunning slot canyon',     url:'https://maps.google.com/?q=Antelope+Canyon',          image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Upper_antelope_canyon.jpg/640px-Upper_antelope_canyon.jpg'},
-    {title:'Waikiki Beach',             description:'Hawaii · Surfing & sunsets',         url:'https://maps.google.com/?q=Waikiki+Beach+Hawaii',     image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Waikiki_Beach.jpg/640px-Waikiki_Beach.jpg'},
-    {title:'Las Vegas Strip',           description:'Nevada · Entertainment & casinos',   url:'https://maps.google.com/?q=Las+Vegas+Strip',          image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Vegas_collage2.jpg/480px-Vegas_collage2.jpg'},
-  ],
-  india: [
-    {title:'Taj Mahal',                 description:'Agra · UNESCO Heritage wonder',      url:'https://maps.google.com/?q=Taj+Mahal+Agra',           image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Taj_Mahal%2C_Agra%2C_India_edit3.jpg/640px-Taj_Mahal%2C_Agra%2C_India_edit3.jpg'},
-    {title:'Jaipur — Pink City',        description:'Rajasthan · Forts & palaces',        url:'https://maps.google.com/?q=Jaipur+Pink+City',         image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Hawa_Mahal_in_Jaipur_%28high_res%29.jpg/480px-Hawa_Mahal_in_Jaipur_%28high_res%29.jpg'},
-    {title:'Kerala Backwaters',         description:'Kerala · Houseboats & palms',        url:'https://maps.google.com/?q=Kerala+Backwaters',        image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Backwater_Kerala.jpg/640px-Backwater_Kerala.jpg'},
-    {title:'Varanasi Ghats',            description:'UP · Spiritual & cultural',          url:'https://maps.google.com/?q=Varanasi+Ghats',           image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Varanasi%2C_India.jpg/640px-Varanasi%2C_India.jpg'},
-    {title:'Goa Beaches',               description:'Goa · Sun, sea & seafood',           url:'https://maps.google.com/?q=Goa+Beaches',              image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Goa_beach.jpg/640px-Goa_beach.jpg'},
-    {title:'Hampi Ruins',               description:'Karnataka · UNESCO Heritage',         url:'https://maps.google.com/?q=Hampi+Karnataka',          image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Hampi1.jpg/640px-Hampi1.jpg'},
-    {title:'Darjeeling',                description:'West Bengal · Tea & Himalayas',      url:'https://maps.google.com/?q=Darjeeling+West+Bengal',   image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Kanchenjunga_from_Tiger_Hill.jpg/640px-Kanchenjunga_from_Tiger_Hill.jpg'},
-    {title:'Ranthambore Tiger Reserve', description:'Rajasthan · Wildlife safari',        url:'https://maps.google.com/?q=Ranthambore+National+Park', image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Ranthambhore_Rajasthan_Tiger.jpg/640px-Ranthambhore_Rajasthan_Tiger.jpg'},
-    {title:'Mysore Palace',             description:'Karnataka · Heritage palace',         url:'https://maps.google.com/?q=Mysore+Palace',            image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Mysore_Palace_Morning.jpg/640px-Mysore_Palace_Morning.jpg'},
-    {title:'Munnar Hills',              description:'Kerala · Tea plantations & mist',    url:'https://maps.google.com/?q=Munnar+Kerala',            image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Munnar_Kerala_India_%28cropped%29.jpg/640px-Munnar_Kerala_India_%28cropped%29.jpg'},
-  ],
-};
-
-// Default cities when geolocation is denied — based on browser locale
-var REGION_DEFAULTS = {
-  canada: { lat: 43.6532,  lng: -79.3832,   label: 'Toronto',       region: 'canada' },
-  us:     { lat: 37.7749,  lng: -122.4194,  label: 'San Francisco', region: 'us'     },
-  india:  { lat: 28.6139,  lng: 77.2090,    label: 'New Delhi',     region: 'india'  },
-};
-
-function setTrendCat(cat, btn) {
-  document.querySelectorAll('.tcb-btn').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  document.querySelectorAll('.trend-cat-section').forEach(s => s.classList.toggle('on', s.id === 'tcat-' + cat));
-  if (cat === 'channels')  populateChannelGroupDropdown();
-  if (cat === 'community') loadCommunityTrending();
-}
-
-function detectUserRegion() {
-  var lang = navigator.language || 'en-CA';
-  if (/^(hi|bn|ta|te|kn|ml|mr|gu|pa)/.test(lang) || lang.endsWith('-IN')) return 'india';
-  if (lang.endsWith('-US') || lang === 'en-US') return 'us';
-  return 'canada';
-}
-
-function loadTrending() {
-  // Netflix
-  fetch(BASE + '/api/trending/streaming', { credentials: 'include' })
-    .then(r => r.json())
-    .then(data => {
-      var nf = (data.netflix && data.netflix.length) ? data.netflix : STREAM_FB.netflix;
-      var pv = (data.prime   && data.prime.length)   ? data.prime   : STREAM_FB.prime;
-      renderStreamRow('tr-netflix', nf, '#E50914', 'N', '📺');
-      renderStreamRow('tr-prime',   pv, '#00A8E0', 'P', '🎬');
-      if (data.source === 'db') {
-        if (nf.length) document.getElementById('nf-live').style.display = 'inline';
-        if (pv.length) document.getElementById('pv-live').style.display = 'inline';
-      }
-    }).catch(function() {
-      renderStreamRow('tr-netflix', STREAM_FB.netflix, '#E50914', 'N', '📺');
-      renderStreamRow('tr-prime',   STREAM_FB.prime,   '#00A8E0', 'P', '🎬');
-    });
-
-  // TMDB Popular
-  fetch(BASE + '/api/trending/tmdb?category=top_movies', { credentials: 'include' })
-    .then(r => r.json())
-    .then(data => {
-      var items = (data.data && data.data.length) ? data.data : TMDB_FB;
-      renderTmdbRow('tr-tmdb', items);
-      if (data.source === 'db') document.getElementById('tmdb-live').style.display = 'inline';
-    }).catch(function() { renderTmdbRow('tr-tmdb', TMDB_FB); });
-
-  // Places — use region based on browser locale
-  var region = detectUserRegion();
-  loadPlaces(region);
-
-  // Events — request GPS location, fall back to region default city
-  loadEventsWithLocation();
-}
-
-function loadPlaces(region) {
-  region = region || detectUserRegion();
-  fetch(BASE + '/api/trending/places?region=' + encodeURIComponent(region), { credentials: 'include' })
-    .then(r => r.json())
-    .then(data => {
-      var items = (data.data && data.data.length) ? data.data : (PLACES_STATIC[region] || PLACES_STATIC.canada);
-      renderPlacesGrid('tr-places', items.slice(0, 10));
-    }).catch(function() { renderPlacesGrid('tr-places', PLACES_STATIC[region] || PLACES_STATIC.canada); });
-}
-
-function loadEventsWithLocation() {
-  var lbl = document.getElementById('events-location-label');
-  var geoUsed = false;
-
-  // 5-second fallback timer in case geolocation stalls
-  var fallbackTimer = setTimeout(function() {
-    if (geoUsed) return;
-    geoUsed = true;
-    var region = detectUserRegion();
-    var def    = REGION_DEFAULTS[region];
-    if (lbl) lbl.textContent = 'Near ' + def.label;
-    fetchEventsNearby(def.lat, def.lng, def.region);
-  }, 5000);
-
-  if (!navigator.geolocation) {
-    clearTimeout(fallbackTimer);
-    var region = detectUserRegion();
-    var def    = REGION_DEFAULTS[region];
-    if (lbl) lbl.textContent = 'Near ' + def.label;
-    fetchEventsNearby(def.lat, def.lng, def.region);
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    function(pos) {
-      if (geoUsed) return;
-      geoUsed = true;
-      clearTimeout(fallbackTimer);
-      var lat    = pos.coords.latitude;
-      var lng    = pos.coords.longitude;
-      if (lbl) lbl.textContent = 'Near your location 📍';
-      // Rough region detection from coordinates
-      var region = (lat > 49)  ? 'canada'
-                 : (lat < 25 || (lat < 37 && lng > 60)) ? 'india'
-                 : 'us';
-      fetchEventsNearby(lat, lng, region);
-    },
-    function() {
-      // Denied or error
-      if (geoUsed) return;
-      geoUsed = true;
-      clearTimeout(fallbackTimer);
-      var region = detectUserRegion();
-      var def    = REGION_DEFAULTS[region];
-      if (lbl) lbl.textContent = 'Near ' + def.label;
-      fetchEventsNearby(def.lat, def.lng, def.region);
-    },
-    { timeout: 8000, maximumAge: 300000 }
-  );
-}
-
-function fetchEventsNearby(lat, lng, region) {
-  var el = document.getElementById('tr-events');
-  if (el) el.innerHTML = '<div class="trend-loading"><div class="trend-spin"></div>Finding events near you...</div>';
-
-  var url = (region === 'india')
-    ? BASE + '/api/trending/events?region=india'
-    : BASE + '/api/trending/events/nearby?lat=' + lat + '&lng=' + lng + '&region=' + region;
-
-  fetch(url)
-    .then(r => r.json())
-    .then(data => { renderEventCategories('tr-events', data.data || []); })
-    .catch(function() {
-      if (el) el.innerHTML = '<div style="padding:1rem;color:var(--muted);font-size:13px">Could not load events. Please try again.</div>';
-    });
-}
-
-function renderStreamRow(elId, items, badgeColor, badgeLetter, fallbackEmoji) {
-  var el = document.getElementById(elId); if (!el) return;
-  if (!items || !items.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem">No data available</div>'; return; }
-  var html = '<div class="trend-scroll-wrap"><div class="trend-row">';
-  items.slice(0, 10).forEach(function(it, i) {
-    var bc       = it.badge_color || it.badgeColor || badgeColor || '#888';
-    var watchUrl = it.url || it.netflix_url || it.prime_url || '';
-    var tid      = storeTrendItem(it);
-    var imgHtml  = it.image_url
-      ? '<img src="' + esc(it.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
-      : '<span style="font-size:48px;position:relative;z-index:1">' + fallbackEmoji + '</span>';
-    html += '<div class="tc-poster">'
-      + '<div class="tc-poster-img">'
-      + imgHtml
-      + '<div class="tc-stream-badge" style="background:' + bc + '">' + esc(it.badge || badgeLetter) + '</div>'
-      + '<div class="tc-rank-badge">#' + (i + 1) + '</div>'
-      + ((it.score || it.rating) ? '<div class="tc-score">&#11088; ' + esc(it.score || it.rating) + '</div>' : '')
-      + '</div>'
-      + '<div class="tc-poster-body">'
-      + '<div class="tc-poster-title" title="' + esc(it.title) + '">' + esc(it.title) + '</div>'
-      + '<div class="tc-poster-meta">' + esc(it.genre || it.type || '') + '</div>'
-      + '</div>'
-      + '<div class="tc-poster-actions">'
-      + '<button class="tc-pa-btn" onclick="addTrendPickDirect(\'' + tid + '\')" style="color:var(--blue)">+ Add</button>'
-      + (watchUrl ? '<button class="tc-pa-btn" onclick="window.open(\'' + esc(watchUrl) + '\',\'_blank\')" style="color:' + bc + '">&#9654;</button>' : '')
-      + '</div></div>';
-  });
-  el.innerHTML = html + '</div></div>'; // close trend-row + trend-scroll-wrap
-}
-
-function renderTmdbRow(elId, items) {
-  var el = document.getElementById(elId); if (!el) return;
-  if (!items || !items.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem">No data available — run scraper to populate</div>'; return; }
-  var html = '<div class="trend-scroll-wrap"><div class="trend-row">';
-  items.slice(0, 10).forEach(function(it, i) {
-    var tid = storeTrendItem(it);
-    var imgHtml = it.image_url
-      ? '<img src="' + esc(it.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
-      : '<span style="font-size:48px;position:relative;z-index:1">&#127916;</span>';
-    html += '<div class="tc-poster">'
-      + '<div class="tc-poster-img">'
-      + imgHtml
-      + '<div class="tc-stream-badge" style="background:#01b4e4;color:#fff;font-size:7px;font-weight:900">TMDB</div>'
-      + '<div class="tc-rank-badge">#' + (i + 1) + '</div>'
-      + (it.rating ? '<div class="tc-score">&#11088; ' + esc(it.rating) + '</div>' : '')
-      + '</div>'
-      + '<div class="tc-poster-body">'
-      + '<div class="tc-poster-title" title="' + esc(it.title) + '">' + esc(it.title) + '</div>'
-      + '<div class="tc-poster-meta">' + esc(it.year || '') + '</div>'
-      + '</div>'
-      + '<div class="tc-poster-actions">'
-      + '<button class="tc-pa-btn" onclick="addTrendPickDirect(\'' + tid + '\')" style="color:var(--blue)">+ Add</button>'
-      + (it.tmdb_url ? '<button class="tc-pa-btn" onclick="window.open(\'' + esc(it.tmdb_url) + '\',\'_blank\')" style="color:#01b4e4">TMDB</button>' : '')
-      + '</div></div>';
-  });
-  el.innerHTML = html + '</div></div>';
-}
-
-// Places: responsive CSS grid (wraps, max 5 per row on desktop, 2 on mobile)
-function renderPlacesGrid(elId, items) {
-  var el = document.getElementById(elId); if (!el) return;
-  if (!items || !items.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem">No places data yet</div>'; return; }
-  var html = '<div class="places-grid">';
-  items.slice(0, 10).forEach(function(it) {
-    var tid = storeTrendItem(it);
-    var imgHtml = it.image_url
-      ? '<img src="' + esc(it.image_url) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'
-        + '<span style="font-size:36px;display:none">&#128205;</span>'
-      : '<span style="font-size:36px">&#128205;</span>';
-    var mapsUrl = it.url || ('https://maps.google.com/?q=' + encodeURIComponent(it.title));
-    var taUrl   = it.tripadvisor_url || ('https://www.tripadvisor.com/Search?q=' + encodeURIComponent(it.title));
-    html += '<div class="tc-wide">'
-      + '<div class="tc-wide-img">' + imgHtml + '</div>'
-      + '<div class="tc-wide-body">'
-      + '<div class="tc-wide-title" title="' + esc(it.title) + '">' + esc(it.title) + '</div>'
-      + '<div class="tc-wide-meta">' + esc(it.description || '') + '</div>'
-      + '</div>'
-      + '<div class="tc-poster-actions">'
-      + '<button class="tc-pa-btn" onclick="addTrendPickDirect(\'' + tid + '\')" style="color:var(--blue)">+ Add</button>'
-      + '<button class="tc-pa-btn" onclick="window.open(\'' + esc(mapsUrl) + '\',\'_blank\')" style="color:#1DA462" title="Google Maps">&#128205;</button>'
-      + '<button class="tc-pa-btn" onclick="window.open(\'' + esc(taUrl) + '\',\'_blank\')" style="color:#34E0A1" title="TripAdvisor">&#9733;</button>'
-      + '</div></div>';
-  });
-  el.innerHTML = html + '</div>';
-}
-
-// Events: split by category (Concerts / Sports / Arts / Family)
-var EVENT_CATS = {
-  concerts: { label: 'Concerts',                  icon: '🎵' },
-  sports:   { label: 'Sports',                    icon: '🏆' },
-  arts:     { label: 'Arts, Theatre & Comedy',    icon: '🎭' },
-  family:   { label: 'Family',                    icon: '👨‍👩‍👧' },
-};
-
-function renderEventCategories(elId, items) {
-  var el = document.getElementById(elId); if (!el) return;
-  if (!items || !items.length) {
-    el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">🎭</div><div style="font-size:13px;font-weight:600;margin-bottom:4px">No events found nearby</div><div style="font-size:12px">Events refresh weekly — check back soon or add your Ticketmaster key</div></div>';
-    return;
-  }
-
-  // Group by category
-  var byCategory = {};
-  items.forEach(function(ev) {
-    var cat = ev.category || 'other';
-    if (!byCategory[cat]) byCategory[cat] = [];
-    byCategory[cat].push(ev);
-  });
-
-  var html = '';
-  // Render known categories first
-  var orderedCats = ['concerts', 'sports', 'arts', 'family'];
-  var allCats = orderedCats.concat(Object.keys(byCategory).filter(c => !orderedCats.includes(c)));
-
-  allCats.forEach(function(cat) {
-    var evs = byCategory[cat];
-    if (!evs || !evs.length) return;
-    var catInfo = EVENT_CATS[cat] || { label: cat.charAt(0).toUpperCase() + cat.slice(1), icon: '🎟️' };
-    html += '<div class="event-cat-section">'
-      + '<div class="event-cat-title"><span class="event-cat-icon">' + catInfo.icon + '</span>' + catInfo.label + '</div>'
-      + '<div class="trend-row">';
-    evs.slice(0, 5).forEach(function(it) {
-      var tid = storeTrendItem(it);
-      var imgHtml = it.image_url
-        ? '<img src="' + esc(it.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
-        : '<span style="font-size:36px">' + catInfo.icon + '</span>';
-      html += '<div class="tc-wide">'
-        + '<div class="tc-wide-img">' + imgHtml + '</div>'
-        + '<div class="tc-wide-body">'
-        + '<div class="tc-wide-title" title="' + esc(it.title) + '">' + esc(it.title) + '</div>'
-        + '<div class="tc-wide-meta">' + esc(it.description || '') + '</div>'
-        + '</div>'
-        + '<div class="tc-poster-actions">'
-        + '<button class="tc-pa-btn" onclick="addTrendPickDirect(\'' + tid + '\')" style="color:var(--blue)">+ Add</button>'
-        + (it.url ? '<button class="tc-pa-btn" onclick="window.open(\'' + esc(it.url) + '\',\'_blank\')" style="color:var(--muted)">&#8599;</button>' : '')
-        + '</div></div>';
-    });
-    html += '</div></div>';
-  });
-
-  el.innerHTML = html || '<div style="color:var(--muted);font-size:13px;padding:1rem">No events found in your area</div>';
-}
-
-// ── FIX: addTrendPickDirect sends imageUrl directly so no re-fetch needed ──
-async function addTrendPickDirect(itemId) {
-  var item = window._trendItems[itemId];
-  if (!item) { showToast('Item not found'); return; }
-  if (!currentGroupId) {
-    showToast('Select a squad first');
-    goSection('dashboard', document.getElementById('dnav-dashboard'));
-    return;
-  }
-
-  var title    = item.title || item.name || '';
-  // Use TMDB URL if available (best for metadata re-fetch), else use any URL, else just the title
-  var url      = item.tmdb_url || item.url || item.netflix_url || item.prime_url || title;
-  var type     = item.type || (item.badge === 'P' ? 'show' : item.badge === 'N' ? 'show' : 'movie');
-  var imageUrl = item.image_url || '';
-
-  showToast('Adding to squad...');
-
-  try {
-    var r = await fetch(BASE + '/api/picks', { credentials: 'include',
-      method: 'POST',
-      headers: {
-        'Content-Type':         'application/json',
-        'x-telegram-init-data': 'test',
-        'x-user-id':            String(currentUser && currentUser.id  || '0'),
-        'x-user-name':          String(currentUser && currentUser.name || 'User'),
-        'x-chat-id':            String(currentGroupId),
-      },
-      // Send imageUrl directly — avoids needing to re-fetch from TMDB
-      body: JSON.stringify({
-        url,
-        groupId:        currentGroupId,
-        manualType:     type,
-        manualTitle:    title,
-        manualImageUrl: imageUrl,   // ← key fix: bypass fetchMeta for image
-      })
-    });
-    var data = await r.json();
-    if (r.status === 409 || data.duplicate) {
-      showToast('⚠️ ' + (data.error || 'Already in this squad!'));
-      return;
-    }
-    if (data.pick) {
-      var newPick = Object.assign({}, data.pick, { votes: [], my_vote: 'want', group_ok: false });
-      if (!newPick.image_url && imageUrl) newPick.image_url = imageUrl;
-      if (!allPicks.find(p => p.id === newPick.id)) allPicks.unshift(newPick);
-      myVotes[newPick.id] = 'want';
-      loadDashboard();
-      showToast('"' + title + '" added! \u2705');
-    } else {
-      showToast(data.error || 'Could not add pick');
-    }
-  } catch(e) {
-    console.error('[addTrendPickDirect]', e);
-    showToast('Connection error \u2014 please try again');
-  }
-}
-
-// ── SETTINGS ──────────────────────────────────────────────
-
-async function loadSettings() {
-  // Populate YouTube Channels squad dropdown in Settings
-  settingsPopulateSquadDropdown();
-
-  // Profile
-  if (currentUser) {
-    const av = document.getElementById('si-av');
-    if (av) av.textContent = (currentUser.name||'?').charAt(0).toUpperCase();
-    const nm = document.getElementById('si-name');
-    if (nm) nm.textContent = currentUser.name || 'Member';
-    const em = document.getElementById('si-email');
-    if (em) em.textContent = currentUser.email || '';
-  }
-  // Load notification prefs
-  try {
-    const r = await fetch(BASE + '/api/preferences', { credentials: 'include' });
-    const d = await r.json();
-    if (d.prefs) {
-      const pa = document.getElementById('pref-pick-add');
-      const go = document.getElementById('pref-group-ok');
-      const di = document.getElementById('pref-digest');
-      if (pa) pa.checked = d.prefs.notify_pick_add !== false;
-      if (go) go.checked = d.prefs.notify_group_ok !== false;
-      if (di) di.checked = d.prefs.notify_digest !== false;
-    }
-  } catch(e) { console.warn('[loadSettings]', e); }
-}
-
-async function savePref(key, value) {
-  try {
-    await fetch(BASE + '/api/preferences', { credentials: 'include',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [key]: value })
-    });
-    showToast(value ? '✅ Notification enabled' : '🔕 Notification disabled');
-  } catch(e) { showToast('Could not save preference'); }
-}
-
-function copyShareLink() {
-  const link = window.location.origin;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(link).then(() => showToast('Link copied! Share with friends 🔗'));
-  } else {
-    showToast(link);
-  }
-}
-
-// ── YOUTUBE CHANNELS ──────────────────────────────────────
-
-async function populateChannelGroupDropdown() {
-  const sel = document.getElementById('channel-group-sel');
-  if (!sel || !allGroups || !allGroups.length) return;
-  const defaultOption = '<option value="">Select a squad...</option>';
-  sel.innerHTML = defaultOption + allGroups.map(g =>
-    `<option value="${g.id}">${g.title}</option>`
-  ).join('');
-}
-
-async function loadChannelVideos(groupId) {
-  const el = document.getElementById('tr-channels');
-  if (!groupId) {
-    if (el) el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:.5rem 0">Select a squad to see their YouTube channels</div>';
-    return;
-  }
-  if (el) el.innerHTML = '<div class="trend-loading"><div class="trend-spin"></div>Loading channels...</div>';
-  try {
-    const r = await fetch(BASE + '/api/groups/' + encodeURIComponent(groupId) + '/channels', { credentials: 'include' });
-    const d = await r.json();
-    const channels = d.channels || [];
-    if (!channels.length) {
-      el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:.5rem 0">No channels added yet. Click "+ Add channel" to add a YouTube channel for this squad.</div>';
-      return;
-    }
-    // Show each channel as an embedded link card
-    el.innerHTML = '<div style="display:flex;flex-direction:column;gap:12px">' + channels.map(ch => `
-      <div style="background:var(--white);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px;border:1px solid var(--border)">
-        <div style="font-size:28px">📺</div>
-        <div style="flex:1">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">${esc(ch.channel_name || ch.channel_id)}</div>
-          <div style="font-size:12px;color:var(--muted)">${esc(ch.channel_url || 'YouTube Channel')}</div>
-        </div>
-        <a href="${esc(ch.channel_url || 'https://youtube.com/channel/' + ch.channel_id)}" target="_blank" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;font-family:var(--font-b)">Watch</a>
-      </div>`).join('') + '</div>';
-  } catch(e) {
-    if (el) el.innerHTML = '<div style="color:var(--red);font-size:13px;padding:.5rem 0">Could not load channels</div>';
-  }
-}
-
-async function openChannelManager() {
-  const groupId = document.getElementById('channel-group-sel')?.value;
-  if (!groupId) { showToast('Select a squad first'); return; }
-  const channelUrl = prompt('Enter the YouTube channel URL:\n(e.g. https://youtube.com/@FilmiCraft or https://youtube.com/channel/UC...)');
-  if (!channelUrl) return;
-  // Extract channel ID from URL
-  let channelId = channelUrl.trim();
-  let channelName = channelUrl.replace('https://','').replace('http://','').split('/').filter(Boolean).pop() || channelUrl;
-  // Clean up @handle
-  if (channelId.includes('@')) channelName = channelId.split('@').pop().split('/')[0];
-  try {
-    const r = await fetch(BASE + '/api/groups/' + encodeURIComponent(groupId) + '/channels', { credentials: 'include',
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channelId, channelName, channelUrl: channelUrl.trim() })
-    });
-    const d = await r.json();
-    if (d.ok) { showToast('Channel added! ✅'); loadChannelVideos(groupId); }
-    else showToast(d.error || 'Could not add channel');
-  } catch(e) { showToast('Connection error'); }
-}
-
-// ── SETTINGS: Master-detail panel switching ──────────────
-
-function openSettingsPanel(panelId, menuItem) {
-  // Update active menu item
-  document.querySelectorAll('.smenu-item').forEach(i => i.classList.remove('active'));
-  if (menuItem) menuItem.classList.add('active');
-
-  // Show correct panel
-  document.querySelectorAll('.spanel').forEach(p => p.style.display = 'none');
-  const panel = document.getElementById('spanel-' + panelId);
-  if (panel) panel.style.display = 'block';
-
-  // On mobile: show detail, hide menu
-  const detail = document.getElementById('settings-detail');
-  const menu   = document.getElementById('settings-menu');
-  if (window.innerWidth <= 640) {
-    if (detail) detail.classList.add('mobile-open');
-    if (menu)   menu.style.display = 'none';
-  }
-
-  // Panel-specific init
-  if (panelId === 'youtube')       settingsPopulateSquadDropdown();
-  if (panelId === 'notifications') loadPreferences();
-}
-
-function closeSettingsPanel() {
-  const detail = document.getElementById('settings-detail');
-  const menu   = document.getElementById('settings-menu');
-  if (detail) detail.classList.remove('mobile-open');
-  if (menu)   menu.style.display = 'block';
-}
-
-// ── STAR RATINGS ──────────────────────────────────────────
-
-function renderStars(pickId, myStars, avgStars, ratingCount, compact) {
-  const avg    = avgStars ? avgStars.toFixed(1) : null;
-  const filled = myStars || 0;
-  let stars = '';
-  for (let i = 1; i <= 5; i++) {
-    stars += '<span class="star ' + (i <= filled ? 'lit' : 'dim') + '" '
-      + 'onclick="ratePick(' + JSON.stringify(pickId) + ',' + i + ',this.parentNode)" '
-      + 'title="Rate ' + i + ' star' + (i > 1 ? 's' : '') + '">&#9733;</span>';
-  }
-  const countStr = ratingCount ? ' <span style="font-size:10px;color:var(--muted)">(' + ratingCount + ')</span>' : '';
-  const avgStr   = avg && !compact ? ' <span style="font-size:11px;color:var(--amber);font-weight:600">' + avg + '&#9733;</span>' + countStr : '';
-  return '<div class="star-row" data-pick-id="' + pickId + '">' + stars + avgStr + '</div>';
-}
-
-async function ratePick(pickId, stars, container) {
-  try {
-    const r = await fetch('/api/ratings', {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pickId, stars })
-    });
-    const d = await r.json();
-    if (!d.ok) { showToast('Could not save rating'); return; }
-    // Re-render stars in this container
-    const spans = container.querySelectorAll('.star');
-    spans.forEach((s, i) => {
-      s.className = 'star ' + (i < stars ? 'lit' : 'dim');
-    });
-    showToast(stars + ' ★ saved!');
-  } catch(e) { showToast('Network error'); }
-}
-
-// Fetch and attach ratings to a list of picks
-async function attachRatings(picks) {
-  if (!picks || !picks.length) return;
-  const ids = picks.map(p => p.id).join(',');
-  try {
-    const r = await fetch('/api/ratings?pickIds=' + encodeURIComponent(ids), { credentials: 'include' });
-    const d = await r.json();
-    if (!d.ok) return;
-    picks.forEach(p => {
-      const info = d.ratings[p.id] || {};
-      p._avgRating   = info.avg     || 0;
-      p._ratingCount = info.count   || 0;
-      p._myStars     = info.myStars || 0;
-    });
-  } catch(e) {}
-}
-
-// ── WEEKLY DIGEST ─────────────────────────────────────────
-
-async function loadWeeklyDigest(groupId) {
-  const wrap = document.getElementById('weekly-digest-wrap');
-  const cont = document.getElementById('weekly-digest-content');
-  if (!wrap || !cont || !groupId || groupId === 'all') {
-    if (wrap) wrap.style.display = 'none';
-    return;
-  }
-  try {
-    const r = await fetch('/api/weekly-digest?groupId=' + encodeURIComponent(groupId), { credentials: 'include' });
-    const d = await r.json();
-    if (!d.ok || (!d.seen.length && !d.wantGroupOk.length)) {
-      wrap.style.display = 'none';
-      return;
-    }
-    wrap.style.display = 'block';
-    const TC2 = { movie:'🎬', show:'📺', food:'🍽', place:'📍', event:'🎭', video:'▶️', link:'🔗' };
-
-    const seenHtml = d.seen.map(p => {
-      const emoji = TC2[p.type] || '🎯';
-      const img   = p.image_url
-        ? '<img src="' + esc(p.image_url) + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover" onerror="this.style.display=\'none\'">'
-        : '<div class="digest-thumb-emoji">' + emoji + '</div>';
-      const seenBy = p.seenBy && p.seenBy.length
-        ? p.seenBy.slice(0,2).join(', ') + (p.seenBy.length > 2 ? ' +' + (p.seenBy.length-2) : '') + ' seen it'
-        : 'Seen recently';
-      const stars  = renderStars(p.id, p.myStars || 0, p.avgRating, p.ratingCount, true);
-      return '<div class="digest-card" style="min-width:240px;flex-shrink:0">'
-        + img
-        + '<div class="digest-info">'
-        + '<div class="digest-title">' + esc(p.title) + '</div>'
-        + '<div class="digest-sub">✅ ' + seenBy + '</div>'
-        + stars
-        + '</div></div>';
-    }).join('');
-
-    const upcomingHtml = d.wantGroupOk.map(p => {
-      const emoji = TC2[p.type] || '🎯';
-      const img   = p.image_url
-        ? '<img src="' + esc(p.image_url) + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover" onerror="this.style.display=\'none\'">'
-        : '<div class="digest-thumb-emoji">' + emoji + '</div>';
-      return '<div class="digest-card" style="min-width:240px;flex-shrink:0;border-color:#DDD6FE">'
-        + img
-        + '<div class="digest-info">'
-        + '<div class="digest-title">' + esc(p.title) + '</div>'
-        + '<div class="digest-sub" style="color:var(--blue)">👍 Squad agrees — do it!</div>'
-        + '</div></div>';
-    }).join('');
-
-    cont.innerHTML = seenHtml + upcomingHtml ||
-      '<div style="font-size:13px;color:var(--muted);padding:4px 0">No squad activity in the last 2 weeks</div>';
-  } catch(e) {
-    if (wrap) wrap.style.display = 'none';
-  }
-}
-
-// ── SETTINGS: YouTube Channels manager ───────────────────
-
-function settingsPopulateSquadDropdown() {
-  const sel = document.getElementById('settings-yt-squad');
-  if (!sel) return;
-  const groups = allGroups || [];
-  sel.innerHTML = '<option value="">— choose a squad —</option>' +
-    groups.map(g => `<option value="${g.id}">${esc(g.title)}</option>`).join('');
-  // Auto-select current group if available
-  if (currentGroupId) {
-    sel.value = String(currentGroupId);
-    if (sel.value) settingsLoadChannels(currentGroupId);
-  }
-}
-
-function settingsParseChannelInput(raw) {
-  const s = (raw || '').trim();
-  if (!s) return null;
-  // Raw UC... channel ID
-  if (/^UC[\w-]{22}$/.test(s)) {
-    return { channel_id: s, channel_url: 'https://www.youtube.com/channel/' + s, channel_name: s };
-  }
-  // @handle without URL
-  if (s.startsWith('@')) {
-    const name = s.slice(1).split('/')[0];
-    return { channel_id: s, channel_url: 'https://www.youtube.com/' + s, channel_name: name };
-  }
-  // Full URL
-  try {
-    const url = new URL(s.startsWith('http') ? s : 'https://' + s);
-    if (!url.hostname.includes('youtube.com')) return null;
-    const parts = url.pathname.split('/').filter(Boolean);
-    if (parts[0] === 'channel' && parts[1]) {
-      return { channel_id: parts[1], channel_url: 'https://www.youtube.com/channel/' + parts[1], channel_name: parts[1] };
-    }
-    if (parts[0] && parts[0].startsWith('@')) {
-      const name = parts[0].slice(1);
-      return { channel_id: parts[0], channel_url: 'https://www.youtube.com/' + parts[0], channel_name: name };
-    }
-    if ((parts[0] === 'c' || parts[0] === 'user') && parts[1]) {
-      return { channel_id: '@' + parts[1], channel_url: 'https://www.youtube.com/c/' + parts[1], channel_name: parts[1] };
-    }
-  } catch(_) {}
-  return null;
-}
-
-async function settingsLoadChannels(groupId) {
-  const listEl = document.getElementById('settings-yt-list');
-  const formEl = document.getElementById('settings-yt-form');
-  const errEl  = document.getElementById('settings-yt-err');
-  if (!listEl) return;
-  if (!groupId) {
-    listEl.innerHTML = '';
-    if (formEl) formEl.style.display = 'none';
-    return;
-  }
-  if (formEl) formEl.style.display = 'flex';
-  if (errEl)  errEl.style.display  = 'none';
-  listEl.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:4px 0">Loading…</div>';
-  try {
-    const r = await fetch(BASE + '/api/groups/' + encodeURIComponent(groupId) + '/channels', { credentials: 'include' });
-    const d = await r.json();
-    const channels = d.channels || [];
-    if (!channels.length) {
-      listEl.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:4px 0">No channels yet — add one below</div>';
-      return;
-    }
-    listEl.innerHTML = channels.map(ch => `
-      <div id="sytch-${esc(ch.id)}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--beige);border:1px solid var(--beige3);border-radius:10px;margin-bottom:8px">
-        <div style="font-size:22px;flex-shrink:0">▶</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ch.channel_name || ch.channel_id)}</div>
-          <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ch.channel_url || '')}</div>
-        </div>
-        <a href="${esc(ch.channel_url || 'https://youtube.com')}" target="_blank"
-          style="background:var(--beige2);color:var(--blue);border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;font-family:var(--font-b);flex-shrink:0">Watch</a>
-        <button onclick="settingsRemoveChannel('${esc(String(groupId))}','${esc(ch.id)}')"
-          style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;padding:4px;border-radius:6px;flex-shrink:0" title="Remove">✕</button>
-      </div>`).join('');
-  } catch(e) {
-    listEl.innerHTML = '<div style="font-size:13px;color:var(--red);padding:4px 0">Failed to load channels</div>';
-  }
-}
-
-async function settingsAddChannel() {
-  const groupId = document.getElementById('settings-yt-squad')?.value;
-  const input   = document.getElementById('settings-yt-input');
-  const errEl   = document.getElementById('settings-yt-err');
-  if (errEl) errEl.style.display = 'none';
-  if (!groupId) { settingsYtErr('Please select a squad first.'); return; }
-  const raw = input ? input.value.trim() : '';
-  if (!raw) { settingsYtErr('Please enter a YouTube channel URL or @handle.'); return; }
-  const parsed = settingsParseChannelInput(raw);
-  if (!parsed) { settingsYtErr('Could not recognise a YouTube channel from that input. Try https://youtube.com/@ChannelName'); return; }
-  try {
-    const r = await fetch(BASE + '/api/groups/' + encodeURIComponent(groupId) + '/channels', { credentials: 'include',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channelId: parsed.channel_id, channelName: parsed.channel_name, channelUrl: parsed.channel_url })
-    });
-    const d = await r.json();
-    if (!r.ok) { settingsYtErr(d.error || 'Could not add channel.'); return; }
-    if (input) input.value = '';
-    await settingsLoadChannels(groupId);
-    showToast('Channel added ✓');
-  } catch(e) { settingsYtErr('Network error — please try again.'); }
-}
-
-async function settingsRemoveChannel(groupId, channelRowId) {
-  if (!confirm('Remove this channel from your squad?')) return;
-  try {
-    const r = await fetch(BASE + '/api/groups/' + encodeURIComponent(groupId) + '/channels/' + encodeURIComponent(channelRowId), { credentials: 'include',
-      method: 'DELETE'
-    });
-    const el = document.getElementById('sytch-' + channelRowId);
-    if (el) el.remove();
-    await settingsLoadChannels(groupId);
-    showToast('Channel removed');
-  } catch(e) { showToast('Could not remove channel'); }
-}
-
-function settingsYtErr(msg) {
-  const el = document.getElementById('settings-yt-err');
-  if (!el) return;
-  el.textContent  = msg;
-  el.style.display = 'block';
-}
-
-// ── COMMUNITY TRENDING ────────────────────────────────────
-
-async function loadCommunityTrending() {
-  const el = document.getElementById('tr-community');
-  if (!el) return;
-  el.innerHTML = '<div class="trend-loading"><div class="trend-spin"></div>Loading community picks...</div>';
-  try {
-    const r = await fetch(BASE + '/api/trending/community', { credentials: 'include' });
-    const d = await r.json();
-    const picks = d.picks || [];
-    if (!picks.length) {
-      el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem;text-align:center"><div style="font-size:28px;margin-bottom:8px">🌍</div>No community picks yet. As more squads use SquadPicks, group-ok picks will appear here.</div>';
-      return;
-    }
-
-    // Fetch ratings for community picks
-    const ids = picks.map(p => p.id).join(',');
-    let ratingsMap = {};
-    try {
-      const rr = await fetch(BASE + '/api/ratings?pickIds=' + encodeURIComponent(ids), { credentials: 'include' });
-      const rd = await rr.json();
-      if (rd.ok) ratingsMap = rd.ratings || {};
-    } catch(re) {}
-
-    const topRated = picks
-      .filter(p => ratingsMap[p.id] && ratingsMap[p.id].avg >= 4)
-      .sort((a,b) => (ratingsMap[b.id]?.avg||0) - (ratingsMap[a.id]?.avg||0));
-    const rest = picks.filter(p => !topRated.includes(p));
-
-    function commCard(p) {
-      var tc  = TC[p.type] || TC.link;
-      var tid = storeTrendItem({ ...p, tmdb_url: p.url });
-      var info = ratingsMap[p.id] || {};
-      var imgHtml = p.image_url
-        ? '<img src="' + esc(p.image_url) + '" class="comm-rated-img" onerror="this.style.display=\'none\'">'
-        : '<div class="comm-rated-img-ph">' + tc.emoji + '</div>';
-      var starsHtml = info.avg
-        ? '<span style="color:#F59E0B;font-size:12px;font-weight:700">\u2605 ' + info.avg.toFixed(1) + '</span>'
-          + ' <span style="font-size:11px;color:var(--muted)">(' + info.count + ')</span>'
-        : '<span style="font-size:11px;color:var(--muted)">No ratings yet</span>';
-      return '<div class="comm-rated-card">'
-        + imgHtml
-        + '<div class="comm-rated-body">'
-        + '<div class="comm-rated-title">' + esc(p.title) + '</div>'
-        + '<div class="comm-rated-meta">\u2705 ' + esc(p.group_title||'Another squad') + ' \u00b7 ' + tc.emoji + '</div>'
-        + '<div style="display:flex;align-items:center;gap:6px;margin-top:4px">' + starsHtml
-        + '<button onclick="addTrendPickDirect(\'' + tid + '\')" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-left:auto">+ Add</button>'
-        + '</div></div></div>';
-    }
-
-    var html = '';
-    if (topRated.length) {
-      html += '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">\u2b50 Top Rated by Other Squads</div>';
-      html += topRated.map(commCard).join('');
-      if (rest.length) html += '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">\ud83c\udf0d More from the Community</div>';
-    }
-    html += rest.map(commCard).join('');
-    el.innerHTML = html;
-  } catch(e) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:1rem">Could not load community picks</div>';
-    console.error('[community]', e);
-  }
-}
-// ── ADMIN MANAGEMENT IN SQUAD DETAIL ─────────────────────
-
-async function toggleMemberAdmin(groupId, memberId, currentRole) {
-  const newRole = currentRole === 'admin' ? 'member' : 'admin';
-  try {
-    const r = await fetch(`${BASE}/api/groups/${groupId}/members/${memberId}/role`, { credentials: 'include',
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: newRole })
-    });
-    const d = await r.json();
-    if (d.ok) { showToast(newRole === 'admin' ? '⭐ Made admin' : 'Removed admin'); openGroupDetail(groupId); }
-    else showToast(d.error || 'Could not update role');
-  } catch(e) { showToast('Connection error'); }
-}
-
-// ── SIGN OUT ──────────────────────────────────────────────
-async function doSignOut() {
-  try { await fetch(BASE+'/api/auth/logout',{ credentials: 'include',method:'POST'}); } catch(e){}
-  localStorage.removeItem('tg_user');
-  window.location.href = '/login';
-}
-
-// ── UTILS ─────────────────────────────────────────────────
-function sn(n){ return String(n||'?').trim().slice(0,4); }
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-let _tt;
-function showToast(msg){
-  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
-  clearTimeout(_tt); _tt=setTimeout(()=>t.classList.remove('show'),2300);
-}
-document.getElementById('add-url').addEventListener('keydown',e=>{ if(e.key==='Enter') saveAdd(); });
 </script>
 </body>
 </html>
