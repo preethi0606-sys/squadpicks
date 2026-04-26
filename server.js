@@ -1081,8 +1081,7 @@ app.get('/app', (req, res) => {
 app.get('/login', (req, res) => {
   // Already logged in? Send them to the right place
   if (req.session && req.session.userId) {
-    if (req.session.loginType === 'telegram') return res.redirect('/app');
-    return res.redirect('/dashboard');
+    return res.redirect('/dashboard');  // all logged-in users go to dashboard
   }
   try {
     let html = fs.readFileSync(path.join(__dirname, 'public', 'login.html'), 'utf8');
@@ -1096,15 +1095,14 @@ app.get('/login', (req, res) => {
   }
 });
 
-// /dashboard — Web dashboard, Google users only
-// Server-side auth guard: must have a session. Telegram users go to /app.
+// /dashboard — Main app for ALL authenticated users (Google AND Telegram)
+// Telegram users arrive here after /auth/telegram-miniapp sets their session.
+// dashboard/index.html handles both loginTypes — do NOT redirect Telegram users away.
 app.get('/dashboard', (req, res) => {
   if (!req.session || !req.session.userId) {
     return res.redirect('/login');
   }
-  if (req.session.loginType === 'telegram') {
-    return res.redirect('/app');
-  }
+  // Serve dashboard to everyone — Google and Telegram users alike
   res.sendFile(path.join(__dirname, 'public', 'dashboard', 'index.html'));
 });
 
