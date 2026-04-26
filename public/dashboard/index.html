@@ -455,7 +455,7 @@ body{font-family:var(--font-b);background:var(--beige);color:var(--text);min-hei
       <div class="trend-cat-section" id="tcat-community">
         <div style="margin-bottom:.75rem">
           <div class="trend-sec-hdr" style="margin:0 0 4px">🌍 Trending in the Community</div>
-          <div style="font-size:11px;color:var(--muted)">Group-ok picks from squads you're not in</div>
+          <div style="font-size:11px;color:var(--muted)">Group-ok picks from squads you&#39;re not in</div>
         </div>
         <div id="tr-community"><div class="trend-loading"><div class="trend-spin"></div>Loading community picks...</div></div>
       </div>
@@ -1058,7 +1058,7 @@ function showGroupPrompt(groups) {
     <div class="empty" style="padding:2.5rem 1rem">
       <div class="empty-icon">👥</div>
       <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">Choose your squad</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">Select which squad's picks to view</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:1.5rem">Select which squad&#39;s picks to view</div>
       <div style="display:flex;flex-direction:column;gap:10px;max-width:360px;margin:0 auto;text-align:left">`;
 
   if (webGroups.length) {
@@ -1844,7 +1844,7 @@ var PLACES_STATIC = {
     {title:'Capilano Bridge',           description:'North Vancouver · Rainforest walk',  url:'https://maps.google.com/?q=Capilano+Suspension+Bridge', image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Capilano_Suspension_Bridge.jpg/640px-Capilano_Suspension_Bridge.jpg'},
     {title:'Parliament Hill',           description:'Ottawa · National landmark',         url:'https://maps.google.com/?q=Parliament+Hill+Ottawa',   image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Parliament_Hill%2C_Ottawa%2C_Canada.jpg/640px-Parliament_Hill%2C_Ottawa%2C_Canada.jpg'},
     {title:'Rideau Canal',              description:'Ottawa · UNESCO Heritage waterway',  url:'https://maps.google.com/?q=Rideau+Canal+Ottawa',      image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Rideau_Canal_Ottawa.jpg/640px-Rideau_Canal_Ottawa.jpg'},
-    {title:"Peggy's Cove",              description:'Nova Scotia · Iconic lighthouse',    url:'https://maps.google.com/?q=Peggys+Cove+Nova+Scotia',  image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Peggy%27s_Point_Lighthouse.jpg/640px-Peggy%27s_Point_Lighthouse.jpg'},
+    {title:"Peggy&#39;s Cove",              description:'Nova Scotia · Iconic lighthouse',    url:'https://maps.google.com/?q=Peggys+Cove+Nova+Scotia',  image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Peggy%27s_Point_Lighthouse.jpg/640px-Peggy%27s_Point_Lighthouse.jpg'},
   ],
   us: [
     {title:'Grand Canyon',              description:'Arizona · Natural wonder',           url:'https://maps.google.com/?q=Grand+Canyon',             image_url:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/USA_09649_Grand_Canyon_Luca_Galuzzi_2007.jpg/640px-USA_09649_Grand_Canyon_Luca_Galuzzi_2007.jpg'},
@@ -2470,7 +2470,7 @@ async function loadWeeklyDigest(groupId) {
         bottomRow = '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">✅ ' + (seenBy || 'Someone') + ' seen it</div>'
           + '<div style="display:flex;align-items:center;gap:2px">' + starsHtml + avgHtml + '</div>';
       } else {
-        bottomRow = '<div style="font-size:12px;color:var(--blue);font-weight:600;margin-top:4px">👍 Squad agrees — let's do it!</div>';
+        bottomRow = '<div style="font-size:12px;color:var(--blue);font-weight:600;margin-top:4px">👍 Squad agrees — let&#39;s do it!</div>';
       }
 
       return '<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)">'
