@@ -2402,7 +2402,7 @@ async function loadWeeklyDigest(groupId) {
     const seenHtml = d.seen.map(p => {
       const emoji = TC2[p.type] || '🎯';
       const img   = p.image_url
-        ? '<img src="' + esc(p.image_url) + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover" onerror="this.style.display='none'">'
+        ? '<img src="' + esc(p.image_url) + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover" onerror="this.style.display=\'none\'">'
         : '<div class="digest-thumb-emoji">' + emoji + '</div>';
       const seenBy = p.seenBy && p.seenBy.length
         ? p.seenBy.slice(0,2).join(', ') + (p.seenBy.length > 2 ? ' +' + (p.seenBy.length-2) : '') + ' seen it'
@@ -2420,7 +2420,7 @@ async function loadWeeklyDigest(groupId) {
     const upcomingHtml = d.wantGroupOk.map(p => {
       const emoji = TC2[p.type] || '🎯';
       const img   = p.image_url
-        ? '<img src="' + esc(p.image_url) + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover" onerror="this.style.display='none'">'
+        ? '<img src="' + esc(p.image_url) + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover" onerror="this.style.display=\'none\'">'
         : '<div class="digest-thumb-emoji">' + emoji + '</div>';
       return '<div class="digest-card" style="min-width:240px;flex-shrink:0;border-color:#DDD6FE">'
         + img
@@ -2599,7 +2599,7 @@ async function loadCommunityTrending() {
       var tid = storeTrendItem({ ...p, tmdb_url: p.url });
       var info = ratingsMap[p.id] || {};
       var imgHtml = p.image_url
-        ? '<img src="' + esc(p.image_url) + '" class="comm-rated-img" onerror="this.style.display='none'">'
+        ? '<img src="' + esc(p.image_url) + '" class="comm-rated-img" onerror="this.style.display=\'none\'">'
         : '<div class="comm-rated-img-ph">' + tc.emoji + '</div>';
       var starsHtml = info.avg
         ? '<span style="color:#F59E0B;font-size:12px;font-weight:700">\u2605 ' + info.avg.toFixed(1) + '</span>'
